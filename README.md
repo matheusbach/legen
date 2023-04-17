@@ -52,6 +52,9 @@ Every contribution is welcome. Submit your pull request ❤️
 
 Not being able to use the software, or encountering an error? open an [issue](https://github.com/matheusbach/legen/issues/new)
 
+## Donation
+Monero (XMR): ```86HjTCsiaELEoNhH96rTf3ezGMXgKmHjqFrNmca2tesCESdCTZvRvQ9QWQXPGDtmaZhKz4ryHCdZXFzdbmtGahVa5VMLJnx```
+
 ## License
 
 This project is licensed under the terms of the [GNU GPLv3](https://choosealicense.com/licenses/gpl-3.0/).
