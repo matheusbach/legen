@@ -7,7 +7,10 @@ This is very useful for making it available in another language, or even just su
 ## Usage:
 
 To use LeGen, run the following command:
-```python LeGen.py -i [input_dir] --model [model_name] --dev [device] --lang [language_code] --crf [crf_value] --maxrate [maxrate_value] --srt_out_dir [output_dir_for_srt_files] --burned_out_dir [output_dir_for_burned_files] --overwrite --disable_srt --disable_burn --only_video```
+
+```sh
+python LeGen.py -i [input_dir] --model [model_name] --dev [device] --lang [language_code] --crf [crf_value] --maxrate [maxrate_value] --srt_out_dir [output_dir_for_srt_files] --burned_out_dir [output_dir_for_burned_files] --overwrite --disable_srt --disable_burn --only_video
+```
 
 The available arguments are:
 
