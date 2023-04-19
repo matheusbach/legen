@@ -26,6 +26,7 @@ class TempFile:
     def __init__(self, final_path: str, file_ext: str = None):
         self.final_path = final_path
         self.file_ext = file_ext
+        os.makedirs(os.path.join(os.path.realpath(os.path.dirname(__file__)), "temp"), exist_ok=True)
         self.temp_file = tempfile.NamedTemporaryFile(dir=os.path.join(
             os.path.realpath(os.path.dirname(__file__)), "temp"),
             delete=False, suffix=file_ext)
