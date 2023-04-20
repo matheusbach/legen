@@ -11,7 +11,7 @@ import file_utils
 import translate_utils
 import whisper_utils
 
-version = "v0.1"
+version = "v0.2"
 
 # Terminal colors
 default = "\033[1;0m"
@@ -40,29 +40,31 @@ time.sleep(1.5)
 parser = argparse.ArgumentParser(prog="LeGen", description="Normaliza arquivos de vídeo, transcreve legendas a partir do áudio, traduz as legendas geradas, salva as legendas em arquivos .srt, insere no container mp4 e queima diretamente no vídeo",
                                  argument_default=True, allow_abbrev=True, add_help=True)
 parser.add_argument("-i", "--input_dir", type=str,
-                    help="caminho da pasta onde os vídeos originais estão localizados.", required=True)
+                    help="Caminho da pasta onde os vídeos originais estão localizados.", required=True)
 parser.add_argument("--model", type=str, default="base",
-                    help="caminho ou nome do modelo de transcrição Whisper. (default: base)")
+                    help="Caminho ou nome do modelo de transcrição Whisper. (default: base)")
 parser.add_argument("--dev", type=str, default="auto",
-                    help="dispositivo para rodar a transcrição pelo Whisper. [cpu, cuda, auto]. (default: auto)")
+                    help="Dispositivo para rodar a transcrição pelo Whisper. [cpu, cuda, auto]. (default: auto)")
 parser.add_argument("--lang", type=str, default="pt",
-                    help="idioma para o qual as legendas devem ser traduzidas. (default: pt)")
+                    help="Idioma para o qual as legendas devem ser traduzidas. Language equals to source video skip translation (default: pt)")
 parser.add_argument("--crf", type=int, default=20,
-                    help="valor CRF a ser usado no vídeo. (default: 20)")
+                    help="Valor CRF a ser usado no vídeo. (default: 20)")
 parser.add_argument("--maxrate", type=str, default="2M",
-                    help="maxrate a ser usado no vídeo. (default: 2M)")
+                    help="Maxrate a ser usado no vídeo. (default: 2M)")
 parser.add_argument("--srt_out_dir", type=str, default=None,
-                    help="caminho da pasta de saída para os arquivos de vídeo com legenda embutida no container mp4 e arquivos SRT. (default: legen_srt_$input_dir)")
+                    help="Caminho da pasta de saída para os arquivos de vídeo com legenda embutida no container mp4 e arquivos SRT. (default: legen_srt_$input_dir)")
 parser.add_argument("--burned_out_dir", type=str, default=None,
-                    help="caminho da pasta de saída para os arquivos de vídeo com legendas queimadas no vídeo e embutidas no container mp4. (default: legen_burned_$lang_$input_dir)")
+                    help="Caminho da pasta de saída para os arquivos de vídeo com legendas queimadas no vídeo e embutidas no container mp4. (default: legen_burned_$lang_$input_dir)")
 parser.add_argument("--overwrite", default=False, action="store_true",
-                    help="overwrite existing files in output dirs")
+                    help="Overwrite existing files in output dirs")
 parser.add_argument("--disable_srt", default=False, action="store_true",
-                    help="disable .srt file generation and don't insert subtitles in mp4 container of $srt_out_dir")
+                    help="Disable .srt file generation and don't insert subtitles in mp4 container of $srt_out_dir")
 parser.add_argument("--disable_burn", default=False, action="store_true",
-                    help="disable subtitle burn in $burned_out_dir")
+                    help="Disable subtitle burn in $burned_out_dir")
 parser.add_argument("--only_video", default=False, action="store_true",
-                    help="don't copy other files present in input dir to output dirs")
+                    help="Don't copy other (no video) files present in input dir to output dirs. Only generate the subtitles and videos")
+parser.add_argument("--only_srt_subtitles", default=False, action="store_true",
+                    help="Just generates the subtitles. Do not encode the videos or copy other files")
 args = parser.parse_args()
 
 input_dir = args.input_dir
@@ -77,6 +79,8 @@ burned_out_dir = args.burned_out_dir
 torch_device = ("cuda" if torch.cuda.is_available()
                 else "cpu") if args.dev == "auto" else args.dev
 disable_fp16 = False if args.dev == "cpu" else True
+if args.only_srt_subtitles:
+    args.only_video = True
 
 # ----------------------------------------------------------------------------
 
@@ -161,7 +165,7 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                     if not args.disable_srt:
                         translated_srt_temp.save()
 
-            if not args.disable_srt:
+            if not args.disable_srt and not args.only_srt_subtitles:
                 if file_utils.file_is_valid(srt_video_path) and not args.overwrite:
                     print(f"Existing video file {gray}{srt_video_path}{default}. Skipping subtitle insert")
                 else:
@@ -175,7 +179,7 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                                                 False, video_srt_temp.getname(), args.crf, args.maxrate)
                     video_srt_temp.save()
 
-            if not args.disable_burn:
+            if not args.disable_burn and not args.only_srt_subtitles:
                 if file_utils.file_is_valid(burned_video_path) and not args.overwrite:
                     print(
                         f"Existing video file {gray}{burned_video_path}{default}. Skipping subtitle burn")

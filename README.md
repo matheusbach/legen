@@ -14,18 +14,19 @@ python legen.py -i [input_dir] --model [model_name] --dev [device] --lang [langu
 
 The available arguments are:
 
--    **-i/--input_dir**: path to the folder containing the original videos (required).
--    **--model**: path or name of the Whisper transcription model to use (default: "base").
--    **--dev**: device to use for the Whisper transcription (options: "cpu", "cuda", "auto"; default: "auto").
--    **--lang**: language code to use for the subtitles translation (default: "pt").
+-    **-i/--input_dir**: Path to the folder containing the original videos (required).
+-    **--model**: Path or name of the Whisper transcription model to use (default: "base").
+-    **--dev**: Device to use for the Whisper transcription (options: "cpu", "cuda", "auto"; default: "auto").
+-    **--lang**: Language code to use for the subtitles translation (default: "pt").
 -    **--crf**: CRF value to use for the output video (default: 20).
--    **--maxrate**: maxrate value to use for the output video (default: "2M").
--    **--srt_out_dir**: path to the output folder for the videos with subtitles embedded in an mp4 container and SRT files (default: legen_srt_[input_dir]).
--    **--burned_out_dir**: path to the output folder for the videos with burned-in subtitles and subtitles embedded in an mp4 container (default: legen_burned_[lang]_[input_dir]).
--    **--overwrite**: overwrite existing files in the output directories.
--    **--disable_srt**: disable SRT file generation and don't insert subtitles in the mp4 container in the srt_out_dir.
--    **--disable_burn**: disable subtitle burn in the burned_out_dir.
--    **--only_video**: don't copy other files present in the input directory to the output directories.
+-    **--maxrate**: Maxrate value to use for the output video (default: "2M").
+-    **--srt_out_dir**: The output folder path for the video files with subtitles embedded in the MP4 container and SRT files. (default: legen_srt_[input_dir]).
+-    **--burned_out_dir**: The output folder path for the video files with burned subtitles and embedded in the MP4 container. (default: legen_burned_[lang]_[input_dir]).
+-    **--overwrite**: Overwrite existing files in output directories.
+-    **--disable_srt**: Disable .srt file generation and do not insert subtitles in the MP4 container of $srt_out_dir.
+-    **--disable_burn**: Disable subtitle burn in $burned_out_dir.
+-    **--only_video**: Do not copy other files present in the input directory to the output directories. Only generate the subtitles and videos.
+-    **--only_srt_subtitles**: Only generates the subtitles. Do not encode the videos or copy other files.
 
 ## Dependencies
 
