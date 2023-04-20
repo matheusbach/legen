@@ -50,8 +50,9 @@ def insert_subtitle(input_video_path: str, subtitles_path: [str], burn_subtitles
         for progress in ff.run_command_with_progress():
             pbar.update(progress - pbar.n)
             
-    # destroy unecessary file     
-    srt_temp.destroy()
+    # destroy unecessary file  
+    if 'srt_temp' in locals():
+        srt_temp.destroy()
 
 
 def extract_audio_mp3(input_media_path: str, output_path: str):
