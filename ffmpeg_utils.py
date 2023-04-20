@@ -31,7 +31,7 @@ def insert_subtitle(input_video_path: str, subtitles_path: [str], burn_subtitles
             "", file_ext=".srt")
         
         file_utils.copy_file_if_different(
-            subtitles_path[0], srt_temp.temp_file.name)
+            subtitles_path[0], srt_temp.temp_file.name, True)
         
         # insert subtitles filter
         cmd_ffmpeg.extend(

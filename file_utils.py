@@ -85,7 +85,7 @@ def copy_file_if_different(src_file, dst_file, silent: bool = False):
             return
 
     os.makedirs(os.path.dirname(dst_file), exist_ok=True)
-    shutil.copyfile(src_file, dst_file, True)
+    shutil.copyfile(src_file, dst_file)
     if not silent:
         print(f"copied to {dst_file}")
 
