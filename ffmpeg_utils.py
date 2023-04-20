@@ -21,13 +21,21 @@ def insert_subtitle(input_video_path: str, subtitles_path: [str], burn_subtitles
 
     # map each subtitle
     for i, subtitle in enumerate(subtitles_path):
-        cmd_ffmpeg.extend(["-i", subtitle])
+        cmd_ffmpeg.extend(["-i", "file:" + subtitle])
         cmd_ffmpeg_input_map.extend(["-map", f"{i+1}:s"])
 
     # add comand to burn subtitles if its demanded and has at least one valid subtitle in the array. Burn the first one
     if burn_subtitles and len(subtitles_path) > 0:
+        # create temp file for .srt
+        srt_temp = file_utils.TempFile(
+            "", file_ext=".srt")
+        
+        file_utils.copy_file_if_different(
+            subtitles_path[0], srt_temp.temp_file.name)
+        
+        # insert subtitles filter
         cmd_ffmpeg.extend(
-            ["-vf", f"subtitles={subtitles_path[0]}:force_style='Fontname=Roboto,OutlineColour=&H40000000,BorderStyle=3'"])
+            ["-vf", f"subtitles={srt_temp.temp_file.name}:force_style='Fontname=Roboto,OutlineColour=&H40000000,BorderStyle=3'"])
 
     cmd_ffmpeg.extend(cmd_ffmpeg_input_map)
 
@@ -41,6 +49,9 @@ def insert_subtitle(input_video_path: str, subtitles_path: [str], burn_subtitles
     with tqdm(total=100, position=0, ascii="░▒█", desc="Inserting subtitles" if not burn_subtitles else "Burning subtitles", unit="%", unit_scale=True, leave=True, bar_format="{desc} [{bar}] {percentage:3.0f}% | ETA: {remaining} | {rate_fmt}{postfix}") as pbar:
         for progress in ff.run_command_with_progress():
             pbar.update(progress - pbar.n)
+            
+    # destroy unecessary file     
+    srt_temp.destroy()
 
 
 def extract_audio_mp3(input_media_path: str, output_path: str):

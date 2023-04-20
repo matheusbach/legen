@@ -77,16 +77,17 @@ class TempFile:
             return
         
 # copy an source file to destination if destination file is not equals to source
-def copy_file_if_different(src_file, dst_file):
+def copy_file_if_different(src_file, dst_file, silent: bool = False):
     if file_is_valid(dst_file):
     # Check if destination file exists and is different from source file
-        if filecmp.cmp(src_file, dst_file):
+        if filecmp.cmp(src_file, dst_file) and not silent:
             print(f"{dst_file} already exists and is the same. No need to copy.")
             return
 
     os.makedirs(os.path.dirname(dst_file), exist_ok=True)
-    shutil.copyfile(src_file, dst_file, )
-    print(f"copied to {dst_file}")
+    shutil.copyfile(src_file, dst_file, True)
+    if not silent:
+        print(f"copied to {dst_file}")
 
 # function to delete dir and all its content using shutil
 def delete_folder(path):
