@@ -108,6 +108,7 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
             burned_video_path = os.path.join(burned_video_dir, filename)
             subtitle_translated_path = os.path.join(
                 srt_video_dir, f"{os.path.splitext(filename)[0]}_{args.lang}.srt")
+            subtitles_path = []
 
             # transcribe video audio and save original subtitle
             print(f"{wblue}Transcribing{default} with {gray}Whisper{default}")
@@ -138,12 +139,15 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
             else:
                 # transcribe saving subtitles to temp .srt file
                 print(f"Running Whisper transcription for speech reconition")
-                transcribe = whisper_utils.transcribe_audio(
+                whisper_utils.transcribe_audio(
                     whisper_model, audio_extracted.getname(), transcribed_srt_temp.getname(), audio_language, disable_fp16)
                 
                 # if save .srt is enabled, save it to destination dir, also update path with language code
                 if not args.disable_srt:
                     transcribed_srt_temp.save()
+                    
+            subtitles_path.append(transcribed_srt_temp.getvalidname())
+            
             audio_extracted.destroy()
 
             # translate transcribed subtitle using Google Translate if transcribed language is not equals to target
@@ -165,12 +169,7 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                     if not args.disable_srt:
                         translated_srt_temp.save()
                         
-            subtitles_path = []
-            if 'translated_srt_temp' in locals():
                 subtitles_path.append(translated_srt_temp.getvalidname())
-            if 'transcribed_srt_temp' in locals():
-                subtitles_path.append(transcribed_srt_temp.getvalidname())
-            
 
             if not args.disable_srt and not args.only_srt_subtitles:
                 if file_utils.file_is_valid(srt_video_path) and not args.overwrite:
