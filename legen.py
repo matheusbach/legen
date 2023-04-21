@@ -148,7 +148,7 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
 
             # translate transcribed subtitle using Google Translate if transcribed language is not equals to target
             if args.lang == audio_language:
-                print("Transcribed language {gray}{audio_language}{default} is the same as target language {gray}{args.lang}{default}. Skipping translation.")
+                print(f"Transcribed language {gray}{audio_language}{default} is the same as target language {gray}{args.lang}{default}. Skipping translation.")
             else:
                 # create the temp .srt translated file
                 translated_srt_temp = file_utils.TempFile(
@@ -164,6 +164,13 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                         transcribed_srt_temp.getvalidname(), translated_srt_temp.getname(), args.lang)
                     if not args.disable_srt:
                         translated_srt_temp.save()
+                        
+            subtitles_path = []
+            if 'translated_srt_temp' in locals():
+                subtitles_path.append(translated_srt_temp.getvalidname())
+            if 'transcribed_srt_temp' in locals():
+                subtitles_path.append(transcribed_srt_temp.getvalidname())
+            
 
             if not args.disable_srt and not args.only_srt_subtitles:
                 if file_utils.file_is_valid(srt_video_path) and not args.overwrite:
@@ -175,7 +182,7 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                     
                     # insert subtitle into container using ffmpeg
                     print(f"{wblue}Inserting subtitle{default} in mp4 container using {gray}FFmpeg{default}")
-                    ffmpeg_utils.insert_subtitle(origin_video_path, [translated_srt_temp.getvalidname(), transcribed_srt_temp.getvalidname()],
+                    ffmpeg_utils.insert_subtitle(origin_video_path, subtitles_path,
                                                 False, video_srt_temp.getname(), args.crf, args.maxrate)
                     video_srt_temp.save()
 
@@ -189,7 +196,7 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                         burned_video_path, file_ext=".mp4")
                     # insert subtitle into container and burn using ffmpeg
                     print(f"{wblue}Inserting subtitle{default} in mp4 container and {wblue}burning{default} using {gray}FFmpeg{default}")
-                    ffmpeg_utils.insert_subtitle(origin_video_path, [translated_srt_temp.getvalidname(), transcribed_srt_temp.getvalidname()],
+                    ffmpeg_utils.insert_subtitle(origin_video_path, subtitles_path,
                                                 True, video_burned_temp.getname(), args.crf, args.maxrate)
                     video_burned_temp.save()
         else:
