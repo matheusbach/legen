@@ -41,8 +41,8 @@ parser = argparse.ArgumentParser(prog="LeGen", description="Normaliza arquivos d
                                  argument_default=True, allow_abbrev=True, add_help=True)
 parser.add_argument("-i", "--input_dir", type=str,
                     help="Caminho da pasta onde os vídeos originais estão localizados.", required=True)
-parser.add_argument("--model", type=str, default="base",
-                    help="Caminho ou nome do modelo de transcrição Whisper. (default: base)")
+parser.add_argument("--model", type=str, default="medium",
+                    help="Caminho ou nome do modelo de transcrição Whisper. (default: medium)")
 parser.add_argument("--dev", type=str, default="auto",
                     help="Dispositivo para rodar a transcrição pelo Whisper. [cpu, cuda, auto]. (default: auto)")
 parser.add_argument("--lang", type=str, default="pt",

@@ -348,3 +348,8 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+vidqa_data/
+media/
+temp/
+legen_burned_*/
+legen_srt_*/
