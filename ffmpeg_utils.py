@@ -35,7 +35,7 @@ def insert_subtitle(input_video_path: str, subtitles_path: [str], burn_subtitles
         
         # insert subtitles filter
         cmd_ffmpeg.extend(
-            ["-vf", f"subtitles={srt_temp.temp_file.name}:force_style='Fontname=Roboto,OutlineColour=&H40000000,BorderStyle=3'"])
+            ["-vf", f"subtitles={srt_temp.temp_file.name}:force_style='Fontname=Verdana,PrimaryColour=&H03fcff,Fontsize=18,BackColour=&H80000000,Spacing=0.12,Outline=1,Shadow=1.2'"])
 
     cmd_ffmpeg.extend(cmd_ffmpeg_input_map)
 
