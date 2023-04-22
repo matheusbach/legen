@@ -169,7 +169,7 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                     if not args.disable_srt:
                         translated_srt_temp.save()
                         
-                subtitles_path.append(translated_srt_temp.getvalidname())
+                subtitles_path.insert(0, translated_srt_temp.getvalidname())
 
             if not args.disable_srt and not args.only_srt_subtitles:
                 if file_utils.file_is_valid(srt_video_path) and not args.overwrite:
