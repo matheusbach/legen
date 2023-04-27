@@ -95,120 +95,134 @@ whisper_model = whisper.load_model(args.model, device=torch_device)
 
 for dirpath, dirnames, filenames in os.walk(input_dir):
     for filename in sorted(filenames):
-        rel_path = os.path.relpath(dirpath, input_dir)
-        print(
-            f"\nProcessing {yellow}{os.path.join(rel_path, filename)}{default}")
-        # only mp4 because vidqa has converted all to mp4
-        if filename.endswith((".mp4")):
-            # define paths
-            origin_video_path = os.path.join(input_dir, rel_path, filename)
-            srt_video_dir = os.path.join(srt_out_dir, rel_path)
-            burned_video_dir = os.path.join(burned_out_dir, rel_path)
-            srt_video_path = os.path.join(srt_video_dir, filename)
-            burned_video_path = os.path.join(burned_video_dir, filename)
-            subtitle_translated_path = os.path.join(
-                srt_video_dir, f"{os.path.splitext(filename)[0]}_{args.lang}.srt")
-            subtitles_path = []
+        try:
+            rel_path = os.path.relpath(dirpath, input_dir)
+            print(
+                f"\nProcessing {yellow}{os.path.join(rel_path, filename)}{default}")
+            # only mp4 because vidqa has converted all to mp4
+            if filename.endswith((".mp4")):
+                # define paths
+                origin_video_path = os.path.join(input_dir, rel_path, filename)
+                srt_video_dir = os.path.join(srt_out_dir, rel_path)
+                burned_video_dir = os.path.join(burned_out_dir, rel_path)
+                srt_video_path = os.path.join(srt_video_dir, filename)
+                burned_video_path = os.path.join(burned_video_dir, filename)
+                subtitle_translated_path = os.path.join(
+                    srt_video_dir, f"{os.path.splitext(filename)[0]}_{args.lang}.srt")
+                subtitles_path = []
 
-            # transcribe video audio and save original subtitle
-            print(f"{wblue}Transcribing{default} with {gray}Whisper{default}")
+                # transcribe video audio and save original subtitle
+                print(f"{wblue}Transcribing{default} with {gray}Whisper{default}")
 
-            # extract audio
-            audio_extracted = file_utils.TempFile(None, file_ext=".mp3")
-            ffmpeg_utils.extract_audio_mp3(
-                origin_video_path, audio_extracted.getname())
+                # extract audio
+                audio_extracted = file_utils.TempFile(None, file_ext=".mp3")
+                ffmpeg_utils.extract_audio_mp3(
+                    origin_video_path, audio_extracted.getname())
 
-            # detect language
-            print("Detecting audio language", end='')
-            audio_language = whisper_utils.detect_language(
-                whisper_model, audio_extracted.getname())
-            
-            # set path after get transcribed language
-            subtitle_transcribed_path = os.path.join(
-                srt_video_dir, f"{os.path.splitext(filename)[0]}_{audio_language}.srt")
-            print(f": {gray}{audio_language}{default}")
-            # create temp file for .srt
-            transcribed_srt_temp = file_utils.TempFile(
-                subtitle_transcribed_path, file_ext=".srt")
-
-            # skip transcription if transcribed srt for this language is existing and overwrite is disabled
-            if file_utils.file_is_valid(os.path.join(
-                    srt_video_dir, f"{os.path.splitext(filename)[0]}_{audio_language}.srt")) and not args.overwrite:
-                print(
-                    f"Existing .srt file for language {gray}{audio_language}{default}. Skipping transcription")
-            else:
-                # transcribe saving subtitles to temp .srt file
-                print(f"Running Whisper transcription for speech reconition")
-                whisper_utils.transcribe_audio(
-                    whisper_model, audio_extracted.getname(), transcribed_srt_temp.getname(), audio_language, disable_fp16)
+                # detect language
+                print("Detecting audio language", end='')
+                audio_language = whisper_utils.detect_language(
+                    whisper_model, audio_extracted.getname())
                 
-                # if save .srt is enabled, save it to destination dir, also update path with language code
-                if not args.disable_srt:
-                    transcribed_srt_temp.save()
-                    
-            subtitles_path.append(transcribed_srt_temp.getvalidname())
-            
-            audio_extracted.destroy()
+                # set path after get transcribed language
+                subtitle_transcribed_path = os.path.join(
+                    srt_video_dir, f"{os.path.splitext(filename)[0]}_{audio_language}.srt")
+                print(f": {gray}{audio_language}{default}")
+                # create temp file for .srt
+                transcribed_srt_temp = file_utils.TempFile(
+                    subtitle_transcribed_path, file_ext=".srt")
 
-            # translate transcribed subtitle using Google Translate if transcribed language is not equals to target
-            if args.lang == audio_language:
-                print(f"Transcribed language {gray}{audio_language}{default} is the same as target language {gray}{args.lang}{default}. Skipping translation.")
-            else:
-                # create the temp .srt translated file
-                translated_srt_temp = file_utils.TempFile(
-                    subtitle_translated_path, file_ext=".srt")
-                
                 # skip transcription if transcribed srt for this language is existing and overwrite is disabled
-                if file_utils.file_is_valid(translated_srt_temp.final_path) and not args.overwrite:
-                    print(f"Existing .srt file for language {gray}{args.lang}{default}. Skipping translation")
-                else:
-                    # translating with google translate public API
-                    print(f"{wblue}Translating{default} with {gray}Google Translate{default}")
-                    subs = translate_utils.translate_srt_file(
-                        transcribed_srt_temp.getvalidname(), translated_srt_temp.getname(), args.lang)
-                    if not args.disable_srt:
-                        translated_srt_temp.save()
-                        
-                subtitles_path.insert(0, translated_srt_temp.getvalidname())
-
-            if not args.disable_srt and not args.only_srt_subtitles:
-                if file_utils.file_is_valid(srt_video_path) and not args.overwrite:
-                    print(f"Existing video file {gray}{srt_video_path}{default}. Skipping subtitle insert")
-                else:
-                    # create the temp .mp4 with srt in video container
-                    video_srt_temp = file_utils.TempFile(
-                        srt_video_path, file_ext=".mp4")
-                    
-                    # insert subtitle into container using ffmpeg
-                    print(f"{wblue}Inserting subtitle{default} in mp4 container using {gray}FFmpeg{default}")
-                    ffmpeg_utils.insert_subtitle(origin_video_path, subtitles_path,
-                                                False, video_srt_temp.getname(), args.crf, args.maxrate)
-                    video_srt_temp.save()
-
-            if not args.disable_burn and not args.only_srt_subtitles:
-                if file_utils.file_is_valid(burned_video_path) and not args.overwrite:
+                if file_utils.file_is_valid(os.path.join(
+                        srt_video_dir, f"{os.path.splitext(filename)[0]}_{audio_language}.srt")) and not args.overwrite:
                     print(
-                        f"Existing video file {gray}{burned_video_path}{default}. Skipping subtitle burn")
+                        f"Existing .srt file for language {gray}{audio_language}{default}. Skipping transcription")
                 else:
-                    # create the temp .mp4 with srt in video container
-                    video_burned_temp = file_utils.TempFile(
-                        burned_video_path, file_ext=".mp4")
-                    # insert subtitle into container and burn using ffmpeg
-                    print(f"{wblue}Inserting subtitle{default} in mp4 container and {wblue}burning{default} using {gray}FFmpeg{default}")
-                    ffmpeg_utils.insert_subtitle(origin_video_path, subtitles_path,
-                                                True, video_burned_temp.getname(), args.crf, args.maxrate)
-                    video_burned_temp.save()
-        else:
-            print("not a video file")
-            if not args.only_video:
-                if not args.disable_srt:
-                    # copia o arquivo extra para pasta que contém também os arquivos srt
-                    file_utils.copy_file_if_different(os.path.join(input_dir, rel_path, filename), os.path.join(
-                        srt_out_dir, rel_path, filename))
-                if not args.disable_burn:
-                    # copia o arquivo extra para pasta que contém os videos queimados
-                    file_utils.copy_file_if_different(os.path.join(input_dir, rel_path, filename), os.path.join(
-                        burned_out_dir, rel_path, filename))
+                    # transcribe saving subtitles to temp .srt file
+                    print(f"Running Whisper transcription for speech reconition")
+                    whisper_utils.transcribe_audio(
+                        whisper_model, audio_extracted.getname(), transcribed_srt_temp.getname(), audio_language, disable_fp16)
+                    
+                    # if save .srt is enabled, save it to destination dir, also update path with language code
+                    if not args.disable_srt:
+                        transcribed_srt_temp.save()
+                        
+                subtitles_path.append(transcribed_srt_temp.getvalidname())
+                
+                audio_extracted.destroy()
+
+                # translate transcribed subtitle using Google Translate if transcribed language is not equals to target
+                if args.lang == audio_language:
+                    print(f"Transcribed language {gray}{audio_language}{default} is the same as target language {gray}{args.lang}{default}. Skipping translation.")
+                else:
+                    # create the temp .srt translated file
+                    translated_srt_temp = file_utils.TempFile(
+                        subtitle_translated_path, file_ext=".srt")
+                    
+                    # skip transcription if transcribed srt for this language is existing and overwrite is disabled
+                    if file_utils.file_is_valid(translated_srt_temp.final_path) and not args.overwrite:
+                        print(f"Existing .srt file for language {gray}{args.lang}{default}. Skipping translation")
+                    else:
+                        # translating with google translate public API
+                        print(f"{wblue}Translating{default} with {gray}Google Translate{default}")
+                        subs = translate_utils.translate_srt_file(
+                            transcribed_srt_temp.getvalidname(), translated_srt_temp.getname(), args.lang)
+                        if not args.disable_srt:
+                            translated_srt_temp.save()
+                            
+                    subtitles_path.insert(0, translated_srt_temp.getvalidname())
+
+                if not args.disable_srt and not args.only_srt_subtitles:
+                    if file_utils.file_is_valid(srt_video_path) and not args.overwrite:
+                        print(f"Existing video file {gray}{srt_video_path}{default}. Skipping subtitle insert")
+                    else:
+                        # create the temp .mp4 with srt in video container
+                        video_srt_temp = file_utils.TempFile(
+                            srt_video_path, file_ext=".mp4")
+                        
+                        # insert subtitle into container using ffmpeg
+                        print(f"{wblue}Inserting subtitle{default} in mp4 container using {gray}FFmpeg{default}")
+                        ffmpeg_utils.insert_subtitle(origin_video_path, subtitles_path,
+                                                    False, video_srt_temp.getname(), args.crf, args.maxrate)
+                        video_srt_temp.save()
+
+                if not args.disable_burn and not args.only_srt_subtitles:
+                    if file_utils.file_is_valid(burned_video_path) and not args.overwrite:
+                        print(
+                            f"Existing video file {gray}{burned_video_path}{default}. Skipping subtitle burn")
+                    else:
+                        # create the temp .mp4 with srt in video container
+                        video_burned_temp = file_utils.TempFile(
+                            burned_video_path, file_ext=".mp4")
+                        # insert subtitle into container and burn using ffmpeg
+                        print(f"{wblue}Inserting subtitle{default} in mp4 container and {wblue}burning{default} using {gray}FFmpeg{default}")
+                        ffmpeg_utils.insert_subtitle(origin_video_path, subtitles_path,
+                                                    True, video_burned_temp.getname(), args.crf, args.maxrate)
+                        video_burned_temp.save()
+            else:
+                print("not a video file")
+                if not args.only_video:
+                    if not args.disable_srt:
+                        # copia o arquivo extra para pasta que contém também os arquivos srt
+                        file_utils.copy_file_if_different(os.path.join(input_dir, rel_path, filename), os.path.join(
+                            srt_out_dir, rel_path, filename))
+                    if not args.disable_burn:
+                        # copia o arquivo extra para pasta que contém os videos queimados
+                        file_utils.copy_file_if_different(os.path.join(input_dir, rel_path, filename), os.path.join(
+                            burned_out_dir, rel_path, filename))
+        except Exception as e:
+            file = os.path.join(input_dir, os.path.relpath(
+                dirpath, input_dir), filename)
+
+            print(f"{red}ERROR !!!{default} {file}")
+            print(f"{yellow}check legen-errors.txt for details{default}")
+            # extract the relevant information from the exception object
+            error_message = f"{file}: {type(e).__name__}: {str(e)}"
+
+            # write the error message to a file
+            with open(os.path.join(os.path.realpath(os.path.dirname(__file__)), "legen-errors.txt"), "a") as f:
+                f.write(error_message + "\n")
+                f.close()
 
 print("Deleting temp folder")
 file_utils.delete_folder(os.path.join(
