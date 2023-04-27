@@ -7,7 +7,7 @@ import tempfile
 def validate_files(paths):
     valid_files = []
     for path in paths:
-        if os.path.isfile(path):
+        if path is not None and os.path.isfile(path):
             size = os.stat(path).st_size
             if size > 0:
                 valid_files.append(path)
@@ -15,7 +15,7 @@ def validate_files(paths):
 
 # check if a file is existing and not empty
 def file_is_valid(path):
-    if os.path.isfile(path):
+    if path is not None and os.path.isfile(path):
         size = os.stat(path).st_size
         if size > 0:
             return True
@@ -23,6 +23,7 @@ def file_is_valid(path):
 
 # create a tempfile class to use as object
 class TempFile:
+    
     def __init__(self, final_path: str, file_ext: str = None):
         self.final_path = final_path
         self.file_ext = file_ext
@@ -30,11 +31,15 @@ class TempFile:
         self.temp_file = tempfile.NamedTemporaryFile(dir=os.path.join(
             os.path.realpath(os.path.dirname(__file__)), "temp"),
             delete=False, suffix=file_ext)
+        
+        self.temp_file_name = self.temp_file.name
+        
+        self.temp_file.close()
 
     # return the actual path of the file
     def getname(self):
-        if os.path.isfile(self.temp_file.name):
-            return self.temp_file.name
+        if os.path.isfile(self.temp_file_name):
+            return self.temp_file_name
         elif file_is_valid(self.final_path):
             return self.final_path
         else:
@@ -42,8 +47,8 @@ class TempFile:
         
     # return the actual path of the file if not empty
     def getvalidname(self):
-        if file_is_valid(self.temp_file.name):
-            return self.temp_file.name
+        if file_is_valid(self.temp_file_name):
+            return self.temp_file_name
         elif file_is_valid(self.final_path):
             return self.final_path
         else:
@@ -61,7 +66,7 @@ class TempFile:
             # if file not valid ou overwrite is enabled, move overwiting existing file
             if not file_is_valid(self.final_path) or overwrite_if_valid:
                 os.makedirs(os.path.dirname(path), exist_ok=True)
-                shutil.move(self.temp_file.name, path)
+                shutil.move(self.temp_file_name, path)
                 self.final_path = path
         except Exception as e:
             print(f"Error saving file: {e}")
@@ -71,8 +76,8 @@ class TempFile:
     def destroy(self):
         try:
             # destroy temporary file if it exists
-            if os.path.isfile(self.temp_file.name):
-                os.remove(self.temp_file.name)
+            if os.path.isfile(self.temp_file_name):
+                os.remove(self.temp_file_name)
         except Exception:
             return
         
