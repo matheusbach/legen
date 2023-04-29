@@ -35,7 +35,7 @@ def insert_subtitle(input_video_path: str, subtitles_path: [str], burn_subtitles
         
         # insert subtitles filter
         cmd_ffmpeg.extend(
-            ["-vf", f"subtitles={srt_temp.temp_file.name}:force_style='Fontname=Verdana,PrimaryColour=&H03fcff,Fontsize=18,BackColour=&H80000000,Spacing=0.12,Outline=1,Shadow=1.2'"])
+            ["-vf", f"subtitles={add_ffmpeg_escape_chars(srt_temp.temp_file.name)}:force_style='Fontname=Verdana,PrimaryColour=&H03fcff,Fontsize=18,BackColour=&H80000000,Spacing=0.12,Outline=1,Shadow=1.2'"])
 
     cmd_ffmpeg.extend(cmd_ffmpeg_input_map)
 
@@ -65,3 +65,11 @@ def extract_audio_mp3(input_media_path: str, output_path: str):
     with tqdm(total=100, position=0, ascii="░▒█", desc="Extracting audio", unit="%", unit_scale=True, leave=True, bar_format="{desc} {percentage:3.0f}% | ETA: {remaining}") as pbar:
         for progress in ff.run_command_with_progress():
             pbar.update(progress - pbar.n)
+            
+def add_ffmpeg_escape_chars(string):
+    new_string = ""
+    for char in string:
+        if char == '\\':
+            new_string += '\\'
+        new_string += char
+    return new_string
