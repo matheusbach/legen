@@ -1,8 +1,8 @@
-deep_translator==1.10.1
-ffmpeg_progress_yield==0.7.0
-openai_whisper==20230314
-pysrt==1.1.2
-torch==1.11.0
-tqdm==4.65.0
-whisper==1.1.10
+deep_translator
+ffmpeg_progress_yield
+openai_whisper
+pysrt
+torch
+tqdm
+whisper
 vidqa
