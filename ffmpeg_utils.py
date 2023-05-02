@@ -1,4 +1,5 @@
 import re
+import os
 
 from ffmpeg_progress_yield import FfmpegProgress
 from tqdm import tqdm
@@ -35,7 +36,7 @@ def insert_subtitle(input_video_path: str, subtitles_path: [str], burn_subtitles
         
         # insert subtitles filter
         cmd_ffmpeg.extend(
-            ["-vf", f"subtitles={add_ffmpeg_escape_chars(srt_temp.temp_file.name)}:force_style='Fontname=Verdana,PrimaryColour=&H03fcff,Fontsize=18,BackColour=&H80000000,Spacing=0.12,Outline=1,Shadow=1.2'"])
+            ["-vf", f"subtitles=\'{add_ffmpeg_escape_chars(srt_temp.temp_file.name)}\':force_style='Fontname=Verdana,PrimaryColour=&H03fcff,Fontsize=18,BackColour=&H80000000,Spacing=0.12,Outline=1,Shadow=1.2'"])
 
     cmd_ffmpeg.extend(cmd_ffmpeg_input_map)
 
@@ -68,8 +69,9 @@ def extract_audio_mp3(input_media_path: str, output_path: str):
             
 def add_ffmpeg_escape_chars(string):
     new_string = ""
-    for char in string:
-        if char == '\\':
-            new_string += '\\'
+    for char in string:  
+        if os.name == 'nt':
+            if char == ":" or char == "\x5c":
+                new_string += "\x5c"
         new_string += char
     return new_string
