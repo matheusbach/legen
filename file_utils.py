@@ -96,4 +96,5 @@ def copy_file_if_different(src_file, dst_file, silent: bool = False):
 
 # function to delete dir and all its content using shutil
 def delete_folder(path):
-    shutil.rmtree(path)
+    if os.path.isdir(path):
+        shutil.rmtree(path)

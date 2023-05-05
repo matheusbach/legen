@@ -11,7 +11,7 @@ import file_utils
 import translate_utils
 import whisper_utils
 
-version = "v0.2"
+version = "v0.3"
 
 # Terminal colors
 default = "\033[1;0m"
@@ -47,6 +47,8 @@ parser.add_argument("--dev", type=str, default="auto",
                     help="Dispositivo para rodar a transcrição pelo Whisper. [cpu, cuda, auto]. (default: auto)")
 parser.add_argument("--lang", type=str, default="pt",
                     help="Idioma para o qual as legendas devem ser traduzidas. Language equals to source video skip translation (default: pt)")
+parser.add_argument("--input_lang", type=str, default="auto",
+                    help="Indica (força) idioma da voz dos vídeos de entrada (default: auto)")
 parser.add_argument("--crf", type=int, default=20,
                     help="Valor CRF a ser usado no vídeo. (default: 20)")
 parser.add_argument("--maxrate", type=str, default="2M",
@@ -100,7 +102,7 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
             print(
                 f"\nProcessing {yellow}{os.path.join(rel_path, filename)}{default}")
             # only mp4 because vidqa has converted all to mp4
-            if filename.endswith((".mp4")):
+            if filename.endswith((".mp4", ".MP4")):
                 # define paths
                 origin_video_path = os.path.join(input_dir, rel_path, filename)
                 srt_video_dir = os.path.join(srt_out_dir, rel_path)
@@ -110,24 +112,30 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                 subtitle_translated_path = os.path.join(
                     srt_video_dir, f"{os.path.splitext(filename)[0]}_{args.lang}.srt")
                 subtitles_path = []
+                audio_extracted = None
 
                 # transcribe video audio and save original subtitle
                 print(f"{wblue}Transcribing{default} with {gray}Whisper{default}")
 
-                # extract audio
-                audio_extracted = file_utils.TempFile(None, file_ext=".mp3")
-                ffmpeg_utils.extract_audio_mp3(
-                    origin_video_path, audio_extracted.getname())
+                if args.input_lang == "auto":
+                    # extract audio
+                    audio_extracted = file_utils.TempFile(None, file_ext=".mp3")
+                    ffmpeg_utils.extract_audio_mp3(
+                        origin_video_path, audio_extracted.getname())
 
-                # detect language
-                print("Detecting audio language", end='')
-                audio_language = whisper_utils.detect_language(
-                    whisper_model, audio_extracted.getname())
-                
+                    # detect language
+                    print("Detecting audio language: ", end='', flush=True)
+                    audio_language = whisper_utils.detect_language(
+                        whisper_model, audio_extracted.getname())
+                    print(f"{gray}{audio_language}{default}")
+                else:
+                    audio_language = args.input_lang
+                    print(f"Forced input audio language: {gray}{audio_language}{default}")
+
                 # set path after get transcribed language
                 subtitle_transcribed_path = os.path.join(
                     srt_video_dir, f"{os.path.splitext(filename)[0]}_{audio_language}.srt")
-                print(f": {gray}{audio_language}{default}")
+
                 # create temp file for .srt
                 transcribed_srt_temp = file_utils.TempFile(
                     subtitle_transcribed_path, file_ext=".srt")
@@ -138,6 +146,12 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                     print(
                         f"Existing .srt file for language {gray}{audio_language}{default}. Skipping transcription")
                 else:
+                    if audio_extracted is None:
+                        # extract audio
+                        audio_extracted = file_utils.TempFile(None, file_ext=".mp3")
+                        ffmpeg_utils.extract_audio_mp3(
+                            origin_video_path, audio_extracted.getname())
+                    
                     # transcribe saving subtitles to temp .srt file
                     print(f"Running Whisper transcription for speech reconition")
                     whisper_utils.transcribe_audio(
@@ -149,7 +163,8 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                         
                 subtitles_path.append(transcribed_srt_temp.getvalidname())
                 
-                audio_extracted.destroy()
+                if audio_extracted is not None:
+                    audio_extracted.destroy()
 
                 # translate transcribed subtitle using Google Translate if transcribed language is not equals to target
                 if args.lang == audio_language:
