@@ -77,20 +77,20 @@ def join_sentences(lines, max_chars):
             if current_chunk:
                 joined_lines.append(current_chunk.strip())
                 current_chunk = ""
-            if len(line) <= max_chars:
-                joined_lines.append(line)
+            if len(current_chunk) + len(line) + len(separator) <= max_chars:
+                current_chunk += line + separator
             else:
-                # Split the line into smaller chunks if it exceeds the max_chars limit
-                chunk_start = 0
-                while chunk_start < len(line):
-                    chunk_end = chunk_start + max_chars
-                    if chunk_end < len(line):
-                        # Find the last occurrence of a sentence ending within the chunk
-                        last_ending_index = max(line.rfind(ending, chunk_start, chunk_end) for ending in sentence_endings)
-                        if last_ending_index != -1:
-                            chunk_end = last_ending_index + 1
-                    joined_lines.append(line[chunk_start:chunk_end])
-                    chunk_start = chunk_end
+                # if a single line exceed max_chars, use maximum posible number of words. Discart the remaining
+                end_index = line.rfind(' ', 0, max_chars - 1)
+
+                if end_index == -1:
+                    end_index = max_chars - 1
+
+                joined_lines.append((line[:end_index] + '…')[:max_chars])
+                    
+    # append a chunk wich doenst have a formal end with sentence endings
+    if current_chunk:
+        joined_lines.append(current_chunk.strip())
 
     return joined_lines
 
@@ -100,14 +100,19 @@ def unjoin_sentences(original_sentence, modified_sentence, separator):
     Tries to match the number of lines between the original and modified sentences.
     """
     
-    # split by separator, remove double spaces and empty strings from list
+    if modified_sentence is None and original_sentence is not None:
+        return original_sentence
+    
+    # split by separator, remove double spaces and empty or only space strings strings from list
     original_lines = original_sentence.split(separator)
     original_lines = [s.strip().replace('  ', ' ') for s in original_lines if s.strip()]
     original_lines = [s for s in original_lines if s]
-    # split by separator, remove double spaces and empty strings from list
+    original_lines = [s for s in original_lines if s.strip()]
+    # split by separator, remove double spaces and empty or only space strings from list
     modified_lines = modified_sentence.split(separator)
     modified_lines = [s.strip().replace('  ', ' ') for s in modified_lines if s.strip()]
     modified_lines = [s for s in modified_lines if s]
+    modified_lines = [s for s in modified_lines if s.strip()]
 
     # all ok, return lines
     if len(original_lines) == len(modified_lines):
@@ -127,7 +132,7 @@ def unjoin_sentences(original_sentence, modified_sentence, separator):
         joined = ' '.join(modified_lines)
 
         # Split the joined string into words
-        words = joined.split()
+        words = joined.split(' ')
 
         # Calculate the number of words per part
         words_per_part = len(words) // len(original_lines)
