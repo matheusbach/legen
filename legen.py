@@ -101,10 +101,10 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
             rel_path = os.path.relpath(dirpath, input_dir)
             rel_path = rel_path if rel_path != '.' else ''
 
-            print(
-                f"\nProcessing {yellow}{os.path.join(rel_path, filename)}{default}")
-            # only mp4 because vidqa has converted all to mp4
-            if filename.endswith((".mp4", ".MP4")):
+            print(f"\nProcessing {yellow}{os.path.join(rel_path, filename)}{default}")
+            
+            # filter by video file extensions
+            if filename.lower().endswith((".mp4", "webm", "mkv", "avi", "mov", "wmv")):
                 # define paths
                 origin_video_path = os.path.join(dirpath, filename)
                 srt_video_dir = os.path.join(srt_out_dir, rel_path)
