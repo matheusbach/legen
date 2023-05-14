@@ -18,8 +18,11 @@ The available arguments are:
 -    **--model**: Path or name of the Whisper transcription model to use (default: "medium").
 -    **--dev**: Device to use for the Whisper transcription (options: "cpu", "cuda", "auto"; default: "auto").
 -    **--lang**: Language code to use for the subtitles translation (default: "pt").
+-    **--input_lang**: Force set input language. Useful for wrong language detection or skip audio extraction of early processsed files
 -    **--crf**: CRF value to use for the output video (default: 20).
 -    **--maxrate**: Maxrate value to use for the output video (default: "2M").
+-    **-c:v/--video_codec**: Output video codec. Can also be used to define hardware API. Check supported using [ffmpeg -codecs]. Ex: h264_vaapi, h264_nvenc, hevc, hevc_vaapi (default: h264)
+-    **-c:a/--audio_codec**: Output audio codec. Check supported using [ffmpeg -codecs] (default: aac)
 -    **--srt_out_dir**: The output folder path for the video files with subtitles embedded in the MP4 container and SRT files. (default: legen_srt_[input_dir]).
 -    **--burned_out_dir**: The output folder path for the video files with burned subtitles and embedded in the MP4 container. (default: legen_burned_[lang]_[input_dir]).
 -    **--overwrite**: Overwrite existing files in output directories.
