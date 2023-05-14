@@ -99,12 +99,14 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
     for filename in sorted(filenames):
         try:
             rel_path = os.path.relpath(dirpath, input_dir)
+            rel_path = rel_path if rel_path != '.' else ''
+
             print(
                 f"\nProcessing {yellow}{os.path.join(rel_path, filename)}{default}")
             # only mp4 because vidqa has converted all to mp4
             if filename.endswith((".mp4", ".MP4")):
                 # define paths
-                origin_video_path = os.path.join(input_dir, rel_path, filename)
+                origin_video_path = os.path.join(dirpath, filename)
                 srt_video_dir = os.path.join(srt_out_dir, rel_path)
                 burned_video_dir = os.path.join(burned_out_dir, rel_path)
                 srt_video_path = os.path.join(srt_video_dir, filename)
@@ -151,18 +153,18 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                         audio_extracted = file_utils.TempFile(None, file_ext=".mp3")
                         ffmpeg_utils.extract_audio_mp3(
                             origin_video_path, audio_extracted.getname())
-                    
+
                     # transcribe saving subtitles to temp .srt file
                     print(f"Running Whisper transcription for speech reconition")
                     whisper_utils.transcribe_audio(
                         whisper_model, audio_extracted.getname(), transcribed_srt_temp.getname(), audio_language, disable_fp16)
-                    
+
                     # if save .srt is enabled, save it to destination dir, also update path with language code
                     if not args.disable_srt:
                         transcribed_srt_temp.save()
-                        
+
                 subtitles_path.append(transcribed_srt_temp.getvalidname())
-                
+
                 if audio_extracted is not None:
                     audio_extracted.destroy()
 

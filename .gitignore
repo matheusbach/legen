@@ -356,3 +356,4 @@ legen_srt_*/
 log-vidqa.txt
 legen_errors.txt
 legen-errors.txt
+.vscode/launch.json
