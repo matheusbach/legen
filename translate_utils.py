@@ -113,6 +113,10 @@ def unjoin_sentences(original_sentence, modified_sentence, separator):
     modified_lines = [s.strip().replace('  ', ' ') for s in modified_lines if s.strip()]
     modified_lines = [s for s in modified_lines if s]
     modified_lines = [s for s in modified_lines if s.strip()]
+    
+    # if original lines is "silence" sign, doenst translate
+    if original_lines == "..." or original_lines == "…":
+        return original_lines
 
     # all ok, return lines
     if len(original_lines) == len(modified_lines):
@@ -122,9 +126,9 @@ def unjoin_sentences(original_sentence, modified_sentence, separator):
     modified_text = ' '.join(modified_lines)
     modified_word_count = len(modified_text.strip().split())
 
-    # zero words? return original sentence
+    # zero words? return original sentence, removing separator
     if original_word_count == 0 or modified_word_count == 0:
-        return original_sentence
+        return original_sentence.replace(separator, ' ').replace('  ', ' ')
 
     # if number of lines doesnt match, e need to adjut it
     if len(original_lines) != len(modified_lines):
