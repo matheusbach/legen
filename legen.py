@@ -240,7 +240,9 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
             print(f"{red}ERROR !!!{default} {file}")
             print(f"{yellow}check legen-errors.txt for details{default}")
             # extract the relevant information from the exception object
-            error_message = f"{file}: {type(e).__name__}: {str(e)}"
+            current_time = time.strftime("%y/%m/%d %H:%M:%S", time.localtime())
+            
+            error_message = f"[{current_time}] {file}: {type(e).__name__}: {str(e)}"
 
             # write the error message to a file
             with open(os.path.join(os.path.realpath(os.path.dirname(__file__)), "legen-errors.txt"), "a") as f:
