@@ -227,15 +227,14 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                 if not args.only_video:
                     if not args.disable_srt:
                         # copia o arquivo extra para pasta que contém também os arquivos srt
-                        file_utils.copy_file_if_different(os.path.join(input_dir, rel_path, filename), os.path.join(
+                        file_utils.copy_file_if_different(os.path.join(dirpath, filename), os.path.join(
                             srt_out_dir, rel_path, filename))
                     if not args.disable_burn:
                         # copia o arquivo extra para pasta que contém os videos queimados
-                        file_utils.copy_file_if_different(os.path.join(input_dir, rel_path, filename), os.path.join(
+                        file_utils.copy_file_if_different(os.path.join(dirpath, filename), os.path.join(
                             burned_out_dir, rel_path, filename))
         except Exception as e:
-            file = os.path.join(input_dir, os.path.relpath(
-                dirpath, input_dir), filename)
+            file = os.path.join(dirpath, filename)
 
             print(f"{red}ERROR !!!{default} {file}")
             print(f"{yellow}check legen-errors.txt for details{default}")
