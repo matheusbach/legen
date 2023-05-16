@@ -104,13 +104,14 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
             print(f"\nProcessing {yellow}{os.path.join(rel_path, filename)}{default}")
             
             # filter by video file extensions
-            if filename.lower().endswith((".mp4", "webm", "mkv", "avi", "mov", "wmv")):
+            if filename.lower().endswith((".mp4", ".webm", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".vob", ".mts", ".m2ts", ".ts", ".yuv", ".mpg", ".mp2", ".mpeg", ".mpe", ".mpv", ".m2v", "m4v", ".3gp", ".3g2", ".nsv")):
                 # define paths
                 origin_video_path = os.path.join(dirpath, filename)
                 srt_video_dir = os.path.join(srt_out_dir, rel_path)
                 burned_video_dir = os.path.join(burned_out_dir, rel_path)
-                srt_video_path = os.path.join(srt_video_dir, filename)
-                burned_video_path = os.path.join(burned_video_dir, filename)
+                # output video extension will be changed to .mp4
+                srt_video_path = os.path.join(srt_video_dir, os.path.splitext(filename)[0] + ".mp4")
+                burned_video_path = os.path.join(burned_video_dir, os.path.splitext(filename)[0] + ".mp4")
                 subtitle_translated_path = os.path.join(
                     srt_video_dir, f"{os.path.splitext(filename)[0]}_{args.lang}.srt")
                 subtitles_path = []
