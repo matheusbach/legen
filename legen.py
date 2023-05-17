@@ -175,24 +175,20 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                 if audio_extracted is not None:
                     audio_extracted.destroy()
 
-                # translate transcribed subtitle using Google Translate if transcribed language is not equals to target
-                if args.lang == audio_language:
-                    print(f"Transcribed language {gray}{audio_language}{default} is the same as target language {gray}{args.lang}{default}. Skipping translation.")
+                # translate transcribed subtitle using Google Translate if transcribed language is not equals to target, and if translated file doesnt exits, or if burn is disabled or final file existing, and if srt or embed is disabled or file existing
+                if args.lang == audio_language or file_utils.file_is_valid(subtitle_translated_path) or ((args.disable_burn or file_utils.file_is_valid(burned_video_path)) and (args.disable_srt or file_utils.file_is_valid(subtitle_translated_path))) and not args.overwrite:
+                    print("Translation is unecessary. Skipping.")
                 else:
                     # create the temp .srt translated file
                     translated_srt_temp = file_utils.TempFile(
                         subtitle_translated_path, file_ext=".srt")
                     
-                    # skip transcription if transcribed srt for this language is existing and overwrite is disabled
-                    if file_utils.file_is_valid(translated_srt_temp.final_path) and not args.overwrite:
-                        print(f"Existing .srt file for language {gray}{args.lang}{default}. Skipping translation")
-                    else:
-                        # translating with google translate public API
-                        print(f"{wblue}Translating{default} with {gray}Google Translate{default}")
-                        subs = translate_utils.translate_srt_file(
-                            transcribed_srt_temp.getvalidname(), translated_srt_temp.getname(), args.lang)
-                        if not args.disable_srt:
-                            translated_srt_temp.save()
+                    # translating with google translate public API
+                    print(f"{wblue}Translating{default} with {gray}Google Translate{default}")
+                    subs = translate_utils.translate_srt_file(
+                        transcribed_srt_temp.getvalidname(), translated_srt_temp.getname(), args.lang)
+                    if not args.disable_srt:
+                        translated_srt_temp.save()
                             
                     subtitles_path.insert(0, translated_srt_temp.getvalidname())
 
