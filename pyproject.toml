@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "Legen"
+authors = [
+    {name = "Matheus Bach", email = "tu_coloca_depois"},
+]
+description = "tu_coloca_depois"
+readme = "README.md"
+requires-python = ">=3.7"
+keywords = ["translator", "video"]
+license = {text = "GPL 3"}
+classifiers = [
+    "Framework :: Legen",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "deep_translator",
+    "ffmpeg_progress_yield",
+    "openai_whisper",
+    "pysrt",
+    "torch",
+    "tqdm",
+    "whisper",
+    "vidqa"
+]
+dynamic = ["version"]
+
+
+[project.scripts]
