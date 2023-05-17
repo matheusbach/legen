@@ -128,9 +128,6 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                 subtitles_path = []
                 audio_extracted = None
 
-                # transcribe video audio and save original subtitle
-                print(f"{wblue}Transcribing{default} with {gray}Whisper{default}")
-
                 if args.input_lang == "auto":
                     # extract audio
                     audio_extracted = file_utils.TempFile(None, file_ext=".mp3")
@@ -165,7 +162,7 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                             origin_video_path, audio_extracted.getname())
 
                     # transcribe saving subtitles to temp .srt file
-                    print(f"Running Whisper transcription for speech reconition")
+                    print(f"{wblue}Transcribing{default} with {gray}Whisper{default}")
                     whisper_utils.transcribe_audio(
                         whisper_model, audio_extracted.getname(), transcribed_srt_temp.getname(), audio_language, disable_fp16)
 
