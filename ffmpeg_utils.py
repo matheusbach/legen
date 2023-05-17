@@ -16,7 +16,7 @@ def insert_subtitle(input_video_path: str, subtitles_path: [str], burn_subtitles
     subtitles_path = file_utils.validate_files(subtitles_path)
 
     # insert in comand the basics of ffmpeg and input video path
-    cmd_ffmpeg = ["ffmpeg", "-y", "-i", "file:" + input_video_path]
+    cmd_ffmpeg = ["ffmpeg", "-y", "-hwaccel", "auto", "-i", "file:" + input_video_path]
     # map input video to video and audio channels
     cmd_ffmpeg_input_map = ["-map", "0:v", "-map", "0:a"]
 
@@ -46,10 +46,11 @@ def insert_subtitle(input_video_path: str, subtitles_path: [str], burn_subtitles
         cmd_ffmpeg.extend(["-preset", preset])
 
     # add the remaining parameters and output path
-    cmd_ffmpeg.extend(["-c:v", "h264", "-c:a", "aac", "-c:s", "mov_text",
-                       "-crf", str(crf), "-maxrate", maxrate, "-bufsize", bufsize,
-                       "-pix_fmt", "yuv420p", "-movflags", "+faststart",
-                       "-sws_flags", "bicubic+accurate_rnd", "file:" + output_video_path])
+    cmd_ffmpeg.extend(["-c:v", video_codec, "-c:a", audio_codec, "-c:s", "mov_text", 
+                       "-af", "loudnorm", "-crf", str(crf), "-maxrate", maxrate, 
+                       "-bufsize", bufsize, "-pix_fmt", "yuv420p", 
+                       "-movflags", "+faststart", "-sws_flags", "bicubic+accurate_rnd", 
+                       "file:" + output_video_path])
 
     # run FFmpeg command with a fancy progress bar
     ff = FfmpegProgress(cmd_ffmpeg)
@@ -64,8 +65,8 @@ def insert_subtitle(input_video_path: str, subtitles_path: [str], burn_subtitles
 
 def extract_audio_mp3(input_media_path: str, output_path: str):
     # set the FFMpeg command
-    cmd_ffmpeg = ["ffmpeg", "-y", "-i", "file:" + input_media_path, "-vn", "-c:a",
-                  "mp3", "-ar", "44100", "file:" + output_path]
+    cmd_ffmpeg = ["ffmpeg", "-y", "-hwaccel", "auto", "-i", "file:" + input_media_path,
+                  "-vn", "-c:a", "mp3", "-af", "loudnorm", "-ar", "44100", "file:" + output_path]
 
     # run FFmpeg command with a fancy progress bar
     ff = FfmpegProgress(cmd_ffmpeg)

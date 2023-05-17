@@ -128,6 +128,9 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                 subtitles_path = []
                 audio_extracted = None
 
+                # transcribe video audio and save original subtitle
+                print(f"{wblue}Transcribing{default} with {gray}Whisper{default}")
+
                 if args.input_lang == "auto":
                     # extract audio
                     audio_extracted = file_utils.TempFile(None, file_ext=".mp3")
@@ -162,7 +165,7 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                             origin_video_path, audio_extracted.getname())
 
                     # transcribe saving subtitles to temp .srt file
-                    print(f"{wblue}Transcribing{default} with {gray}Whisper{default}")
+                    print(f"Running Whisper transcription for speech reconition")
                     whisper_utils.transcribe_audio(
                         whisper_model, audio_extracted.getname(), transcribed_srt_temp.getname(), audio_language, disable_fp16)
 
@@ -230,20 +233,21 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                 if not args.only_video:
                     if not args.disable_srt:
                         # copia o arquivo extra para pasta que contém também os arquivos srt
-                        file_utils.copy_file_if_different(os.path.join(input_dir, rel_path, filename), os.path.join(
+                        file_utils.copy_file_if_different(os.path.join(dirpath, filename), os.path.join(
                             srt_out_dir, rel_path, filename))
                     if not args.disable_burn:
                         # copia o arquivo extra para pasta que contém os videos queimados
-                        file_utils.copy_file_if_different(os.path.join(input_dir, rel_path, filename), os.path.join(
+                        file_utils.copy_file_if_different(os.path.join(dirpath, filename), os.path.join(
                             burned_out_dir, rel_path, filename))
         except Exception as e:
-            file = os.path.join(input_dir, os.path.relpath(
-                dirpath, input_dir), filename)
+            file = os.path.join(dirpath, filename)
 
             print(f"{red}ERROR !!!{default} {file}")
             print(f"{yellow}check legen-errors.txt for details{default}")
             # extract the relevant information from the exception object
-            error_message = f"{file}: {type(e).__name__}: {str(e)}"
+            current_time = time.strftime("%y/%m/%d %H:%M:%S", time.localtime())
+            
+            error_message = f"[{current_time}] {file}: {type(e).__name__}: {str(e)}"
 
             # write the error message to a file
             with open(os.path.join(os.path.realpath(os.path.dirname(__file__)), "legen-errors.txt"), "a") as f:
