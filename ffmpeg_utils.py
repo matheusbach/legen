@@ -34,9 +34,9 @@ def insert_subtitle(input_video_path: str, subtitles_path: [str], burn_subtitles
         file_utils.copy_file_if_different(
             subtitles_path[0], srt_temp.temp_file.name, True)
         
-        # insert subtitles filter
+        # insert scale and subtitles filter
         cmd_ffmpeg.extend(
-            ["-vf", f"subtitles=\'{add_ffmpeg_escape_chars(srt_temp.temp_file.name)}\':force_style='Fontname=Verdana,PrimaryColour=&H03fcff,Fontsize=18,BackColour=&H80000000,Spacing=0.12,Outline=1,Shadow=1.2'"])
+            ["-vf", f"scale='-1':'min(720,ih)', subtitles=\'{add_ffmpeg_escape_chars(srt_temp.temp_file.name)}\':force_style='Fontname=Verdana,PrimaryColour=&H03fcff,Fontsize=18,BackColour=&H80000000,Spacing=0.12,Outline=1,Shadow=1.2'"])
 
     cmd_ffmpeg.extend(cmd_ffmpeg_input_map)
     
@@ -46,7 +46,8 @@ def insert_subtitle(input_video_path: str, subtitles_path: [str], burn_subtitles
     # add the remaining parameters and output path
     cmd_ffmpeg.extend(["-c:v", "h264", "-c:a", "aac", "-c:s", "mov_text",
                        "-crf", str(crf), "-maxrate", maxrate, "-bufsize", bufsize,
-                       "file:" + output_video_path])
+                       "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+                       "-sws_flags", "bilinear", "file:" + output_video_path])
 
     # run FFmpeg command with a fancy progress bar
     ff = FfmpegProgress(cmd_ffmpeg)
