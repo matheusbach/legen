@@ -4,6 +4,12 @@ LeGen is a Python script that normalizes video files using vidqa, transcribes su
 
 This is very useful for making it available in another language, or even just subtitling any video that belongs to you or that you have the proper authorization to do so, be it a film, lecture, course, presentation, interview, etc.
 
+## Installation:
+
+To install from Github directly:
+```
+pip install git+https://github.com/matheusbach/legen.git
+```
 ## Usage:
 
 To use LeGen, run the following command:
