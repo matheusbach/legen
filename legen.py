@@ -41,6 +41,8 @@ parser = argparse.ArgumentParser(prog="LeGen", description="Normaliza arquivos d
                                  argument_default=True, allow_abbrev=True, add_help=True)
 parser.add_argument("-i", "--input_dir", type=str,
                     help="Caminho da pasta onde os vídeos originais estão localizados.", required=True)
+parser.add_argument("--use_vidqa", default=False, action="store_true",
+                    help="Run vidqa in input folder before start LeGen processing.")
 parser.add_argument("--model", type=str, default="medium",
                     help="Caminho ou nome do modelo de transcrição Whisper. (default: medium)")
 parser.add_argument("--dev", type=str, default="auto",
@@ -95,9 +97,10 @@ if args.only_srt_subtitles:
 # ----------------------------------------------------------------------------
 
 # normalize video using vidqa
-print(f"Running {wblue}vidqa{default} in {gray}{input_dir}{default}")
-subprocess.run(["vidqa", "-i", input_dir, "-m", "unique", "-fd",
-               os.path.join(os.path.realpath(os.path.dirname(__file__)), "vidqa_data")])
+if args.use_vidqa:
+    print(f"Running {wblue}vidqa{default} in {gray}{input_dir}{default}")
+    subprocess.run(["vidqa", "-i", input_dir, "-m", "unique", "-fd",
+                os.path.join(os.path.realpath(os.path.dirname(__file__)), "vidqa_data")])
 
 # load whisper model
 print(f"\nLoading Whisper model: {wblue}{args.model}{default} on {wblue}{torch_device}{default}")
