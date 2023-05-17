@@ -7,7 +7,7 @@ from tqdm import tqdm
 import file_utils
 
 
-def insert_subtitle(input_video_path: str, subtitles_path: [str], burn_subtitles: bool, output_video_path: str, crf: int = 20, maxrate: str = "2M"):
+def insert_subtitle(input_video_path: str, subtitles_path: [str], burn_subtitles: bool, output_video_path: str, crf: int = 20, maxrate: str = "2M", video_codec: str = "h264", audio_codec: str = "aac", preset: str = None):
     # set bufsize as double of maxrate
     bufsize = str(float(re.match(r"([0-9.]+)([a-zA-Z]*)", maxrate).group(1))
                   * 3) + re.match(r"([0-9.]+)([a-zA-Z]*)", maxrate).group(2)
@@ -39,6 +39,9 @@ def insert_subtitle(input_video_path: str, subtitles_path: [str], burn_subtitles
             ["-vf", f"subtitles=\'{add_ffmpeg_escape_chars(srt_temp.temp_file.name)}\':force_style='Fontname=Verdana,PrimaryColour=&H03fcff,Fontsize=18,BackColour=&H80000000,Spacing=0.12,Outline=1,Shadow=1.2'"])
 
     cmd_ffmpeg.extend(cmd_ffmpeg_input_map)
+    
+    if preset is not None:
+        cmd_ffmpeg.extend(["-preset", preset])
 
     # add the remaining parameters and output path
     cmd_ffmpeg.extend(["-c:v", "h264", "-c:a", "aac", "-c:s", "mov_text",

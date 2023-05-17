@@ -20,6 +20,9 @@ The available arguments are:
 -    **--lang**: Language code to use for the subtitles translation (default: "pt").
 -    **--crf**: CRF value to use for the output video (default: 20).
 -    **--maxrate**: Maxrate value to use for the output video (default: "2M").
+-    **-c:v/--video_codec**: Output video codec. Can also be used to define hardware API. Check supported using [ffmpeg -codecs]. Ex: h264_vaapi, h264_nvenc, hevc, hevc_vaapi (default: h264)
+-    **-c:a/--audio_codec**: Output audio codec. Check supported using [ffmpeg -codecs] (default: aac)
+-    **--preset**: ffmpeg codec preset. (default: auto / default of current codec). Ex: ultrafast, veryfast, fast, medium, slow, slower, veryslow
 -    **--srt_out_dir**: The output folder path for the video files with subtitles embedded in the MP4 container and SRT files. (default: legen_srt_[input_dir]).
 -    **--burned_out_dir**: The output folder path for the video files with burned subtitles and embedded in the MP4 container. (default: legen_burned_[lang]_[input_dir]).
 -    **--overwrite**: Overwrite existing files in output directories.
