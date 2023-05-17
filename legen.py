@@ -11,7 +11,7 @@ import file_utils
 import translate_utils
 import whisper_utils
 
-version = "v0.3"
+version = "v0.5"
 
 # Terminal colors
 default = "\033[1;0m"
