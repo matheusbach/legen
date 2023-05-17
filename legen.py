@@ -67,6 +67,8 @@ parser.add_argument("--overwrite", default=False, action="store_true",
                     help="Overwrite existing files in output dirs")
 parser.add_argument("--disable_srt", default=False, action="store_true",
                     help="Disable .srt file generation and don't insert subtitles in mp4 container of $srt_out_dir")
+parser.add_argument("--disable_embed", default=False, action="store_true",
+                    help="Don't insert subtitles in mp4 container of $srt_out_dir. This option continue generating .srt files")
 parser.add_argument("--disable_burn", default=False, action="store_true",
                     help="Disable subtitle burn in $burned_out_dir")
 parser.add_argument("--only_video", default=False, action="store_true",
@@ -196,7 +198,7 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                             
                     subtitles_path.insert(0, translated_srt_temp.getvalidname())
 
-                if not args.disable_srt and not args.only_srt_subtitles:
+                if not args.disable_srt and not args.only_srt_subtitles and not args.disable_embed:
                     if file_utils.file_is_valid(srt_video_path) and not args.overwrite:
                         print(f"Existing video file {gray}{srt_video_path}{default}. Skipping subtitle insert")
                     else:

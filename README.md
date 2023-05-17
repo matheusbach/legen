@@ -27,6 +27,7 @@ The available arguments are:
 -    **--burned_out_dir**: The output folder path for the video files with burned subtitles and embedded in the MP4 container. (default: legen_burned_[lang]_[input_dir]).
 -    **--overwrite**: Overwrite existing files in output directories.
 -    **--disable_srt**: Disable .srt file generation and do not insert subtitles in the MP4 container of $srt_out_dir.
+-    **--disable_embed**: Don't insert subtitles in mp4 container of $srt_out_dir. This option continue generating .srt files.
 -    **--disable_burn**: Disable subtitle burn in $burned_out_dir.
 -    **--only_video**: Do not copy other files present in the input directory to the output directories. Only generate the subtitles and videos.
 -    **--only_srt_subtitles**: Only generates the subtitles. Do not encode the videos or copy other files.
