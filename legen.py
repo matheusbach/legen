@@ -152,10 +152,8 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                     subtitle_transcribed_path, file_ext=".srt")
 
                 # skip transcription if transcribed srt for this language is existing and overwrite is disabled
-                if file_utils.file_is_valid(os.path.join(
-                        srt_video_dir, f"{os.path.splitext(filename)[0]}_{audio_language}.srt")) and not args.overwrite:
-                    print(
-                        f"Existing .srt file for language {gray}{audio_language}{default}. Skipping transcription")
+                if (args.disable_srt or file_utils.file_is_valid(subtitle_transcribed_path)) or ((args.disable_burn or file_utils.file_is_valid(burned_video_path)) and (args.disable_srt or file_utils.file_is_valid(subtitle_transcribed_path)) and (args.disable_embed or file_utils.file_is_valid(srt_video_path))) and not args.overwrite:
+                    print("Transcription is unecessary. Skipping.")
                 else:
                     if audio_extracted is None:
                         # extract audio
