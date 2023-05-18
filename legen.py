@@ -105,7 +105,6 @@ if args.use_vidqa:
 # load whisper model
 print(f"\nLoading Whisper model: {wblue}{args.model}{default} on {wblue}{torch_device}{default}")
 whisper_model = whisper.load_model(args.model, device=torch_device)
-whisper_model.share_memory()
 
 for dirpath, dirnames, filenames in os.walk(input_dir):
     for filename in sorted(filenames):
