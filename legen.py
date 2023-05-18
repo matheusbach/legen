@@ -56,7 +56,7 @@ parser.add_argument("--crf", type=int, default=20,
 parser.add_argument("--maxrate", type=str, default="2M",
                     help="Maxrate a ser usado no vídeo. (default: 2M)")
 parser.add_argument("-c:v", "--video_codec", type=str, default="h264",
-                    help="Codec de vídeo destino. Pode ser usado para definir aceleração via GPU ou outra API de video, se suportado (ffmpeg -codecs). Ex: h264_vaapi, h264_nvenc, hevc, hevc_vaapi (default: h264)")
+                    help="Codec de vídeo destino. Pode ser usado para definir aceleração via GPU ou outra API de video [codec_api], se suportado (ffmpeg -encoders). Ex: h264, libx264, h264_vaapi, h264_nvenc, hevc, libx265 hevc_vaapi, hevc_nvenc, hevc_cuvid, hevc_qsv, hevc_amf (default: h264)")
 parser.add_argument("-c:a", "--audio_codec", type=str, default="aac",
                     help="Codec de audio destino. (default: aac). Ex: aac, libopus, mp3, vorbis")
 parser.add_argument("--preset", type=str, default=None,

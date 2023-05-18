@@ -25,7 +25,8 @@ def insert_subtitle(input_video_path: str, subtitles_path: [str], burn_subtitles
         cmd_ffmpeg.extend(["-i", "file:" + subtitle])
         cmd_ffmpeg_input_map.extend(["-map", f"{i+1}:s"])
 
-    # add comand to burn subtitles if its demanded and has at least one valid subtitle in the array. Burn the first one
+    # add comand to burn subtitles if its demanded and has at least one valid subtitle in the array. Burn the first one. Also ensure hwupload if necessary
+    vf_hwupload = True if video_codec.endswith(("_nvenc", "_amf", "_v4l2m2m", "_qsv", "_vaapi", "_videotoolbox", "_cuvid")) else False
     if burn_subtitles and len(subtitles_path) > 0:
         # create temp file for .srt
         srt_temp = file_utils.TempFile(
@@ -34,10 +35,12 @@ def insert_subtitle(input_video_path: str, subtitles_path: [str], burn_subtitles
         file_utils.copy_file_if_different(
             subtitles_path[0], srt_temp.temp_file.name, True)
         
-        # insert scale and subtitles filter
+        # insert scale, subtitles filter and hwupload if required
         cmd_ffmpeg.extend(
-            ["-vf", f"scale=-1:'max(480,ih)', subtitles=\'{add_ffmpeg_escape_chars(srt_temp.temp_file.name)}\':force_style='Fontname=Verdana,PrimaryColour=&H03fcff,Fontsize=18,BackColour=&H80000000,Spacing=0.12,Outline=1,Shadow=1.2'"])
+            ["-vf", f"scale=-1:'max(480,ih)', subtitles=\'{add_ffmpeg_escape_chars(srt_temp.temp_file.name)}\':force_style='Fontname=Verdana,PrimaryColour=&H03fcff,Fontsize=18,BackColour=&H80000000,Spacing=0.12,Outline=1,Shadow=1.2'" + (', hwupload' if vf_hwupload else '')])
     else:
+        if vf_hwupload:
+             cmd_ffmpeg.extend(["-vf", f"hwupload"])
         burn_subtitles = False
     
     cmd_ffmpeg.extend(cmd_ffmpeg_input_map)
