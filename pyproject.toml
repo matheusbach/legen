@@ -3,17 +3,17 @@ requires = ["setuptools", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "Legen"
+name = "LeGen"
 authors = [
-    {name = "Matheus Bach", email = "tu_coloca_depois"},
+    {name = "Matheus Bach", email = ""},
 ]
-description = "tu_coloca_depois"
+description = "LeGen is a Python script that normalizes video files using vidqa, transcribes subtitles from audio with Whisper, translates generated subtitles using Google Translator, saves subtitles in .srt files, inserts subtitles into .mp4 container and burns subtitles directly onto videos using FFmpeg "
 readme = "README.md"
 requires-python = ">=3.7"
 keywords = ["translator", "video"]
 license = {text = "GPL 3"}
 classifiers = [
-    "Framework :: Legen",
+    "Framework :: LeGen",
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
@@ -22,6 +22,7 @@ dependencies = [
     "openai_whisper",
     "pysrt",
     "torch",
+    "torchaudio",
     "tqdm",
     "whisper",
     "vidqa"
