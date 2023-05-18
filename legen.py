@@ -105,6 +105,7 @@ if args.use_vidqa:
 # load whisper model
 print(f"\nLoading Whisper model: {wblue}{args.model}{default} on {wblue}{torch_device}{default}")
 whisper_model = whisper.load_model(args.model, device=torch_device)
+whisper_model.share_memory()
 
 for dirpath, dirnames, filenames in os.walk(input_dir):
     for filename in sorted(filenames):
@@ -151,8 +152,8 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                 transcribed_srt_temp = file_utils.TempFile(
                     subtitle_transcribed_path, file_ext=".srt")
 
-                # skip transcription if transcribed srt for this language is existing and overwrite is disabled
-                if (args.disable_srt or file_utils.file_is_valid(subtitle_transcribed_path)) or ((args.disable_burn or file_utils.file_is_valid(burned_video_path)) and (args.disable_srt or file_utils.file_is_valid(subtitle_transcribed_path))) and not args.overwrite:
+                # skip transcription if transcribed srt for this language is existing (without overwrite neabled) or will not be used in LeGen process
+                if (file_utils.file_is_valid(subtitle_transcribed_path)) or ((args.disable_burn or file_utils.file_is_valid(burned_video_path)) and (args.disable_srt or file_utils.file_is_valid(subtitle_transcribed_path))) and not args.overwrite:
                     print("Transcription is unecessary. Skipping.")
                 else:
                     if audio_extracted is None:
@@ -175,7 +176,8 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                 if audio_extracted is not None:
                     audio_extracted.destroy()
 
-                # translate transcribed subtitle using Google Translate if transcribed language is not equals to target, and if translated file doesnt exits, or if burn is disabled or final file existing, and if srt or embed is disabled or file existing
+                # translate transcribed subtitle using Google Translate if transcribed language is not equals to target
+                # skip translation if translation has equal source and output language, if file is existing (without overwrite neabled) or will not be used in LeGen process
                 if args.lang == audio_language or file_utils.file_is_valid(subtitle_translated_path) or ((args.disable_burn or file_utils.file_is_valid(burned_video_path)) and (args.disable_srt or file_utils.file_is_valid(subtitle_translated_path))) and not args.overwrite:
                     print("Translation is unecessary. Skipping.")
                 else:
