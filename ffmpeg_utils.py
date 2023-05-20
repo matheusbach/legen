@@ -27,6 +27,16 @@ def insert_subtitle(input_video_path: str, subtitles_path: [str], burn_subtitles
 
     # add comand to burn subtitles if its demanded and has at least one valid subtitle in the array. Burn the first one. Also ensure hwupload if necessary
     vf_hwupload = True if video_codec.endswith(("_nvenc", "_amf", "_v4l2m2m", "_qsv", "_vaapi", "_videotoolbox", "_cuvid")) else False
+    hw_device = video_codec.split("_")[-1] if vf_hwupload else None
+    # set hw_device as cuda if api is nvenc or cuvid
+    if hw_device == "nvenc" or hw_device == "cuvid":
+        hw_device = "cuda"
+        vf_hwupload = False
+        
+    # set hw_device as vaapi if api is v4l2m2m or amf
+    if hw_device == "v4l2m2m" or hw_device == "amf":
+        hw_device = "vaapi"
+                                               
     if burn_subtitles and len(subtitles_path) > 0:
         # create temp file for .srt
         srt_temp = file_utils.TempFile(
@@ -48,6 +58,10 @@ def insert_subtitle(input_video_path: str, subtitles_path: [str], burn_subtitles
     if preset is not None:
         cmd_ffmpeg.extend(["-preset", preset])
 
+    # init a hw_device if hwupload is set on video filters
+    if hw_device is not None:
+        cmd_ffmpeg.extend(["-init_hw_device", hw_device])
+        
     # add the remaining parameters and output path
     cmd_ffmpeg.extend(["-c:v", video_codec, "-c:a", audio_codec, "-c:s", "mov_text", 
                        "-af", "loudnorm", "-crf", str(crf), "-maxrate", maxrate, 
