@@ -47,10 +47,10 @@ def insert_subtitle(input_video_path: str, subtitles_path: [str], burn_subtitles
         
         # insert scale, subtitles filter and hwupload if required
         cmd_ffmpeg.extend(
-            ["-vf", f"scale=-1:'max(480,ih)', subtitles=\'{add_ffmpeg_escape_chars(srt_temp.temp_file.name)}\':force_style='Fontname=Verdana,PrimaryColour=&H03fcff,Fontsize=18,BackColour=&H80000000,Spacing=0.12,Outline=1,Shadow=1.2'" + (', hwupload' if vf_hwupload else '')])
+            ["-vf", f"format=nv12, scale=-1:'max(480,ih)', subtitles=\'{add_ffmpeg_escape_chars(srt_temp.temp_file.name)}\':force_style='Fontname=Verdana,PrimaryColour=&H03fcff,Fontsize=18,BackColour=&H80000000,Spacing=0.12,Outline=1,Shadow=1.2'" + (', hwupload' if vf_hwupload else '')])
     else:
         if vf_hwupload:
-             cmd_ffmpeg.extend(["-vf", f"hwupload"])
+             cmd_ffmpeg.extend(["-vf", f"format=nv12, hwupload"])
         burn_subtitles = False
     
     cmd_ffmpeg.extend(cmd_ffmpeg_input_map)
@@ -66,7 +66,7 @@ def insert_subtitle(input_video_path: str, subtitles_path: [str], burn_subtitles
     cmd_ffmpeg.extend(["-c:v", video_codec, "-c:a", audio_codec, "-c:s", "mov_text", 
                        "-af", "loudnorm", "-crf", str(crf), "-maxrate", maxrate, 
                        "-bufsize", bufsize, "-pix_fmt", "yuv420p", 
-                       "-movflags", "+faststart", "-sws_flags", "bicubic+accurate_rnd", 
+                       "-movflags", "+faststart", "-sws_flags", "bicubic+accurate_rnd+full_chroma_int+full_chroma_inp", 
                        "file:" + output_video_path])
 
     # run FFmpeg command with a fancy progress bar
