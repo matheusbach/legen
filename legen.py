@@ -37,12 +37,14 @@ print(f"""
 time.sleep(1.5)
 
 # define parâmetros e configuraçṍes
-parser = argparse.ArgumentParser(prog="LeGen", description="Normaliza arquivos de vídeo, transcreve legendas a partir do áudio, traduz as legendas geradas, salva as legendas em arquivos .srt, insere no container mp4 e queima diretamente no vídeo",
+parser = argparse.ArgumentParser(prog="LeGen", description="Normaliza arquivos de vídeo, transcreve legendas a partir do áudio de arquivos de vídeo e áudio, traduz as legendas geradas, salva as legendas em arquivos .srt, insere no container mp4 e queima diretamente em vídeo",
                                  argument_default=True, allow_abbrev=True, add_help=True)
 parser.add_argument("-i", "--input_dir", type=str,
-                    help="Caminho da pasta onde os vídeos originais estão localizados.", required=True)
+                    help="Caminho da pasta onde os vídeos e/ou audios originais estão localizados.", required=True)
 parser.add_argument("--use_vidqa", default=False, action="store_true",
                     help="Run vidqa in input folder before start LeGen processing.")
+parser.add_argument("--whisperx", default=False, action="store_true",
+                    help="Use m-bain/whisperX instead openai/whisper")
 parser.add_argument("--model", type=str, default="medium",
                     help="Caminho ou nome do modelo de transcrição Whisper. (default: medium)")
 parser.add_argument("--dev", type=str, default="auto",
@@ -50,7 +52,7 @@ parser.add_argument("--dev", type=str, default="auto",
 parser.add_argument("--lang", type=str, default="pt",
                     help="Idioma para o qual as legendas devem ser traduzidas. Language equals to source video skip translation (default: pt)")
 parser.add_argument("--input_lang", type=str, default="auto",
-                    help="Indica (força) idioma da voz dos vídeos de entrada (default: auto)")
+                    help="Indica (força) idioma da voz das midias de entrada (default: auto)")
 parser.add_argument("--crf", type=int, default=20,
                     help="Valor CRF a ser usado no vídeo. (default: 20)")
 parser.add_argument("--maxrate", type=str, default="2M",
@@ -114,10 +116,17 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
 
             print(f"\nProcessing {yellow}{os.path.join(rel_path, filename)}{default}")
             
-            # filter by video file extensions
-            if filename.lower().endswith((".mp4", ".webm", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".vob", ".mts", ".m2ts", ".ts", ".yuv", ".mpg", ".mp2", ".mpeg", ".mpe", ".mpv", ".m2v", "m4v", ".3gp", ".3g2", ".nsv")):
+            # define file type by extensions
+            if filename.lower().endswith((".mp4", ".webm", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".vob", ".mts", ".m2ts", ".ts", ".yuv", ".mpg", ".mp2", ".mpeg", ".mpe", ".mpv", ".m2v", ".m4v", ".3gp", ".3g2", ".nsv")):
+                file_type = "video" 
+            elif filename.lower().endswith((".aa", ".aac", ".aax", ".act", ".aiff", ".alac", ".amr", ".ape", ".au", ".awb", ".dss", ".dvf", ".flac", ".gsm", ".iklax", ".ivs", ".m4a", ".m4b", ".m4p", ".mmf", ".mp3", ".mpc", ".msv", ".nmf", ".ogg", ".oga", ".mogg", ".opus", ".ra", ".rm", ".raw", ".rf64", ".sln", ".tta", ".voc", ".vox", ".wav", ".wma", ".wv", ".webm", ".8svx")):
+                file_type = "audio"
+            else:
+                file_type = "other"
+                
+            if file_type == "video" or file_type == "audio":
                 # define paths
-                origin_video_path = os.path.join(dirpath, filename)
+                origin_media_path = os.path.join(dirpath, filename)
                 srt_video_dir = os.path.join(srt_out_dir, rel_path)
                 burned_video_dir = os.path.join(burned_out_dir, rel_path)
                 # output video extension will be changed to .mp4
@@ -132,7 +141,7 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                     # extract audio
                     audio_extracted = file_utils.TempFile(None, file_ext=".mp3")
                     ffmpeg_utils.extract_audio_mp3(
-                        origin_video_path, audio_extracted.getname())
+                        origin_media_path, audio_short_extracted.getname())
 
                     # detect language
                     print("Detecting audio language: ", end='', flush=True)
@@ -159,7 +168,7 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                         # extract audio
                         audio_extracted = file_utils.TempFile(None, file_ext=".mp3")
                         ffmpeg_utils.extract_audio_mp3(
-                            origin_video_path, audio_extracted.getname())
+                            origin_media_path, audio_extracted.getname())
 
                     # transcribe saving subtitles to temp .srt file
                     print(f"{wblue}Transcribing{default} with {gray}Whisper{default}")
@@ -208,7 +217,7 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                         
                         # insert subtitle into container using ffmpeg
                         print(f"{wblue}Inserting subtitle{default} in mp4 container using {gray}FFmpeg{default}")
-                        ffmpeg_utils.insert_subtitle(origin_video_path, subtitles_path,
+                        ffmpeg_utils.insert_subtitle(origin_media_path, subtitles_path,
                                                      False, video_srt_temp.getname(), 
                                                      args.crf, args.maxrate, args.video_codec, args.audio_codec, args.preset)
                         video_srt_temp.save()
@@ -223,7 +232,7 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                             burned_video_path, file_ext=".mp4")
                         # insert subtitle into container and burn using ffmpeg
                         print(f"{wblue}Inserting subtitle{default} in mp4 container and {wblue}burning{default} using {gray}FFmpeg{default}")
-                        ffmpeg_utils.insert_subtitle(origin_video_path, subtitles_path,
+                        ffmpeg_utils.insert_subtitle(origin_media_path, subtitles_path,
                                                      True, video_burned_temp.getname(),
                                                      args.crf, args.maxrate, args.video_codec, args.audio_codec, args.preset)
                         video_burned_temp.save()
