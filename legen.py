@@ -135,19 +135,21 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                 subtitle_translated_path = os.path.join(
                     srt_video_dir, f"{os.path.splitext(filename)[0]}_{args.lang}.srt")
                 subtitles_path = []
-                audio_extracted = None
                 
                 if args.input_lang == "auto":
                     # extract audio
-                    audio_extracted = file_utils.TempFile(None, file_ext=".mp3")
-                    ffmpeg_utils.extract_audio_mp3(
+                    audio_short_extracted = file_utils.TempFile(None, file_ext=".mp3")
+                    ffmpeg_utils.extract_short_mp3(
                         origin_media_path, audio_short_extracted.getname())
 
                     # detect language
                     print("Detecting audio language: ", end='', flush=True)
                     audio_language = whisper_utils.detect_language(
-                        whisper_model, audio_extracted.getname())
+                        whisper_model, audio_short_extracted.getname())
+                    
                     print(f"{gray}{audio_language}{default}")
+                    
+                    audio_short_extracted.destroy()
                 else:
                     audio_language = args.input_lang
                     print(f"Forced input audio language: {gray}{audio_language}{default}")
@@ -164,11 +166,10 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                 if (file_utils.file_is_valid(subtitle_transcribed_path)) or ((args.disable_burn or file_utils.file_is_valid(burned_video_path)) and (args.disable_srt or file_utils.file_is_valid(subtitle_transcribed_path))) and not args.overwrite:
                     print("Transcription is unecessary. Skipping.")
                 else:
-                    if audio_extracted is None:
-                        # extract audio
-                        audio_extracted = file_utils.TempFile(None, file_ext=".mp3")
-                        ffmpeg_utils.extract_audio_mp3(
-                            origin_media_path, audio_extracted.getname())
+                    # extract audio
+                    audio_extracted = file_utils.TempFile(None, file_ext=".mp3")
+                    ffmpeg_utils.extract_audio_mp3(
+                        origin_media_path, audio_extracted.getname())
 
                     # transcribe saving subtitles to temp .srt file
                     print(f"{wblue}Transcribing{default} with {gray}Whisper{default}")
@@ -180,9 +181,6 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                         transcribed_srt_temp.save()
 
                 subtitles_path.append(transcribed_srt_temp.getvalidname())
-
-                if audio_extracted is not None:
-                    audio_extracted.destroy()
 
                 # translate transcribed subtitle using Google Translate if transcribed language is not equals to target
                 # skip translation if translation has equal source and output language, if file is existing (without overwrite neabled) or will not be used in LeGen process

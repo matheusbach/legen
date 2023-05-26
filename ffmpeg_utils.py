@@ -122,6 +122,33 @@ def extract_audio_mp3(input_media_path: str, output_path: str):
         for progress in ff.run_command_with_progress():
             pbar.update(progress - pbar.n)
             
+def extract_short_mp3(input_media_path: str, output_path: str):
+    # get input media duration
+    duration_sec = subprocess.run(["ffprobe", "-i", "file:" + input_media_path, "-show_entries", "format=duration", "-v", "quiet", "-of", "csv=p=0"], capture_output = True, text = True).stdout.split("\n")[0].replace("\n", "").replace(" ", "").replace("   ", "").replace("00:", "").replace(":", "").split(".")[0]
+    
+    if int(duration_sec) > 240:
+        start_sec = int(duration_sec) - 120
+        end_sec = int(duration_sec) - 60
+    elif int(duration_sec) > 120:
+        start_sec = int(duration_sec) - 80
+        end_sec = int(duration_sec) - 20
+    elif int(duration_sec) > 80:
+        start_sec = int(duration_sec) - 60
+        end_sec = int(duration_sec) - 20
+    else:
+        start_sec = 0
+        end_sec = int(duration_sec)
+    
+    # set the FFMpeg command
+    cmd_ffmpeg = ["ffmpeg", "-y", "-ss", f"{start_sec}", "-t", f"{end_sec}",  "-i", "file:" + input_media_path,
+                  "-vn", "-c:a", "mp3", "-af", "loudnorm", "-ar", "44100", "file:" + output_path]
+
+    # run FFmpeg command with a fancy progress bar
+    ff = FfmpegProgress(cmd_ffmpeg)
+    with tqdm(total=100, position=0, ascii="░▒█", desc="Extracting audio", unit="%", unit_scale=True, leave=False, bar_format="{desc} {percentage:3.0f}% | ETA: {remaining}") as pbar:
+        for progress in ff.run_command_with_progress():
+            pbar.update(progress - pbar.n)
+            
 def add_ffmpeg_escape_chars(string):
     new_string = ""
     for char in string:  
