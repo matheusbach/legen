@@ -122,35 +122,36 @@ def unjoin_sentences(original_sentence, modified_sentence, separator):
     if len(original_lines) == len(modified_lines):
         return modified_lines
 
-    original_word_count = sum(len(line.strip().split()) for line in original_lines)
-    modified_text = ' '.join(modified_lines)
-    modified_word_count = len(modified_text.strip().split())
-
     # zero words? return original sentence, removing separator
+    original_word_count = sum(len(line.strip().split()) for line in original_lines)
+    modified_word_count = len(' '.join(modified_lines).strip().split())
     if original_word_count == 0 or modified_word_count == 0:
         return original_sentence.replace(separator, ' ').replace('  ', ' ')
+    
+    # calculate proportion of words between original and translated
+    modified_words_proportion = modified_word_count / original_word_count
+    # list all modified words
+    modified_words = ' '.join(modified_lines).replace(separator, "").replace(separator_unjoin, "").replace("  ", " ").strip().split(' ')
+        
+    new_modified_lines = []
+    current_index = 0
 
-    # if number of lines doesnt match, e need to adjut it
-    if len(original_lines) != len(modified_lines):
-        # Join the list of strings with spaces
-        joined = ' '.join(modified_lines)
+    # reconstruct lines based on proportion of original and translated words
+    for i in range(len(original_lines)):
+        # Calculate the number of words for the current modified sentence
+        num_words = int(round(len(original_lines[i].strip().split()) * modified_words_proportion))
 
-        # Split the joined string into words
-        words = joined.split(' ')
+        # Extract words from modified list
+        generated_line = ' '.join(modified_words[current_index:current_index+num_words])
+        
+        # Update the current index
+        current_index += num_words
+        
+        # append remaining if is the last loop
+        if i == len(original_lines) - 1:
+            ' '.join([generated_line, ' '.join(modified_words[current_index:])])
 
-        # Calculate the number of words per part
-        words_per_part = len(words) // len(original_lines)
+        # Add modified sentence to the new list
+        new_modified_lines.append(generated_line.replace("  ", " ").strip())
 
-        # Split the words into parts
-        split_parts = []
-        start_index = 0
-
-        for i in range(len(original_lines) - 1):
-            end_index = start_index + words_per_part
-            split_parts.append(' '.join(words[start_index:end_index]))
-            start_index = end_index
-
-        # Add the remaining words to the last part
-        split_parts.append(' '.join(words[start_index:]))
-
-        return split_parts
+    return new_modified_lines

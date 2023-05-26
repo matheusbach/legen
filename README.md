@@ -1,6 +1,6 @@
 # LeGen
 
-LeGen is a Python script that normalizes video files using vidqa, transcribes subtitles from audio with Whisper, translates generated subtitles using Google Translator, saves subtitles in .srt files, inserts subtitles into .mp4 container and burns subtitles directly onto videos using FFmpeg.
+LeGen is a Python script that normalizes media files using vidqa, transcribes subtitles from audio or video-audio with Whisper, translates generated subtitles using Google Translator, saves subtitles in .srt files, inserts subtitles into .mp4 container and burns subtitles directly onto videos using FFmpeg.
 
 This is very useful for making it available in another language, or even just subtitling any video that belongs to you or that you have the proper authorization to do so, be it a film, lecture, course, presentation, interview, etc.
 
@@ -14,7 +14,7 @@ python legen.py -i [input_dir] --model [model_name] --dev [device] --lang [langu
 
 The available arguments are:
 
--    **-i/--input_dir**: Path to the folder containing the original videos (required).
+-    **-i/--input_dir**: Path to the folder containing the original videos and/or audios (required).
 -    **--use_vidqa**: Run vidqa in input folder before start LeGen processing.
 -    **--model**: Path or name of the Whisper transcription model to use (default: "medium").
 -    **--dev**: Device to use for the Whisper transcription (options: "cpu", "cuda", "auto"; default: "auto").
