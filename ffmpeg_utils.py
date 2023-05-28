@@ -29,7 +29,7 @@ def insert_subtitle(input_media_path: str, subtitles_path: [str], burn_subtitles
     
     # detect if input has video channels
     result: str = subprocess.run(["ffprobe", "-i", "file:" + input_media_path, "-show_streams", "-select_streams", "v", "-loglevel", "error"], capture_output = True, text = True).stdout
-    no_video = True if result is None or result.replace(" ", "").replace("  ", "") == "" else False
+    no_video = True if result is None or "DISPOSITION:attached_pic=0" not in result else False
     
     # if input has no video channels, map a 1280x720 black screen
     if no_video:
@@ -43,9 +43,11 @@ def insert_subtitle(input_media_path: str, subtitles_path: [str], burn_subtitles
         # get input media duration
         duration_sec = subprocess.run(["ffprobe", "-i", "file:" + input_media_path, "-show_entries", "format=duration", "-v", "quiet", "-of", "csv=p=0"], capture_output = True, text = True).stdout.split("\n")[0].replace("\n", "").replace(" ", "").replace("   ", "").replace("00:", "").replace(":", ".")
     
-        cmd_ffmpeg.extend(["-t", f"{duration_sec}", "-loop", "1", "-i", background_tempfile.getname()])
+        cmd_ffmpeg.extend(["-t", f"{duration_sec}", "-loop", "1",
+                          "-framerate", "10", "-i", background_tempfile.getname()])
         map_index = cmd_ffmpeg.count("-i") - 1
-        cmd_ffmpeg_input_map.extend(["-map", f"{map_index}:v"])
+        # unmap #0, remap #0 with only audio and subtitles stream, map #1 (generated video from image)
+        cmd_ffmpeg_input_map.extend(["-map", "-0", "-map", "0:a", "-map", "0:s?", "-map", f"{map_index}:v"])
         
     # map each subtitle
     for i, subtitle in enumerate(subtitles_path):
