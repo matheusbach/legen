@@ -98,6 +98,8 @@ disable_fp16 = False if torch_device == "cpu" else True
 if args.only_srt_subtitles:
     args.only_video = True
 
+args.model = "large-v2" if args.model == "large" else args.model
+
 # ----------------------------------------------------------------------------
 
 # normalize video using vidqa
