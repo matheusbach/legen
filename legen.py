@@ -91,7 +91,7 @@ if args.dev == "auto":
     import torch
     torch_device = ("cuda" if torch.cuda.is_available() else "cpu")
 else:
-    torch_device = args.dev
+    torch_device = str.lower(args.dev)
     
 disable_fp16 = True if torch_device == "cpu" else False
 
