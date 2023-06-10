@@ -16,6 +16,7 @@ The available arguments are:
 
 -    **-i/--input_dir**: Path to the folder containing the original videos and/or audios (required).
 -    **--use_vidqa**: Run vidqa in input folder before start LeGen processing.
+-    **--whisperx**: Use m-bain/whisperX implementation instead of openai/whisper.
 -    **--model**: Path or name of the Whisper transcription model to use (default: "medium").
 -    **--dev**: Device to use for the Whisper transcription (options: "cpu", "cuda", "auto"; default: "auto").
 -    **--lang**: Language code to use for the subtitles translation (default: "pt").

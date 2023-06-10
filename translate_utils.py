@@ -1,6 +1,5 @@
 import os
 import time
-import re
 
 import deep_translator
 import pysrt

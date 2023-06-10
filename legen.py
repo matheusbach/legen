@@ -3,15 +3,11 @@ import os
 import subprocess
 import time
 
-import torch
-import whisper
-
 import ffmpeg_utils
 import file_utils
 import translate_utils
-import whisper_utils
 
-version = "v0.6"
+version = "v0.7"
 
 # Terminal colors
 default = "\033[1;0m"
@@ -90,9 +86,15 @@ if args.burned_out_dir is None:
     args.burned_out_dir = os.path.join(
         *(os.path.split(input_dir)[:-1] + (f'legen_burned_{args.lang}_{os.path.split(input_dir)[-1]}',)))
 burned_out_dir = args.burned_out_dir
-torch_device = ("cuda" if torch.cuda.is_available()
-                else "cpu") if args.dev == "auto" else args.dev
-disable_fp16 = False if args.dev == "cpu" else True
+
+if args.dev == "auto":
+    import torch
+    torch_device = ("cuda" if torch.cuda.is_available() else "cpu")
+else:
+    torch_device = args.dev
+    
+disable_fp16 = False if torch_device == "cpu" else True
+
 if args.only_srt_subtitles:
     args.only_video = True
 
@@ -106,7 +108,14 @@ if args.use_vidqa:
 
 # load whisper model
 print(f"\nLoading Whisper model: {wblue}{args.model}{default} on {wblue}{torch_device}{default}")
-whisper_model = whisper.load_model(args.model, device=torch_device)
+if args.whisperx:
+    import whisperx_utils
+    import whisperx
+    whisper_model = whisperx.load_model(args.model, device=torch_device, compute_type="float32")
+else:
+    import whisper_utils
+    import whisper
+    whisper_model = whisper.load_model(args.model, device=torch_device, in_memory=True)
 
 for dirpath, dirnames, filenames in os.walk(input_dir):
     for filename in sorted(filenames):
@@ -144,9 +153,12 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
 
                     # detect language
                     print("Detecting audio language: ", end='', flush=True)
-                    audio_language = whisper_utils.detect_language(
-                        whisper_model, audio_short_extracted.getname())
-                    
+                    if args.whisperx:
+                        audio_language = whisperx_utils.detect_language(
+                            whisper_model, audio_short_extracted.getname())
+                    else:
+                        audio_language = whisper_utils.detect_language(
+                            whisper_model, audio_short_extracted.getname())
                     print(f"{gray}{audio_language}{default}")
                     
                     audio_short_extracted.destroy()
@@ -172,9 +184,16 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                         origin_media_path, audio_extracted.getname())
 
                     # transcribe saving subtitles to temp .srt file
-                    print(f"{wblue}Transcribing{default} with {gray}Whisper{default}")
-                    whisper_utils.transcribe_audio(
-                        whisper_model, audio_extracted.getname(), transcribed_srt_temp.getname(), audio_language, disable_fp16)
+                    if args.whisperx:
+                        print(f"{wblue}Transcribing{default} with {gray}WhisperX{default}")
+                        whisperx_utils.transcribe_audio(
+                            whisper_model, audio_extracted.getname(), transcribed_srt_temp.getname(), audio_language, disable_fp16, device = torch_device)
+                    else:
+                        print(f"{wblue}Transcribing{default} with {gray}Whisper{default}")
+                        whisper_utils.transcribe_audio(
+                            whisper_model, audio_extracted.getname(), transcribed_srt_temp.getname(), audio_language, disable_fp16)
+                        
+                    audio_extracted.destroy()
 
                     # if save .srt is enabled, save it to destination dir, also update path with language code
                     if not args.disable_srt:
