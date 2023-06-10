@@ -93,7 +93,7 @@ if args.dev == "auto":
 else:
     torch_device = args.dev
     
-disable_fp16 = False if torch_device == "cpu" else True
+disable_fp16 = True if torch_device == "cpu" else False
 
 if args.only_srt_subtitles:
     args.only_video = True
