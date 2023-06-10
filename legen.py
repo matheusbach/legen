@@ -113,11 +113,11 @@ print(f"\nLoading Whisper model: {wblue}{args.model}{default} on {wblue}{torch_d
 if args.whisperx:
     import whisperx_utils
     import whisperx
-    whisper_model = whisperx.load_model(args.model, device=torch_device, compute_type="float32")
+    whisper_model = whisperx.load_model(whisper_arch=args.model, device=torch_device, compute_type="float16" if not disable_fp16 else "float32")
 else:
     import whisper_utils
     import whisper
-    whisper_model = whisper.load_model(args.model, device=torch_device, in_memory=True)
+    whisper_model = whisper.load_model(name=args.model, device=torch_device, in_memory=True)
 
 for dirpath, dirnames, filenames in os.walk(input_dir):
     for filename in sorted(filenames):
