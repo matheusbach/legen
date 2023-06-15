@@ -9,7 +9,7 @@ from tqdm import tqdm
 import file_utils
 
 
-def insert_subtitle(input_media_path: str, subtitles_path: [str], burn_subtitles: bool, output_video_path: str, crf: int = 20, maxrate: str = "2M", video_codec: str = "h264", audio_codec: str = "aac", preset: str = None):
+def insert_subtitle(input_media_path: str, subtitles_path: [str], burn_subtitles: bool, output_video_path: str, crf: int = 20, maxrate: str = "2M", video_codec: str = "h264", audio_codec: str = "aac", preset: str = None, subtitle_margin: int = 10):
     # set bufsize as double of maxrate
     bufsize = str(float(re.match(r"([0-9.]+)([a-zA-Z]*)", maxrate).group(1))
                   * 3) + re.match(r"([0-9.]+)([a-zA-Z]*)", maxrate).group(2)
@@ -81,7 +81,7 @@ def insert_subtitle(input_media_path: str, subtitles_path: [str], burn_subtitles
         # insert scale, subtitles filter and hwupload if required
         # scale at minimul height of 480p. it also will make the dimensions divisible by 2
         cmd_ffmpeg.extend(
-            ["-vf", f"format=nv12, scale='ceil((max(480,ih)*iw/ih)/2)*2:ceil(max(480,ih)/2)*2', subtitles=\'{add_ffmpeg_escape_chars(srt_temp.temp_file.name)}\':force_style='Alignment={sub_align},Fontname=Verdana,PrimaryColour=&H03fcff,Fontsize=20,BackColour=&H80000000,Spacing=0.12,Outline=1,Shadow=1.2'" + (', hwupload' if vf_hwupload else '')])
+            ["-vf", f"format=nv12, scale='ceil((max(480,ih)*iw/ih)/2)*2:ceil(max(480,ih)/2)*2', subtitles=\'{add_ffmpeg_escape_chars(srt_temp.temp_file.name)}\':force_style='Alignment={sub_align},Fontname=Verdana,PrimaryColour=&H03fcff,Fontsize=20,BackColour=&H80000000,Spacing=0.11,Outline=1,Shadow=1.2,MarginL={subtitle_margin},MarginR={subtitle_margin}'" + (', hwupload' if vf_hwupload else '')])
     else:
         if vf_hwupload:
              cmd_ffmpeg.extend(["-vf", f"format=nv12, hwupload"])

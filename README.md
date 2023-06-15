@@ -16,7 +16,7 @@ The available arguments are:
 
 -    **-i/--input_dir**: Path to the folder containing the original videos and/or audios (required).
 -    **--use_vidqa**: Run vidqa in input folder before start LeGen processing.
--    **--whisperx**: Use m-bain/whisperX implementation instead of openai/whisper.
+-    **--whisperx**: Use m-bain/whisperX implementation instead of openai/whisper. Unstable!
 -    **--model**: Path or name of the Whisper transcription model to use (default: "medium").
 -    **--dev**: Device to use for the Whisper transcription (options: "cpu", "cuda", "auto"; default: "auto").
 -    **--lang**: Language code to use for the subtitles translation (default: "pt").
@@ -24,7 +24,8 @@ The available arguments are:
 -    **--maxrate**: Maxrate value to use for the output video (default: "2M").
 -    **-c:v/--video_codec**: Output video codec. Can also be used to define hardware aceleration API. Check supported using [ffmpeg --encoders]. Ex: h264, libx264, h264_vaapi, h264_nvenc, hevc, libx265 hevc_vaapi, hevc_nvenc, hevc_cuvid, hevc_qsv, hevc_amf (default: h264)
 -    **-c:a/--audio_codec**: Output audio codec. Check supported using [ffmpeg --encoders] (default: aac)
--    **--preset**: ffmpeg codec preset. (default: auto / default of current codec). Ex: ultrafast, veryfast, fast, medium, slow, slower, veryslow
+-    **--preset**: ffmpeg codec preset. (default: auto / default of current codec). Ex: ultrafast, veryfast, fast, medium, slow, slower, veryslow.
+-    **--subtitle_margin**: Burned subtitle horizontal margins. 100 is about half line size. Useful for fast-reading (default: 10).
 -    **--srt_out_dir**: The output folder path for the video files with subtitles embedded in the MP4 container and SRT files. (default: legen_srt_[input_dir]).
 -    **--burned_out_dir**: The output folder path for the video files with burned subtitles and embedded in the MP4 container. (default: legen_burned_[lang]_[input_dir]).
 -    **--overwrite**: Overwrite existing files in output directories.

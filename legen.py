@@ -7,7 +7,7 @@ import ffmpeg_utils
 import file_utils
 import translate_utils
 
-version = "v0.7.1"
+version = "v0.8"
 
 # Terminal colors
 default = "\033[1;0m"
@@ -40,7 +40,7 @@ parser.add_argument("-i", "--input_dir", type=str,
 parser.add_argument("--use_vidqa", default=False, action="store_true",
                     help="Run vidqa in input folder before start LeGen processing.")
 parser.add_argument("--whisperx", default=False, action="store_true",
-                    help="Use m-bain/whisperX instead openai/whisper")
+                    help="Use m-bain/whisperX instead openai/whisper. Unstable!")
 parser.add_argument("--model", type=str, default="medium",
                     help="Caminho ou nome do modelo de transcrição Whisper. (default: medium)")
 parser.add_argument("--dev", type=str, default="auto",
@@ -59,6 +59,8 @@ parser.add_argument("-c:a", "--audio_codec", type=str, default="aac",
                     help="Codec de audio destino. (default: aac). Ex: aac, libopus, mp3, vorbis")
 parser.add_argument("--preset", type=str, default=None,
                     help="ffmpeg codec preset. (default: auto / default of current codec). Ex: ultrafast, veryfast, fast, medium, slow, slower, veryslow")
+parser.add_argument("--subtitle_margin", type=int, default=10,
+                    help="Burned subtitle horizontal margins. 100 is about half line size. Useful for fast-reading (default: 10)")
 parser.add_argument("--srt_out_dir", type=str, default=None,
                     help="Caminho da pasta de saída para os arquivos de vídeo com legenda embutida no container mp4 e arquivos SRT. (default: legen_srt_$input_dir)")
 parser.add_argument("--burned_out_dir", type=str, default=None,
@@ -238,7 +240,7 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                         print(f"{wblue}Inserting subtitle{default} in mp4 container using {gray}FFmpeg{default}")
                         ffmpeg_utils.insert_subtitle(origin_media_path, subtitles_path,
                                                      False, video_srt_temp.getname(), 
-                                                     args.crf, args.maxrate, args.video_codec, args.audio_codec, args.preset)
+                                                     args.crf, args.maxrate, args.video_codec, args.audio_codec, args.preset, args.subtitle_margin)
                         video_srt_temp.save()
 
                 if not args.disable_burn and not args.only_srt_subtitles:
@@ -253,7 +255,7 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                         print(f"{wblue}Inserting subtitle{default} in mp4 container and {wblue}burning{default} using {gray}FFmpeg{default}")
                         ffmpeg_utils.insert_subtitle(origin_media_path, subtitles_path,
                                                      True, video_burned_temp.getname(),
-                                                     args.crf, args.maxrate, args.video_codec, args.audio_codec, args.preset)
+                                                     args.crf, args.maxrate, args.video_codec, args.audio_codec, args.preset, args.subtitle_margin)
                         video_burned_temp.save()
             else:
                 print("not a video file")
