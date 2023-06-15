@@ -79,8 +79,9 @@ def insert_subtitle(input_media_path: str, subtitles_path: [str], burn_subtitles
         sub_align = 10 if no_video else 2
         
         # insert scale, subtitles filter and hwupload if required
+        # scale at minimul height of 480p. it also will make the dimensions divisible by 2
         cmd_ffmpeg.extend(
-            ["-vf", f"format=nv12, scale=-1:'max(480,ih)', subtitles=\'{add_ffmpeg_escape_chars(srt_temp.temp_file.name)}\':force_style='Alignment={sub_align},Fontname=Verdana,PrimaryColour=&H03fcff,Fontsize=20,BackColour=&H80000000,Spacing=0.12,Outline=1,Shadow=1.2'" + (', hwupload' if vf_hwupload else '')])
+            ["-vf", f"format=nv12, scale='ceil((max(480,ih)*iw/ih)/2)*2:ceil(max(480,ih)/2)*2', subtitles=\'{add_ffmpeg_escape_chars(srt_temp.temp_file.name)}\':force_style='Alignment={sub_align},Fontname=Verdana,PrimaryColour=&H03fcff,Fontsize=20,BackColour=&H80000000,Spacing=0.12,Outline=1,Shadow=1.2'" + (', hwupload' if vf_hwupload else '')])
     else:
         if vf_hwupload:
              cmd_ffmpeg.extend(["-vf", f"format=nv12, hwupload"])
