@@ -6,10 +6,28 @@ This is very useful for making it available in another language, or even just su
 
 ## Installation:
 
-To install from Github directly:
+Install FFMpeg from [FFMPeg Oficial Site](https://ffmpeg.org/download.html) or from your linux package manager. _If using windows, prefer gyan_dev release full_
+
+Install [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
+
+Install [Python](https://www.python.org/downloads/) 3.7 or up. _If using windows, select "Add to PATH" option when installing_
+
+Clone LeGen from git
+```sh
+git clone https://github.com/matheusbach/legen.git
+cd legen
+pip install -r requirements.txt .
 ```
-pip install git+https://github.com/matheusbach/legen.git
+And done. Now you can use LeGen
+
+## Update
+
+Update from git:
+in LeGen folder:
+```sh
+git pull
 ```
+
 ## Usage:
 
 To use LeGen, run the following command:
