@@ -44,8 +44,6 @@ def transcribe_audio(model: whisperx.asr.WhisperModel, audio_path: str, srt_path
     return transcribe
 
 
-def detect_language(model: str, audio_path: str):
+def detect_language(model: whisperx.asr.WhisperModel, audio_path: str):
     audio = whisperx.load_audio(file=audio_path)
-    result = model.transcribe(audio)
-
-    return result["language"]
+    return model.detect_language(audio=audio)
