@@ -114,10 +114,10 @@ def insert_subtitle(input_media_path: str, subtitles_path: [str], burn_subtitles
         srt_temp.destroy()
 
 
-def extract_audio_mp3(input_media_path: str, output_path: str):
+def extract_audio_wav(input_media_path: str, output_path: str):
     # set the FFMpeg command
     cmd_ffmpeg = ["ffmpeg", "-y", "-i", "file:" + input_media_path,
-                  "-vn", "-c:a", "mp3", "-af", "loudnorm", "-ar", "44100", "file:" + output_path]
+                  "-vn", "-c:a", "pcm_s16le", "-af", "loudnorm", "-ac", "1", "-ar", "44100", "file:" + output_path]
 
     # run FFmpeg command with a fancy progress bar
     ff = FfmpegProgress(cmd_ffmpeg)
@@ -125,7 +125,7 @@ def extract_audio_mp3(input_media_path: str, output_path: str):
         for progress in ff.run_command_with_progress():
             pbar.update(progress - pbar.n)
             
-def extract_short_mp3(input_media_path: str, output_path: str):
+def extract_short_wav(input_media_path: str, output_path: str):
     # get input media duration
     duration_sec = subprocess.run(["ffprobe", "-i", "file:" + input_media_path, "-show_entries", "format=duration", "-v", "quiet", "-of", "csv=p=0"], capture_output = True, text = True).stdout.split("\n")[0].replace("\n", "").replace(" ", "").replace("   ", "").replace("00:", "").replace(":", "").split(".")[0]
     
@@ -144,7 +144,7 @@ def extract_short_mp3(input_media_path: str, output_path: str):
     
     # set the FFMpeg command
     cmd_ffmpeg = ["ffmpeg", "-y", "-ss", f"{start_sec}", "-t", f"{end_sec}",  "-i", "file:" + input_media_path,
-                  "-vn", "-c:a", "mp3", "-af", "loudnorm", "-ar", "44100", "file:" + output_path]
+                  "-vn", "-c:a", "pcm_s16le", "-af", "loudnorm", "-ac", "1", "-ar", "44100", "file:" + output_path]
 
     # run FFmpeg command with a fancy progress bar
     ff = FfmpegProgress(cmd_ffmpeg)

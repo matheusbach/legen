@@ -111,7 +111,7 @@ if args.use_vidqa:
                 os.path.join(os.path.realpath(os.path.dirname(__file__)), "vidqa_data")])
 
 # load whisper model
-print(f"\nLoading Whisper model: {wblue}{args.model}{default} on {wblue}{torch_device}{default}")
+print(f"\nLoading " + ("WhisperX" if args.whisperx else "Whisper") + f" model: {wblue}{args.model}{default} on {wblue}{torch_device}{default}")
 if args.whisperx:
     import whisperx_utils
     import whisperx
@@ -151,8 +151,8 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                 
                 if args.input_lang == "auto":
                     # extract audio
-                    audio_short_extracted = file_utils.TempFile(None, file_ext=".mp3")
-                    ffmpeg_utils.extract_short_mp3(
+                    audio_short_extracted = file_utils.TempFile(None, file_ext=".wav")
+                    ffmpeg_utils.extract_short_wav(
                         origin_media_path, audio_short_extracted.getname())
 
                     # detect language
@@ -183,8 +183,8 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                     print("Transcription is unecessary. Skipping.")
                 else:
                     # extract audio
-                    audio_extracted = file_utils.TempFile(None, file_ext=".mp3")
-                    ffmpeg_utils.extract_audio_mp3(
+                    audio_extracted = file_utils.TempFile(None, file_ext=".wav")
+                    ffmpeg_utils.extract_audio_wav(
                         origin_media_path, audio_extracted.getname())
 
                     # transcribe saving subtitles to temp .srt file
