@@ -14,7 +14,7 @@ def transcribe_audio(model: whisperx.asr.WhisperModel, audio_path: str, srt_path
 
     # Align   # Disable for while dont working
     model_a, metadata = whisperx.load_align_model(language_code=lang, device="cpu")  # force load on cpu due errors on gpu
-    transcribe = whisperx.align(transcript=transcribe["segments"], model=model_a, align_model_metadata=metadata, audio=audio, device=device, return_char_alignments=False)
+    transcribe = whisperx.align(transcript=transcribe["segments"], model=model_a, align_model_metadata=metadata, audio=audio, device="cpu", return_char_alignments=False)
 
     segments = transcribe['segments']
 
