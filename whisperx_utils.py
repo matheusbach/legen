@@ -2,21 +2,19 @@ import os
 
 import pysrt
 import whisperx
-import gc 
 
 batch_size = 4  # reduce if low on GPU mem
 
+
 def transcribe_audio(model: whisperx.asr.WhisperModel, audio_path: str, srt_path: str, lang: str = None, disable_fp16: bool = False, device: str = "cpu"):
     audio = whisperx.load_audio(file=audio_path)
-    
+
     # Transcribe
-    transcribe = model.transcribe(
-        audio=audio, language=lang, batch_size=batch_size)
+    transcribe = model.transcribe(audio=audio, language=lang, batch_size=batch_size)
 
     # Align   # Disable for while dont working
-    # print("Aligning subtitles")
-    #model_a, metadata = whisperx.load_align_model(language_code=lang, device=model.device)
-    #transcribe = whisperx.align(transcript=transcribe["segments"], model=model_a, align_model_metadata=metadata, audio=audio, device=device, return_char_alignments=False)
+    model_a, metadata = whisperx.load_align_model(language_code=lang, device="cpu")  # force load on cpu due errors on gpu
+    transcribe = whisperx.align(transcript=transcribe["segments"], model=model_a, align_model_metadata=metadata, audio=audio, device=device, return_char_alignments=False)
 
     segments = transcribe['segments']
 

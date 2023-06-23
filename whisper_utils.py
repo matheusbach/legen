@@ -5,7 +5,7 @@ import whisper
 import whisper.transcribe
 
 
-def transcribe_audio(model: str, audio_path: str, srt_path: str, lang: str = None, disable_fp16: bool = False):
+def transcribe_audio(model: whisper.model, audio_path: str, srt_path: str, lang: str = None, disable_fp16: bool = False):
     # Transcribe
     transcribe = model.transcribe(
         audio=audio_path, language=lang, fp16=False if disable_fp16 else True, verbose=False)
