@@ -7,7 +7,7 @@ import ffmpeg_utils
 import file_utils
 import translate_utils
 
-version = "v0.9"
+version = "v0.10"
 
 # Terminal colors
 default = "\033[1;0m"

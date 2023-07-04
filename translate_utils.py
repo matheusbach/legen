@@ -1,9 +1,9 @@
 import os
-import time
 
 import deep_translator
 import pysrt
-from tqdm import tqdm
+import asyncio
+import tqdm.asyncio
 
 # all entence endings for japanese and normal people languages
 sentence_endings = ['.', '!', '?', ')', 'よ',
@@ -12,6 +12,7 @@ sentence_endings = ['.', '!', '?', ')', 'よ',
 # a good separator is a char or string that doenst change the translation quality but is near ever preserved in result at same or near position
 separator = " ◌ "
 separator_unjoin = separator.replace(' ', '')
+chunk_max_chars = 4999
 
 
 def translate_srt_file(srt_file_path, translated_subtitle_path, target_lang):
@@ -21,31 +22,45 @@ def translate_srt_file(srt_file_path, translated_subtitle_path, target_lang):
     # Extract the subtitle content and store it in a list
     sub_content = [sub.text for sub in subs]
 
-    translated_texts = []
-    chunk_max_chars = 4000
-    chunks = []
-    unjoined_texts = []
+    # Make chunks of at maximum $chunk_max_chars to stay under Google Translate public API limits
+    chunks = join_sentences(sub_content, chunk_max_chars) or []
 
-    # make chunks of at maximum $chunk_max_chars to stay under Google Translate public API limits
-    for line in sub_content:
-        chunks.append(line)
-    # join lines in each chunk
-    chunks = join_sentences(chunks, chunk_max_chars)
+    # Empty list to store enumerated translated chunks
+    translated_chunks = [None] * len(chunks)
 
-    for chunk in tqdm(chunks, desc="Translating", unit="chunks", unit_scale=True, leave=True, bar_format="{desc} {percentage:3.0f}% | ETA: {remaining}"):
-        while True:
-            try:
-                # Translate the subtitle content of the chunk using Google Translate
-                translated_texts = deep_translator.GoogleTranslator(
-                    source='auto', target=target_lang).translate(chunk)
-                
-                # Unjoin lines within each chunk that end with a sentence ending
-                unjoined_texts.extend(unjoin_sentences(chunk, translated_texts, separator_unjoin))
-                break
-            except Exception as e:
-                # If an error occurred, retry
-                print(f"Error occurred: {e}. Retrying in 30 seconds...")
-                time.sleep(30)
+    tasks = []
+    # Limit to 5 concomitant running tasks
+    semaphore = asyncio.Semaphore(5)
+
+    # Async chunks translate function
+    async def translate_async():
+        async def run_translate(index, chunk, lang):
+                while True:
+                    try:
+                        async with semaphore:
+                            result = await translate_chunk(index, chunk, lang)
+                        translated_chunks[index] = result
+                        break
+                    except Exception:
+                        # Restart task
+                        await asyncio.sleep(3)
+
+        for index, chunk in enumerate(chunks):
+            task = asyncio.create_task(
+                run_translate(index, chunk, target_lang))
+            tasks.append(task)
+
+        for tsk in tqdm.asyncio.tqdm_asyncio.as_completed(tasks, total=len(tasks), desc="Translating", unit="chunks", unit_scale=False, leave=True, bar_format="{desc} {percentage:3.0f}% | {n_fmt}/{total_fmt} | ETA: {remaining}"):
+            await tsk
+
+    # Cria um loop de eventos e executa as tasks
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(translate_async())
+
+    # Unjoin lines within each chunk that end with a sentence ending
+    unjoined_texts = [unjoin_sentences(
+        chunk, translated_chunks[i], separator_unjoin) or "" for i, chunk in enumerate(chunks)]
+    unjoined_texts = [text for sublist in unjoined_texts for text in sublist]
 
     # Combine the original and translated subtitle content
     for i, sub in enumerate(subs):
@@ -56,6 +71,22 @@ def translate_srt_file(srt_file_path, translated_subtitle_path, target_lang):
     subs.save(translated_subtitle_path, encoding='utf-8')
 
     return subs
+
+# Async chunk translate function
+
+
+async def translate_chunk(index, chunk, target_lang):
+    while True:
+        try:
+            async with asyncio.timeout(120):
+                # Translate the subtitle content of the chunk using Google Translate
+                translated_chunk = await asyncio.get_event_loop().run_in_executor(None, deep_translator.GoogleTranslator(source='auto', target=target_lang).translate, chunk)
+            await asyncio.sleep(0)
+            return translated_chunk
+        except Exception as e:
+            # If an error occurred, retry
+            print(f"\r[chunk {index}]: Exception: {e.__doc__} Retrying in 30 seconds...", flush=True)
+            await asyncio.sleep(30)
 
 
 def join_sentences(lines, max_chars):
@@ -80,39 +111,42 @@ def join_sentences(lines, max_chars):
                 current_chunk += line + separator
             else:
                 # if a single line exceed max_chars, use maximum posible number of words. Discart the remaining
-                end_index = line.rfind(' ', 0, max_chars - 1)
+                end_index = line.rfind(' ', 0, max_chars - (1 + len(separator)))
 
-                if end_index == -1:
-                    end_index = max_chars - 1
+                if end_index == - (1 + len(separator)):
+                    end_index = max_chars - (1 + len(separator))
 
-                joined_lines.append((line[:end_index] + '…')[:max_chars])
-                    
+                joined_lines.append((line[:end_index] + '…' + separator)[:max_chars])
+
     # append a chunk wich doenst have a formal end with sentence endings
     if current_chunk:
         joined_lines.append(current_chunk.strip())
 
     return joined_lines
 
+
 def unjoin_sentences(original_sentence, modified_sentence, separator):
     """
     Splits the original and modified sentences into lines based on the separator.
     Tries to match the number of lines between the original and modified sentences.
     """
-    
+
     if modified_sentence is None and original_sentence is not None:
-        return original_sentence
-    
+        return ''
+
     # split by separator, remove double spaces and empty or only space strings strings from list
     original_lines = original_sentence.split(separator)
-    original_lines = [s.strip().replace('  ', ' ') for s in original_lines if s.strip()]
+    original_lines = [s.strip().replace('  ', ' ')
+                      for s in original_lines if s.strip()]
     original_lines = [s for s in original_lines if s]
     original_lines = [s for s in original_lines if s.strip()]
     # split by separator, remove double spaces and empty or only space strings from list
     modified_lines = modified_sentence.split(separator)
-    modified_lines = [s.strip().replace('  ', ' ') for s in modified_lines if s.strip()]
+    modified_lines = [s.strip().replace('  ', ' ')
+                      for s in modified_lines if s.strip()]
     modified_lines = [s for s in modified_lines if s]
     modified_lines = [s for s in modified_lines if s.strip()]
-    
+
     # if original lines is "silence" sign, doenst translate
     if original_lines == "..." or original_lines == "…":
         return original_lines
@@ -122,35 +156,44 @@ def unjoin_sentences(original_sentence, modified_sentence, separator):
         return modified_lines
 
     # zero words? return original sentence, removing separator
-    original_word_count = sum(len(line.strip().split()) for line in original_lines)
+    original_word_count = sum(len(line.strip().split())
+                              for line in original_lines)
     modified_word_count = len(' '.join(modified_lines).strip().split())
     if original_word_count == 0 or modified_word_count == 0:
         return original_sentence.replace(separator, ' ').replace('  ', ' ')
-    
+
     # calculate proportion of words between original and translated
     modified_words_proportion = modified_word_count / original_word_count
     # list all modified words
-    modified_words = ' '.join(modified_lines).replace(separator, "").replace(separator_unjoin, "").replace("  ", " ").strip().split(' ')
-        
+    modified_words = ' '.join(modified_lines).replace(separator, "").replace(
+        separator_unjoin, "").replace("  ", " ").strip().split(' ')
+
     new_modified_lines = []
     current_index = 0
 
     # reconstruct lines based on proportion of original and translated words
     for i in range(len(original_lines)):
         # Calculate the number of words for the current modified sentence
-        num_words = int(round(len(original_lines[i].strip().split()) * modified_words_proportion))
+        num_words = int(
+            round(len(original_lines[i].strip().split()) * modified_words_proportion))
 
         # Extract words from modified list
-        generated_line = ' '.join(modified_words[current_index:current_index+num_words])
-        
+        generated_line = ' '.join(
+            modified_words[current_index:current_index+num_words])
+
         # Update the current index
         current_index += num_words
-        
+
         # append remaining if is the last loop
         if i == len(original_lines) - 1:
-            ' '.join([generated_line, ' '.join(modified_words[current_index:])])
+            ' '.join([generated_line, ' '.join(
+                modified_words[current_index:])])
 
         # Add modified sentence to the new list
         new_modified_lines.append(generated_line.replace("  ", " ").strip())
+
+    # case it continues being shorter
+    while len(new_modified_lines) < len(original_lines):
+        new_modified_lines.append(new_modified_lines[-1])
 
     return new_modified_lines
