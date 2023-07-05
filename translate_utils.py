@@ -29,21 +29,21 @@ def translate_srt_file(srt_file_path, translated_subtitle_path, target_lang):
     translated_chunks = [None] * len(chunks)
 
     tasks = []
-    # Limit to 5 concomitant running tasks
-    semaphore = asyncio.Semaphore(5)
+    # Limit to 7 concomitant running tasks
+    semaphore = asyncio.Semaphore(7)
 
     # Async chunks translate function
     async def translate_async():
         async def run_translate(index, chunk, lang):
-                while True:
-                    try:
-                        async with semaphore:
-                            result = await translate_chunk(index, chunk, lang)
-                        translated_chunks[index] = result
-                        break
-                    except Exception:
-                        # Restart task
-                        await asyncio.sleep(3)
+            while True:
+                try:
+                    async with semaphore:
+                        result = await translate_chunk(index, chunk, lang)
+                    translated_chunks[index] = result
+                    break
+                except Exception:
+                    # Restart task
+                    await asyncio.sleep(3)
 
         for index, chunk in enumerate(chunks):
             task = asyncio.create_task(
@@ -80,11 +80,15 @@ async def translate_chunk(index, chunk, target_lang):
         try:
             async with asyncio.timeout(120):
                 # Translate the subtitle content of the chunk using Google Translate
-                translated_chunk = await asyncio.get_event_loop().run_in_executor(None, deep_translator.GoogleTranslator(source='auto', target=target_lang).translate, chunk)
+                translator = deep_translator.google.GoogleTranslator(
+                    source='auto', target=target_lang)
+                translated_chunk = await asyncio.get_event_loop().run_in_executor(None, translator.translate, chunk)
+                del translator
             await asyncio.sleep(0)
             return translated_chunk
         except Exception as e:
             # If an error occurred, retry
+            del translator
             print(f"\r[chunk {index}]: Exception: {e.__doc__} Retrying in 30 seconds...", flush=True)
             await asyncio.sleep(30)
 
@@ -98,29 +102,35 @@ def join_sentences(lines, max_chars):
     current_chunk = ""
 
     for line in lines:
+        if not line:
+            line = 'ㅤ' # invisible char (not a simple space)
+            
         if len(current_chunk) + len(line) + len(separator) <= max_chars:
             current_chunk += line + separator
             if any(line.endswith(ending) for ending in sentence_endings):
-                joined_lines.append(current_chunk.strip())
+                joined_lines.append(current_chunk)
                 current_chunk = ""
         else:
             if current_chunk:
-                joined_lines.append(current_chunk.strip())
+                joined_lines.append(current_chunk)
                 current_chunk = ""
             if len(current_chunk) + len(line) + len(separator) <= max_chars:
                 current_chunk += line + separator
             else:
                 # if a single line exceed max_chars, use maximum posible number of words. Discart the remaining
-                end_index = line.rfind(' ', 0, max_chars - (1 + len(separator)))
+                end_index = line.rfind(
+                    ' ', 0, max_chars - (1 + len(separator)))
 
                 if end_index == - (1 + len(separator)):
                     end_index = max_chars - (1 + len(separator))
 
-                joined_lines.append((line[:end_index] + '…' + separator)[:max_chars])
+                joined_lines.append(
+                    (line[:end_index] + '…' + separator)[:max_chars])
+
 
     # append a chunk wich doenst have a formal end with sentence endings
     if current_chunk:
-        joined_lines.append(current_chunk.strip())
+        joined_lines.append(current_chunk)
 
     return joined_lines
 
