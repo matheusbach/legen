@@ -102,7 +102,7 @@ def join_sentences(lines, max_chars):
     current_chunk = ""
 
     for line in lines:
-        if not line:
+        if not line or line is None:
             line = 'ㅤ' # invisible char (not a simple space)
             
         if len(current_chunk) + len(line) + len(separator) <= max_chars:
@@ -135,14 +135,19 @@ def join_sentences(lines, max_chars):
     return joined_lines
 
 
-def unjoin_sentences(original_sentence, modified_sentence, separator):
+def unjoin_sentences(original_sentence: str, modified_sentence: str, separator: str):
     """
     Splits the original and modified sentences into lines based on the separator.
     Tries to match the number of lines between the original and modified sentences.
     """
 
     if modified_sentence is None and original_sentence is not None:
-        return ''
+        return original_sentence
+    elif modified_sentence is None:
+        return ' '
+
+    # fix strange formatation returned by google translate, case occuring
+    modified_sentence.replace(f"{separator_unjoin} ", f"{separator_unjoin}").replace(f" {separator_unjoin}", f"{separator_unjoin}").replace(f"{separator_unjoin}.", f".{separator_unjoin}").replace(f"{separator_unjoin},", f",{separator_unjoin}")
 
     # split by separator, remove double spaces and empty or only space strings strings from list
     original_lines = original_sentence.split(separator)
@@ -151,7 +156,7 @@ def unjoin_sentences(original_sentence, modified_sentence, separator):
     original_lines = [s for s in original_lines if s]
     original_lines = [s for s in original_lines if s.strip()]
     # split by separator, remove double spaces and empty or only space strings from list
-    modified_lines = modified_sentence.split(separator)
+    modified_lines = modified_sentence.split(separator_unjoin)
     modified_lines = [s.strip().replace('  ', ' ')
                       for s in modified_lines if s.strip()]
     modified_lines = [s for s in modified_lines if s]
