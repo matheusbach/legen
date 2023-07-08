@@ -38,7 +38,7 @@ def translate_srt_file(srt_file_path, translated_subtitle_path, target_lang):
             while True:
                 try:
                     async with semaphore:
-                        result = await translate_chunk(index, chunk, lang)
+                        result = await asyncio.wait_for(translate_chunk(index, chunk, lang), 120)
                     translated_chunks[index] = result
                     break
                 except Exception:
@@ -78,12 +78,11 @@ def translate_srt_file(srt_file_path, translated_subtitle_path, target_lang):
 async def translate_chunk(index, chunk, target_lang):
     while True:
         try:
-            async with asyncio.timeout(120):
+    
                 # Translate the subtitle content of the chunk using Google Translate
-                translator = deep_translator.google.GoogleTranslator(
-                    source='auto', target=target_lang)
-                translated_chunk = await asyncio.get_event_loop().run_in_executor(None, translator.translate, chunk)
-                del translator
+            translator = deep_translator.google.GoogleTranslator(
+                source='auto', target=target_lang)
+            translated_chunk = await asyncio.wait_for(asyncio.get_event_loop().run_in_executor(None, translator.translate, chunk), 30)
             await asyncio.sleep(0)
             return translated_chunk
         except Exception as e:

@@ -7,7 +7,7 @@ import ffmpeg_utils
 import file_utils
 import translate_utils
 
-version = "v0.10"
+version = "v0.10.1"
 
 # Terminal colors
 default = "\033[1;0m"
@@ -28,7 +28,8 @@ print(f"""
 {blue}888     Y8b.     {gray}Y88b  d88P Y8b.     888  888
 {blue}88888888 "Y8888  {gray} "Y8888P88  "Y8888  888  888
 
-{version} - github.com/matheusbach/legen{default}
+legen {version} - github.com/matheusbach/legen{default}
+python {__import__('sys').version}
 """)
 time.sleep(1.5)
 
