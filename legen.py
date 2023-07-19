@@ -181,7 +181,7 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
 
                 # skip transcription if transcribed srt for this language is existing (without overwrite neabled) or will not be used in LeGen process
                 if (file_utils.file_is_valid(subtitle_transcribed_path)) or ((args.disable_burn or file_utils.file_is_valid(burned_video_path)) and (args.disable_srt or file_utils.file_is_valid(subtitle_transcribed_path))) and not args.overwrite:
-                    print("Transcription is unecessary. Skipping.")
+                    print("Transcription is unnecessary. Skipping.")
                 else:
                     # extract audio
                     audio_extracted = file_utils.TempFile(None, file_ext=".wav")
@@ -209,9 +209,9 @@ for dirpath, dirnames, filenames in os.walk(input_dir):
                 # translate transcribed subtitle using Google Translate if transcribed language is not equals to target
                 # skip translation if translation has equal source and output language, if file is existing (without overwrite neabled) or will not be used in LeGen process
                 if args.lang == audio_language:
-                    print("Translation is unecessary because input and output language are the same. Skipping.")
+                    print("Translation is unnecessary because input and output language are the same. Skipping.")
                 elif (args.disable_burn or file_utils.file_is_valid(burned_video_path)) and (args.disable_srt or file_utils.file_is_valid(subtitle_translated_path)) and not args.overwrite:
-                    print("Translation is unecessary. Skipping.")
+                    print("Translation is unnecessary. Skipping.")
                 elif file_utils.file_is_valid(subtitle_translated_path):
                     print("Translated file found. Skipping translation.")
                     subtitles_path.insert(0, subtitle_translated_path)
