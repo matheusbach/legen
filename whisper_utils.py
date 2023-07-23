@@ -1,14 +1,15 @@
 import os
+from pathlib import Path
 
 import pysrt
 import whisper
 import whisper.transcribe
 
 
-def transcribe_audio(model: whisper.model, audio_path: str, srt_path: str, lang: str = None, disable_fp16: bool = False):
+def transcribe_audio(model: whisper.model, audio_path: Path, srt_path: Path, lang: str = None, disable_fp16: bool = False):
     # Transcribe
     transcribe = model.transcribe(
-        audio=audio_path, language=lang, fp16=False if disable_fp16 else True, verbose=False)
+        audio=audio_path.as_posix(), language=lang, fp16=False if disable_fp16 else True, verbose=False)
 
     segments = transcribe['segments']
 
@@ -29,15 +30,15 @@ def transcribe_audio(model: whisper.model, audio_path: str, srt_path: str, lang:
         sub_idx += 1
 
     # make dir and save .srt
-    os.makedirs(os.path.dirname(srt_path), exist_ok=True)
+    os.makedirs(srt_path.parent, exist_ok=True)
     subs.save(srt_path)
 
     return transcribe
 
 
-def detect_language(model: str, audio_path: str):
+def detect_language(model: str, audio_path: Path):
     # load audio and pad/trim it to fit 30 seconds
-    audio = whisper.load_audio(audio_path)
+    audio = whisper.load_audio(audio_path.as_posix())
     audio = whisper.pad_or_trim(audio)
     # make log-Mel spectrogram and move to the same device as the model
     mel = whisper.log_mel_spectrogram(audio).to(model.device)

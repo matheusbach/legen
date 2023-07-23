@@ -1,8 +1,9 @@
+import asyncio
 import os
+from pathlib import Path
 
 import deep_translator
 import pysrt
-import asyncio
 import tqdm.asyncio
 
 # all entence endings for japanese and normal people languages
@@ -15,7 +16,7 @@ separator_unjoin = separator.replace(' ', '')
 chunk_max_chars = 4999
 
 
-def translate_srt_file(srt_file_path, translated_subtitle_path, target_lang):
+def translate_srt_file(srt_file_path: Path, translated_subtitle_path: Path, target_lang):
     # Load the original SRT file
     subs = pysrt.open(srt_file_path, encoding='utf-8')
 
@@ -67,7 +68,7 @@ def translate_srt_file(srt_file_path, translated_subtitle_path, target_lang):
         sub.text = unjoined_texts[i]
 
     # Save the translated SRT file
-    os.makedirs(os.path.dirname(translated_subtitle_path), exist_ok=True)
+    os.makedirs(translated_subtitle_path.parent, exist_ok=True)
     subs.save(translated_subtitle_path, encoding='utf-8')
 
     return subs

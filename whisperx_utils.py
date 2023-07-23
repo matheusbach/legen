@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import pysrt
 import whisperx
@@ -6,8 +7,8 @@ import whisperx
 batch_size = 4  # reduce if low on GPU mem
 
 
-def transcribe_audio(model: whisperx.asr.WhisperModel, audio_path: str, srt_path: str, lang: str = None, disable_fp16: bool = False, device: str = "cpu"):
-    audio = whisperx.load_audio(file=audio_path)
+def transcribe_audio(model: whisperx.asr.WhisperModel, audio_path: Path, srt_path: Path, lang: str = None, disable_fp16: bool = False, device: str = "cpu"):
+    audio = whisperx.load_audio(file=audio_path.as_posix())
 
     # Transcribe
     transcribe = model.transcribe(audio=audio, language=lang, batch_size=batch_size)
@@ -35,12 +36,12 @@ def transcribe_audio(model: whisperx.asr.WhisperModel, audio_path: str, srt_path
         sub_idx += 1
 
     # make dir and save .srt
-    os.makedirs(os.path.dirname(srt_path), exist_ok=True)
+    os.makedirs(srt_path.parent, exist_ok=True)
     subs.save(srt_path)
 
     return transcribe
 
 
-def detect_language(model: whisperx.asr.WhisperModel, audio_path: str):
-    audio = whisperx.load_audio(file=audio_path)
+def detect_language(model: whisperx.asr.WhisperModel, audio_path: Path):
+    audio = whisperx.load_audio(file=audio_path.as_posix())
     return model.detect_language(audio=audio)
