@@ -124,7 +124,7 @@ def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitl
 def extract_audio_wav(input_media_path: Path, output_path: Path):
     # set the FFMpeg command
     cmd_ffmpeg = ["ffmpeg", "-y", "-i", "file:" + input_media_path.as_posix(),
-                  "-vn", "-c:a", "pcm_s16le", "-ac", "1", "-ar", "44100", "file:" + output_path.as_posix()]
+                  "-vn", "-c:a", "pcm_s16le", "-ac", "1", "-ar", "16000", "file:" + output_path.as_posix()]
 
     # run FFmpeg command with a fancy progress bar
     ff = FfmpegProgress(cmd_ffmpeg)
@@ -153,7 +153,7 @@ def extract_short_wav(input_media_path: Path, output_path: Path):
 
     # set the FFMpeg command
     cmd_ffmpeg = ["ffmpeg", "-y", "-ss", f"{start_sec}", "-t", f"{end_sec}",  "-i", "file:" + input_media_path.as_posix(),
-                  "-vn", "-c:a", "pcm_s16le", "-af", "loudnorm", "-ac", "1", "-ar", "44100", "file:" + output_path.as_posix()]
+                  "-vn", "-c:a", "pcm_s16le", "-af", "loudnorm", "-ac", "1", "-ar", "16000", "file:" + output_path.as_posix()]
 
     # run FFmpeg command with a fancy progress bar
     ff = FfmpegProgress(cmd_ffmpeg)
