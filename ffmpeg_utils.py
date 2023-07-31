@@ -121,10 +121,10 @@ def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitl
         srt_temp.destroy()
 
 
-def extract_audio_mp3(input_media_path: Path, output_path: Path):
+def extract_audio_wav(input_media_path: Path, output_path: Path):
     # set the FFMpeg command
     cmd_ffmpeg = ["ffmpeg", "-y", "-i", "file:" + input_media_path.as_posix(),
-                  "-vn", "-c:a", "libmp3lame", "-af", "loudnorm", "-ac", "1", "-ar", "44100", "file:" + output_path.as_posix()]
+                  "-vn", "-c:a", "pcm_s16le", "-ac", "1", "-ar", "44100", "file:" + output_path.as_posix()]
 
     # run FFmpeg command with a fancy progress bar
     ff = FfmpegProgress(cmd_ffmpeg)
@@ -133,7 +133,7 @@ def extract_audio_mp3(input_media_path: Path, output_path: Path):
             pbar.update(progress - pbar.n)
 
 
-def extract_short_mp3(input_media_path: Path, output_path: Path):
+def extract_short_wav(input_media_path: Path, output_path: Path):
     # get input media duration
     duration_sec = subprocess.run(["ffprobe", "-i", "file:" + input_media_path.as_posix(), "-show_entries", "format=duration", "-v", "quiet", "-of", "csv=p=0"],
                                   capture_output=True, text=True).stdout.split("\n")[0].replace("\n", "").replace(" ", "").replace("   ", "").replace("00:", "").replace(":", "").split(".")[0]
@@ -153,7 +153,7 @@ def extract_short_mp3(input_media_path: Path, output_path: Path):
 
     # set the FFMpeg command
     cmd_ffmpeg = ["ffmpeg", "-y", "-ss", f"{start_sec}", "-t", f"{end_sec}",  "-i", "file:" + input_media_path.as_posix(),
-                  "-vn", "-c:a", "libmp3lame", "-af", "loudnorm", "-ac", "1", "-ar", "44100", "file:" + output_path.as_posix()]
+                  "-vn", "-c:a", "pcm_s16le", "-af", "loudnorm", "-ac", "1", "-ar", "44100", "file:" + output_path.as_posix()]
 
     # run FFmpeg command with a fancy progress bar
     ff = FfmpegProgress(cmd_ffmpeg)

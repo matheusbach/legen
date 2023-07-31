@@ -5,11 +5,16 @@ import time
 from inspect import currentframe, getframeinfo
 from pathlib import Path, PurePath, PurePosixPath
 
+try:
+    import tensorflow  # required in Colab to avoid protobuf compatibility issues
+except ImportError:
+    pass
+
 import ffmpeg_utils
 import file_utils
 import translate_utils
 
-version = "v0.11"
+version = "v0.11.1"
 
 # Terminal colors
 default = "\033[1;0m"
@@ -84,6 +89,7 @@ args = parser.parse_args()
 
 input_dir: Path = Path(args.input_dir)
 
+# input needs to be a directory (is good to suport single file in future)
 if not input_dir.is_dir():
     print(f"{red}Invalid input{default} {args.input_dir}\nYou must insert a folder (directory) as input parater. Create a new one containing the files(s) if necessary")
     raise SystemExit
@@ -167,8 +173,8 @@ for path in (item for item in sorted(sorted(Path(input_dir).rglob('*'), key=lamb
             if args.input_lang == "auto":
                 # extract audio
                 audio_short_extracted = file_utils.TempFile(
-                    None, file_ext=".mp3")
-                ffmpeg_utils.extract_short_mp3(
+                    None, file_ext=".wav")
+                ffmpeg_utils.extract_short_wav(
                     origin_media_path, audio_short_extracted.getpath())
                 # detect language
                 print("Detecting audio language: ", end='', flush=True)
@@ -196,8 +202,8 @@ for path in (item for item in sorted(sorted(Path(input_dir).rglob('*'), key=lamb
                 print("Transcription is unnecessary. Skipping.")
             else:
                 # extract audio
-                audio_extracted = file_utils.TempFile(None, file_ext=".mp3")
-                ffmpeg_utils.extract_audio_mp3(
+                audio_extracted = file_utils.TempFile(None, file_ext=".wav")
+                ffmpeg_utils.extract_audio_wav(
                     origin_media_path, audio_extracted.getpath())
                 # transcribe saving subtitles to temp .srt file
                 if args.whisperx:
