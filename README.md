@@ -28,7 +28,8 @@ in LeGen folder:
 git pull
 ```
 
-### Or [run on colab](https://colab.research.google.com/github/matheusbach/legen/blob/main/legen.ipynb)
+### Or [run on Google Colab](https://colab.research.google.com/github/matheusbach/legen/blob/main/legen.ipynb)
+ <a href='https://colab.research.google.com/github/matheusbach/legen/blob/main/legen.ipynb' style='padding-left: 0.5rem;'><img src='https://colab.research.google.com/assets/colab-badge.svg' alt='Google Colab'></a>
 
 ## Usage:
 
