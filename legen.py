@@ -5,11 +5,6 @@ import time
 from inspect import currentframe, getframeinfo
 from pathlib import Path, PurePath, PurePosixPath
 
-try:
-    import tensorflow  # required in Colab to avoid protobuf compatibility issues
-except ImportError:
-    pass
-
 import ffmpeg_utils
 import file_utils
 import translate_utils
