@@ -28,6 +28,8 @@ in LeGen folder:
 git pull
 ```
 
+### Or [run on colab](https://colab.research.google.com/github/matheusbach/legen/blob/main/legen.ipynb)
+
 ## Usage:
 
 To use LeGen, run the following command:
