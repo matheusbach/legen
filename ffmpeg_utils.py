@@ -24,13 +24,13 @@ def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitl
 
     # add ffmpeg input main media
     cmd_ffmpeg.extend(["-i", "file:" + input_media_path.as_posix()])
-    # map everything from input media
+    # map video stream, audio, subtitle, data and metadata 
     map_index = cmd_ffmpeg.count("-i") - 1
-    cmd_ffmpeg_input_map.extend(["-map", f"{map_index}"])
+    cmd_ffmpeg_input_map.extend(["-map", f"{map_index}:V", "-map", f"{map_index}:a", "-map", f"{map_index}:s?", "-map", f"{map_index}:d?", "-map", f"{map_index}:t?", "-map", f"{map_index}:m?"])
 
     # detect if input has video channels
     result: str = subprocess.run(["ffprobe", "-i", "file:" + input_media_path.as_posix(), "-show_streams",
-                                 "-select_streams", "v", "-loglevel", "error"], capture_output=True, text=True).stdout
+                                 "-select_streams", "V", "-loglevel", "error"], capture_output=True, text=True).stdout
     no_video = True if result is None or "DISPOSITION:attached_pic=0" not in result else False
 
     # if input has no video channels, map a 1280x720 black screen
@@ -50,9 +50,9 @@ def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitl
         cmd_ffmpeg.extend(["-t", f"{duration_sec}", "-loop", "1",
                           "-framerate", "10", "-i", background_tempfile.getpath().as_posix()])
         map_index = cmd_ffmpeg.count("-i") - 1
-        # unmap #0, remap #0 with only audio and subtitles stream, map #1 (generated video from image)
+        # unmap #0, remap #0 with no video, map #1 (generated video from image)
         cmd_ffmpeg_input_map.extend(
-            ["-map", "-0", "-map", "0:a", "-map", "0:s?", "-map", f"{map_index}:v"])
+            ["-map", f"{map_index}:a", "-map", f"{map_index}:s?", "-map", f"{map_index}:d?", "-map", f"{map_index}:t?", "-map", f"{map_index}:m?", "-map", f"{map_index}:V"])
 
     # map each subtitle
     for i, subtitle in enumerate(subtitles_path):
@@ -103,7 +103,7 @@ def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitl
         cmd_ffmpeg.extend(["-init_hw_device", hw_device])
 
     # add the remaining parameters and output path
-    cmd_ffmpeg.extend(["-c:v", video_codec, "-c:a", audio_codec, "-c:s", "mov_text",
+    cmd_ffmpeg.extend(["-c:V", video_codec, "-c:a", audio_codec, "-c:s", "mov_text",
                        "-af", "loudnorm", "-crf", str(
                            crf), "-maxrate", maxrate,
                        "-bufsize", bufsize, "-pix_fmt", "yuv420p",
