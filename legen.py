@@ -9,7 +9,7 @@ import ffmpeg_utils
 import file_utils
 import translate_utils
 
-version = "v0.11.1"
+version = "v0.12"
 
 # Terminal colors
 default = "\033[1;0m"
@@ -42,6 +42,8 @@ parser.add_argument("-i", "--input_dir", type=str,
                     help="Caminho da pasta onde os vídeos e/ou audios originais estão localizados.", required=True)
 parser.add_argument("--use_vidqa", default=False, action="store_true",
                     help="Run vidqa in input folder before start LeGen processing.")
+parser.add_argument("--norm", default=False, action="store_true",
+                    help="Update folder times and run vidqa in input folder before start LeGen processing.")
 parser.add_argument("--whisperx", default=False, action="store_true",
                     help="Use m-bain/whisperX instead openai/whisper. Unstable!")
 parser.add_argument("--model", type=str, default="medium",
@@ -112,7 +114,6 @@ args.model = "large-v2" if args.model == "large" else args.model
 
 # ----------------------------------------------------------------------------
 
-# normalize video using vidqa
 if args.use_vidqa:
     print(f"Running {wblue}vidqa{default} in {gray}{input_dir}{default}")
     subprocess.run(["vidqa", "-i", input_dir, "-m", "unique", "-fd",
@@ -127,6 +128,8 @@ if args.whisperx:
     import whisperx_utils
     whisper_model = whisperx.load_model(
         whisper_arch=args.model, device=torch_device, compute_type="float16" if not disable_fp16 else "float32")
+       # whisper_arch=args.model, device=torch_device, compute_type="float16" if not disable_fp16 else "float32")
+        whisper_arch = args.model, device = torch_device, compute_type = "int8")
 else:
     import whisper
 
