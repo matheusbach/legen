@@ -9,7 +9,7 @@ import ffmpeg_utils
 import file_utils
 import translate_utils
 
-version = "v0.12"
+version = "v0.13"
 
 # Terminal colors
 default = "\033[1;0m"
@@ -48,6 +48,8 @@ parser.add_argument("--model", type=str, default="medium",
                     help="Caminho ou nome do modelo de transcrição Whisper. (default: medium)")
 parser.add_argument("--dev", type=str, default="auto",
                     help="Dispositivo para rodar a transcrição pelo Whisper. [cpu, cuda, auto]. (default: auto)")
+parser.add_argument("--compute_type", type=str, default="default",
+                    help="Quantization for the neural network. Ex: float32, float16, int8, ...")
 parser.add_argument("--lang", type=str, default="pt",
                     help="Idioma para o qual as legendas devem ser traduzidas. Language equals to source video skip translation (default: pt)")
 parser.add_argument("--input_lang", type=str, default="auto",
@@ -103,7 +105,7 @@ if args.dev == "auto":
 else:
     torch_device = str.lower(args.dev)
 
-disable_fp16 = True if torch_device == "cpu" else False
+compute_type = args.compute_type if args.compute_type != "default" else "float16" if not torch_device == "cpu" else "float32"
 
 if args.only_srt_subtitles:
     args.only_video = True
@@ -129,9 +131,7 @@ if args.whisperx:
 
     import whisperx_utils
     whisper_model = whisperx.load_model(
-        whisper_arch=args.model, device=torch_device, compute_type="float16" if not disable_fp16 else "float32")
-       # whisper_arch=args.model, device=torch_device, compute_type="float16" if not disable_fp16 else "float32")
-        whisper_arch = args.model, device = torch_device, compute_type = "int8")
+        whisper_arch=args.model, device=torch_device, compute_type=compute_type)
 else:
     import whisper
 
@@ -206,12 +206,12 @@ for path in (item for item in sorted(sorted(Path(input_dir).rglob('*'), key=lamb
                     print(
                         f"{wblue}Transcribing{default} with {gray}WhisperX{default}")
                     whisperx_utils.transcribe_audio(
-                        whisper_model, audio_extracted.getpath(), transcribed_srt_temp.getpath(), audio_language, disable_fp16, device=torch_device)
+                        whisper_model, audio_extracted.getpath(), transcribed_srt_temp.getpath(), audio_language, device=torch_device)
                 else:
                     print(
                         f"{wblue}Transcribing{default} with {gray}Whisper{default}")
                     whisper_utils.transcribe_audio(
-                        whisper_model, audio_extracted.getpath(), transcribed_srt_temp.getpath(), audio_language, disable_fp16)
+                        model=whisper_model, audio_path=audio_extracted.getpath(), srt_path=transcribed_srt_temp.getpath(), lang=audio_language, disable_fp16=True if compute_type == "float16" or compute_type == "fp16" else False)
 
                 audio_extracted.destroy()
                 # if save .srt is enabled, save it to destination dir, also update path with language code
