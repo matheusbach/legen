@@ -9,7 +9,7 @@ import ffmpeg_utils
 import file_utils
 import translate_utils
 
-version = "v0.13"
+version = "v0.14"
 
 # Terminal colors
 default = "\033[1;0m"
@@ -54,16 +54,10 @@ parser.add_argument("--lang", type=str, default="pt",
                     help="Idioma para o qual as legendas devem ser traduzidas. Language equals to source video skip translation (default: pt)")
 parser.add_argument("--input_lang", type=str, default="auto",
                     help="Indica (força) idioma da voz das midias de entrada (default: auto)")
-parser.add_argument("--crf", type=int, default=20,
-                    help="Valor CRF a ser usado no vídeo. (default: 20)")
-parser.add_argument("--maxrate", type=str, default="2M",
-                    help="Maxrate a ser usado no vídeo. (default: 2M)")
 parser.add_argument("-c:v", "--video_codec", type=str, default="h264",
                     help="Codec de vídeo destino. Pode ser usado para definir aceleração via GPU ou outra API de video [codec_api], se suportado (ffmpeg -encoders). Ex: h264, libx264, h264_vaapi, h264_nvenc, hevc, libx265 hevc_vaapi, hevc_nvenc, hevc_cuvid, hevc_qsv, hevc_amf (default: h264)")
 parser.add_argument("-c:a", "--audio_codec", type=str, default="aac",
                     help="Codec de audio destino. (default: aac). Ex: aac, libopus, mp3, vorbis")
-parser.add_argument("--preset", type=str, default=None,
-                    help="ffmpeg codec preset. (default: auto / default of current codec). Ex: ultrafast, veryfast, fast, medium, slow, slower, veryslow")
 parser.add_argument("--subtitle_margin", type=int, default=10,
                     help="Burned subtitle horizontal margins. 100 is about half line size. Useful for fast-reading (default: 10)")
 parser.add_argument("--srt_out_dir", type=str, default=None,

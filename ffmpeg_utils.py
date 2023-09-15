@@ -10,11 +10,7 @@ from tqdm import tqdm
 import file_utils
 
 
-def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitles: bool, output_video_path: Path, crf: int = 20, maxrate: str = "2M", video_codec: str = "h264", audio_codec: str = "aac", preset: str = None, subtitle_margin: int = 10):
-    # set bufsize as double of maxrate
-    bufsize = str(float(re.match(r"([0-9.]+)([a-zA-Z]*)", maxrate).group(1))
-                  * 3) + re.match(r"([0-9.]+)([a-zA-Z]*)", maxrate).group(2)
-
+def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitles: bool, output_video_path: Path, video_codec: str = "h264", audio_codec: str = "aac", subtitle_margin: int = 10):
     # use only valid srt files
     subtitles_path: [Path] = file_utils.validate_files(subtitles_path)
 
@@ -95,19 +91,14 @@ def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitl
 
     cmd_ffmpeg.extend(cmd_ffmpeg_input_map)
 
-    if preset is not None:
-        cmd_ffmpeg.extend(["-preset", preset])
-
     # init a hw_device if hwupload is set on video filters
     if hw_device is not None:
         cmd_ffmpeg.extend(["-init_hw_device", hw_device])
 
     # add the remaining parameters and output path
     cmd_ffmpeg.extend(["-c:V", video_codec, "-c:a", audio_codec, "-c:s", "mov_text",
-                       "-af", "loudnorm", "-crf", str(
-                           crf), "-maxrate", maxrate,
-                       "-bufsize", bufsize, "-pix_fmt", "yuv420p",
-                       "-movflags", "+faststart", "-sws_flags", "bicubic+accurate_rnd+full_chroma_int+full_chroma_inp",
+                       "-af", "loudnorm", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+                       "-sws_flags", "bicubic+accurate_rnd+full_chroma_int+full_chroma_inp",
                        "file:" + output_video_path.as_posix()])
 
     # run FFmpeg command with a fancy progress bar
