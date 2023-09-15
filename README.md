@@ -47,6 +47,7 @@ The available arguments are:
 -    **--whisperx**: Use m-bain/whisperX implementation instead of openai/whisper. Unstable!
 -    **--model**: Path or name of the Whisper transcription model to use (default: "medium").
 -    **--dev**: Device to use for the Whisper transcription (options: "cpu", "cuda", "auto"; default: "auto").
+-    **--compute_type**: Quantization for the neural network. Ex: float32, float16, int16, int8, ...
 -    **--lang**: Language code to use for the subtitles translation (default: "pt").
 -    **--crf**: CRF value to use for the output video (default: 20).
 -    **--maxrate**: Maxrate value to use for the output video (default: "2M").
