@@ -40,8 +40,6 @@ parser = argparse.ArgumentParser(prog="LeGen", description="Normaliza arquivos d
                                  argument_default=True, allow_abbrev=True, add_help=True)
 parser.add_argument("-i", "--input_dir", type=str,
                     help="Caminho da pasta onde os vídeos e/ou audios originais estão localizados.", required=True)
-parser.add_argument("--use_vidqa", default=False, action="store_true",
-                    help="Run vidqa in input folder before start LeGen processing.")
 parser.add_argument("--norm", default=False, action="store_true",
                     help="Update folder times and run vidqa in input folder before start LeGen processing.")
 parser.add_argument("--whisperx", default=False, action="store_true",
@@ -114,10 +112,14 @@ args.model = "large-v2" if args.model == "large" else args.model
 
 # ----------------------------------------------------------------------------
 
-if args.use_vidqa:
+if args.norm:
+    # normalize video using vidqa
     print(f"Running {wblue}vidqa{default} in {gray}{input_dir}{default}")
     subprocess.run(["vidqa", "-i", input_dir, "-m", "unique", "-fd",
                     Path(Path(getframeinfo(currentframe()).filename).resolve().parent, "vidqa_data")])
+    # update folder time structure
+    print("Updating folders modification times...", end='', flush=True)
+    file_utils.update_folder_times(input_dir)
 
 # load whisper model
 print(f"\nLoading " + ("WhisperX" if args.whisperx else "Whisper") +
@@ -136,10 +138,6 @@ else:
     import whisper_utils
     whisper_model = whisper.load_model(
         name=args.model, device=torch_device, in_memory=True)
-
-print("Updating folders modification times...", end='', flush=True)
-file_utils.update_folder_times(input_dir)
-print("\r                                      \r", end='', flush=True)
 
 path: Path
 for path in (item for item in sorted(sorted(Path(input_dir).rglob('*'), key=lambda x: x.stat().st_mtime), key=lambda x: len(x.parts)) if item.is_file()):
