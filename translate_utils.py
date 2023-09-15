@@ -74,8 +74,6 @@ def translate_srt_file(srt_file_path: Path, translated_subtitle_path: Path, targ
     return subs
 
 # Async chunk translate function
-
-
 async def translate_chunk(index, chunk, target_lang):
     while True:
         try:
@@ -149,15 +147,15 @@ def unjoin_sentences(original_sentence: str, modified_sentence: str, separator: 
     # fix strange formatation returned by google translate, case occuring
     modified_sentence.replace(f"{separator_unjoin} ", f"{separator_unjoin}").replace(f" {separator_unjoin}", f"{separator_unjoin}").replace(f"{separator_unjoin}.", f".{separator_unjoin}").replace(f"{separator_unjoin},", f",{separator_unjoin}")
 
-    # split by separator, remove double spaces and empty or only space strings strings from list
+    # split by separator, remove double spaces and empty or only space strings from list
     original_lines = original_sentence.split(separator)
-    original_lines = [s.strip().replace('  ', ' ')
+    original_lines = [s.strip().replace('  ', ' ').lstrip(" ,.:;)")
                       for s in original_lines if s.strip()]
     original_lines = [s for s in original_lines if s]
     original_lines = [s for s in original_lines if s.strip()]
     # split by separator, remove double spaces and empty or only space strings from list
     modified_lines = modified_sentence.split(separator_unjoin)
-    modified_lines = [s.strip().replace('  ', ' ')
+    modified_lines = [s.strip().replace('  ', ' ').lstrip(" ,.:;)")
                       for s in modified_lines if s.strip()]
     modified_lines = [s for s in modified_lines if s]
     modified_lines = [s for s in modified_lines if s.strip()]
