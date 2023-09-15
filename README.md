@@ -16,7 +16,7 @@ Clone LeGen from git
 ```sh
 git clone https://github.com/matheusbach/legen.git
 cd legen
-pip install -r requirements.txt .
+pip install -r requirements.txt
 ```
 And done. Now you can use LeGen
 
@@ -26,6 +26,7 @@ Update from git:
 in LeGen folder:
 ```sh
 git pull
+pip install -r requirements.txt --upgrade
 ```
 
 ### Or [run on Google Colab](https://colab.research.google.com/github/matheusbach/legen/blob/main/legen.ipynb)
@@ -42,7 +43,7 @@ python legen.py -i [input_dir] --model [model_name] --dev [device] --lang [langu
 The available arguments are:
 
 -    **-i/--input_dir**: Path to the folder containing the original videos and/or audios (required).
--    **--use_vidqa**: Run vidqa in input folder before start LeGen processing.
+-    **--norm**: Run vidqa and update folder times in input folder before start LeGen processing.
 -    **--whisperx**: Use m-bain/whisperX implementation instead of openai/whisper. Unstable!
 -    **--model**: Path or name of the Whisper transcription model to use (default: "medium").
 -    **--dev**: Device to use for the Whisper transcription (options: "cpu", "cuda", "auto"; default: "auto").
@@ -74,8 +75,10 @@ LeGen requires the following **pip** dependencies to be installed:
 - tqdm
 - whisper
 - vidqa
+- tensorflow
+- m-bain/whisperx
 
-This dependencies can be installed with ```pip install -re requirements.txt```
+This dependencies can be installed with ```pip install -r requirements.txt --upgrade```
 
 You also need to [install FFmpeg](https://ffmpeg.org/download.html)
 
