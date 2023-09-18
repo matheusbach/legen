@@ -248,9 +248,9 @@ for path in (item for item in sorted(sorted(Path(input_dir).rglob('*'), key=lamb
                     # insert subtitle into container using ffmpeg
                     print(
                         f"{wblue}Inserting subtitle{default} in mp4 container using {gray}FFmpeg{default}")
-                    ffmpeg_utils.insert_subtitle(origin_media_path, subtitles_path,
-                                                 False, video_srt_temp.getpath(),
-                                                 args.crf, args.maxrate, args.video_codec, args.audio_codec, args.preset, args.subtitle_margin)
+                    ffmpeg_utils.insert_subtitle(input_media_path=origin_media_path, subtitles_path=subtitles_path,
+                                                 burn_subtitles=False, output_video_path=video_srt_temp.getpath(),
+                                                 video_codec=args.video_codec, audio_codec=args.audio_codec, subtitle_margin=args.subtitle_margin)
                     video_srt_temp.save()
             if not args.disable_burn and not args.only_srt_subtitles:
                 if file_utils.file_is_valid(burned_video_path) and not args.overwrite:
@@ -263,9 +263,9 @@ for path in (item for item in sorted(sorted(Path(input_dir).rglob('*'), key=lamb
                     # insert subtitle into container and burn using ffmpeg
                     print(
                         f"{wblue}Inserting subtitle{default} in mp4 container and {wblue}burning{default} using {gray}FFmpeg{default}")
-                    ffmpeg_utils.insert_subtitle(origin_media_path, subtitles_path,
-                                                 True, video_burned_temp.getpath(),
-                                                 args.crf, args.maxrate, args.video_codec, args.audio_codec, args.preset, args.subtitle_margin)
+                    ffmpeg_utils.insert_subtitle(input_media_path=origin_media_path, subtitles_path=subtitles_path,
+                                                 burn_subtitles=True, output_video_path=video_burned_temp.getpath(),
+                                                 video_codec=args.video_codec, audio_codec=args.audio_codec, subtitle_margin=args.subtitle_margin)
                     video_burned_temp.save()
         else:
             print("not a video file")
