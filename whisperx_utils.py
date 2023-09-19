@@ -1,8 +1,13 @@
 import os
 from pathlib import Path
+import re
 
 import pysrt
 import whisperx
+import whisper # only for detect language
+
+#import faster_whisper
+#import numpy as np
 
 batch_size = 4  # reduce if low on GPU mem
 
@@ -43,5 +48,22 @@ def transcribe_audio(model: whisperx.asr.WhisperModel, audio_path: Path, srt_pat
 
 
 def detect_language(model: whisperx.asr.WhisperModel, audio_path: Path):
-    audio = whisperx.load_audio(file=audio_path.as_posix())
-    return model.detect_language(audio=audio)
+    # load audio and pad/trim it to fit 30 seconds
+    # audio = whisperx.load_audio(audio_path.as_posix(), 16000)
+    # segment = whisperx.asr.log_mel_spectrogram(audio[: whisperx.asr.N_SAMPLES], padding=0 if audio.shape[0]
+    #                                           >= whisperx.asr.N_SAMPLES else whisperx.asr.N_SAMPLES - audio.shape[0], device="cpu")
+    # encoder_output = model.model.encode(segment)
+    # results = model.model.model.detect_language(encoder_output).to("cpu")
+    # language_token, language_probability = results[0][0]
+    # return language_token[2:-2]
+
+    # ABOVE CODE IS BEST, BUT ITS NOT WORKING FOR NOW IN SOME SYSTEMS. SAVE FOR THE FUTURE
+
+    audio = whisper.load_audio(audio_path.as_posix(), 16000)
+    audio = whisper.pad_or_trim(audio, whisperx.asr.N_SAMPLES)
+    # make log-Mel spectrogram and move to the same device as the model
+    mel = whisper.log_mel_spectrogram(audio).to("cpu")
+    whisper_model = whisper.load_model("base", device="cpu", in_memory=True)
+    # detect the spoken language
+    _, probs = whisper_model.detect_language(mel)
+    return max(probs, key=probs.get)
