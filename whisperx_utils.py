@@ -9,10 +9,7 @@ import whisper # only for detect language
 #import faster_whisper
 #import numpy as np
 
-batch_size = 4  # reduce if low on GPU mem
-
-
-def transcribe_audio(model: whisperx.asr.WhisperModel, audio_path: Path, srt_path: Path, lang: str = None, disable_fp16: bool = False, device: str = "cpu"):
+def transcribe_audio(model: whisperx.asr.WhisperModel, audio_path: Path, srt_path: Path, lang: str = None, device: str = "cpu", batch_size: int = 4):
     audio = whisperx.load_audio(file=audio_path.as_posix())
 
     # Transcribe

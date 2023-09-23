@@ -9,7 +9,7 @@ import ffmpeg_utils
 import file_utils
 import translate_utils
 
-version = "v0.14"
+version = "v0.14.2"
 
 # Terminal colors
 default = "\033[1;0m"
@@ -50,6 +50,8 @@ parser.add_argument("--dev", type=str, default="auto",
                     help="Dispositivo para rodar a transcrição pelo Whisper. [cpu, cuda, auto]. (default: auto)")
 parser.add_argument("--compute_type", type=str, default="default",
                     help="Quantization for the neural network. Ex: float32, float16, int8, ...")
+parser.add_argument("--batch_size", type=int, default="4",
+                    help="The higher the value, the faster the processing will be. If you have low RAM or have buggy subtitles, reduce this value. Works only using whisperX. (default: 4)")
 parser.add_argument("--lang", type=str, default="pt",
                     help="Idioma para o qual as legendas devem ser traduzidas. Language equals to source video skip translation (default: pt)")
 parser.add_argument("--input_lang", type=str, default="auto",
@@ -200,7 +202,7 @@ for path in (item for item in sorted(sorted(Path(input_dir).rglob('*'), key=lamb
                     print(
                         f"{wblue}Transcribing{default} with {gray}WhisperX{default}")
                     whisperx_utils.transcribe_audio(
-                        whisper_model, audio_extracted.getpath(), transcribed_srt_temp.getpath(), audio_language, device=torch_device)
+                        whisper_model, audio_extracted.getpath(), transcribed_srt_temp.getpath(), audio_language, device=torch_device, batch_size=args.batch_size)
                 else:
                     print(
                         f"{wblue}Transcribing{default} with {gray}Whisper{default}")
