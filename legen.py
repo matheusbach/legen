@@ -205,7 +205,7 @@ for path in (item for item in sorted(sorted(Path(input_dir).rglob('*'), key=lamb
                     print(
                         f"{wblue}Transcribing{default} with {gray}Whisper{default}")
                     whisper_utils.transcribe_audio(
-                        model=whisper_model, audio_path=audio_extracted.getpath(), srt_path=transcribed_srt_temp.getpath(), lang=audio_language, disable_fp16=True if compute_type == "float16" or compute_type == "fp16" else False)
+                        model=whisper_model, audio_path=audio_extracted.getpath(), srt_path=transcribed_srt_temp.getpath(), lang=audio_language, disable_fp16=False if compute_type == "float16" or compute_type == "fp16" else True)
 
                 audio_extracted.destroy()
                 # if save .srt is enabled, save it to destination dir, also update path with language code
