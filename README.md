@@ -37,7 +37,7 @@ pip install -r requirements.txt --upgrade
 To use LeGen, run the following command:
 
 ```sh
-python legen.py -i [input_dir] --model [model_name] --dev [device] --lang [language_code] --crf [crf_value] --maxrate [maxrate_value] --srt_out_dir [output_dir_for_srt_files] --burned_out_dir [output_dir_for_burned_files] --overwrite --disable_srt --disable_burn --only_video
+python legen.py -i [input_dir] {other optional args here}
 ```
 
 The available arguments are:
@@ -49,11 +49,8 @@ The available arguments are:
 -    **--dev**: Device to use for the Whisper transcription (options: "cpu", "cuda", "auto"; default: "auto").
 -    **--compute_type**: Quantization for the neural network. Ex: float32, float16, int16, int8, ...
 -    **--lang**: Language code to use for the subtitles translation (default: "pt").
--    **--crf**: CRF value to use for the output video (default: 20).
--    **--maxrate**: Maxrate value to use for the output video (default: "2M").
 -    **-c:v/--video_codec**: Output video codec. Can also be used to define hardware aceleration API. Check supported using [ffmpeg --encoders]. Ex: h264, libx264, h264_vaapi, h264_nvenc, hevc, libx265 hevc_vaapi, hevc_nvenc, hevc_cuvid, hevc_qsv, hevc_amf (default: h264)
 -    **-c:a/--audio_codec**: Output audio codec. Check supported using [ffmpeg --encoders] (default: aac)
--    **--preset**: ffmpeg codec preset. (default: auto / default of current codec). Ex: ultrafast, veryfast, fast, medium, slow, slower, veryslow.
 -    **--subtitle_margin**: Burned subtitle horizontal margins. 100 is about half line size. Useful for fast-reading (default: 10).
 -    **--srt_out_dir**: The output folder path for the video files with subtitles embedded in the MP4 container and SRT files. (default: legen_srt_[input_dir]).
 -    **--burned_out_dir**: The output folder path for the video files with burned subtitles and embedded in the MP4 container. (default: legen_burned_[lang]_[input_dir]).

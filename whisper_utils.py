@@ -4,34 +4,31 @@ from pathlib import Path
 import pysrt
 import whisper
 import whisper.transcribe
+import whisperx
+import subtitle_utils
 
 
 def transcribe_audio(model: whisper.model, audio_path: Path, srt_path: Path, lang: str = None, disable_fp16: bool = False):
+    # Load audio
+    audio = whisperx.load_audio(file=audio_path.as_posix())
+    
     # Transcribe
     transcribe = model.transcribe(
-        audio=audio_path.as_posix(), language=lang, fp16=False if disable_fp16 else True, verbose=False)
+        audio=audio, language=lang, fp16=False if disable_fp16 else True, verbose=False)
+
+    # Align using whisperx alignment
+    model_a, metadata = whisperx.load_align_model(
+        language_code=lang, device="cpu")  # force load on cpu due errors on gpu
+    transcribe = whisperx.align(transcript=transcribe["segments"], model=model_a,
+                                align_model_metadata=metadata, audio=audio, device="cpu", return_char_alignments=True)
 
     segments = transcribe['segments']
 
-    # Create the subtitle file
-    subs = pysrt.SubRipFile()
-    sub_idx = 1
+    # Format subtitles
+    segments = subtitle_utils.format_segments(segments)
 
-    for i in range(len(segments)):
-        start_time = segments[i]["start"]
-        end_time = segments[i]["end"]
-        duration = end_time - start_time
-        timestamp = f"{start_time:.3f} - {end_time:.3f}"
-        text = segments[i]["text"]
-
-        sub = pysrt.SubRipItem(index=sub_idx, start=pysrt.SubRipTime(seconds=start_time),
-                               end=pysrt.SubRipTime(seconds=end_time), text=text)
-        subs.append(sub)
-        sub_idx += 1
-
-    # make dir and save .srt
-    os.makedirs(srt_path.parent, exist_ok=True)
-    subs.save(srt_path)
+    # Save the subtitle file
+    subtitle_utils.SaveSegmentsToSrt(segments, srt_path)
 
     return transcribe
 

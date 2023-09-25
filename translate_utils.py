@@ -5,10 +5,11 @@ from pathlib import Path
 import deep_translator
 import pysrt
 import tqdm.asyncio
+import subtitle_utils
 
 # all entence endings for japanese and normal people languages
-sentence_endings = ['.', '!', '?', ')', 'よ',
-                    'ね', 'の', 'さ', 'ぞ', 'な', 'か', '！', '。', '」', '…']
+sentence_endings = ['.', '!', '?', ')', 'よ', 'ね',
+                    'の', 'さ', 'ぞ', 'な', 'か', '！', '。', '」', '…']
 
 # a good separator is a char or string that doenst change the translation quality but is near ever preserved in result at same or near position
 separator = " ◌ "
@@ -20,8 +21,8 @@ def translate_srt_file(srt_file_path: Path, translated_subtitle_path: Path, targ
     # Load the original SRT file
     subs = pysrt.open(srt_file_path, encoding='utf-8')
 
-    # Extract the subtitle content and store it in a list
-    sub_content = [sub.text for sub in subs]
+    # Extract the subtitle content and store it in a list. Also rejoin all lines splited
+    sub_content = [' '.join(sub.text.strip().splitlines()) for sub in subs]
 
     # Make chunks of at maximum $chunk_max_chars to stay under Google Translate public API limits
     chunks = join_sentences(sub_content, chunk_max_chars) or []
@@ -63,6 +64,11 @@ def translate_srt_file(srt_file_path: Path, translated_subtitle_path: Path, targ
         chunk, translated_chunks[i], separator_unjoin) or "" for i, chunk in enumerate(chunks)]
     unjoined_texts = [text for sublist in unjoined_texts for text in sublist]
 
+    # Split lines as necessary targeting same number of lines as original string
+    for i, segment in enumerate(unjoined_texts):
+        unjoined_texts[i] = "\n".join(subtitle_utils.split_string_to_max_lines(
+            text=segment, max_width=0, max_lines=len(subs[i].text.splitlines())))
+
     # Combine the original and translated subtitle content
     for i, sub in enumerate(subs):
         sub.text = unjoined_texts[i]
@@ -74,11 +80,13 @@ def translate_srt_file(srt_file_path: Path, translated_subtitle_path: Path, targ
     return subs
 
 # Async chunk translate function
+
+
 async def translate_chunk(index, chunk, target_lang):
     while True:
         try:
-    
-                # Translate the subtitle content of the chunk using Google Translate
+
+            # Translate the subtitle content of the chunk using Google Translate
             translator = deep_translator.google.GoogleTranslator(
                 source='auto', target=target_lang)
             translated_chunk = await asyncio.wait_for(asyncio.get_event_loop().run_in_executor(None, translator.translate, chunk), 30)
@@ -87,7 +95,8 @@ async def translate_chunk(index, chunk, target_lang):
         except Exception as e:
             # If an error occurred, retry
             del translator
-            print(f"\r[chunk {index}]: Exception: {e.__doc__} Retrying in 30 seconds...", flush=True)
+            print(
+                f"\r[chunk {index}]: Exception: {e.__doc__} Retrying in 30 seconds...", flush=True)
             await asyncio.sleep(30)
 
 
@@ -101,8 +110,8 @@ def join_sentences(lines, max_chars):
 
     for line in lines:
         if not line or line is None:
-            line = 'ㅤ' # invisible char (not a simple space)
-            
+            line = 'ㅤ'  # invisible char (not a simple space)
+
         if len(current_chunk) + len(line) + len(separator) <= max_chars:
             current_chunk += line + separator
             if any(line.endswith(ending) for ending in sentence_endings):
@@ -125,7 +134,6 @@ def join_sentences(lines, max_chars):
                 joined_lines.append(
                     (line[:end_index] + '…' + separator)[:max_chars])
 
-
     # append a chunk wich doenst have a formal end with sentence endings
     if current_chunk:
         joined_lines.append(current_chunk)
@@ -145,7 +153,8 @@ def unjoin_sentences(original_sentence: str, modified_sentence: str, separator: 
         return ' '
 
     # fix strange formatation returned by google translate, case occuring
-    modified_sentence.replace(f"{separator_unjoin} ", f"{separator_unjoin}").replace(f" {separator_unjoin}", f"{separator_unjoin}").replace(f"{separator_unjoin}.", f".{separator_unjoin}").replace(f"{separator_unjoin},", f",{separator_unjoin}")
+    modified_sentence.replace(f"{separator_unjoin} ", f"{separator_unjoin}").replace(f" {separator_unjoin}", f"{separator_unjoin}").replace(
+        f"{separator_unjoin}.", f".{separator_unjoin}").replace(f"{separator_unjoin},", f",{separator_unjoin}")
 
     # split by separator, remove double spaces and empty or only space strings from list
     original_lines = original_sentence.split(separator)
