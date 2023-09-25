@@ -126,6 +126,24 @@ def split_string_to_max_lines(text, max_width=720, max_lines=2, font_name="Futur
     return lines
 
 
+def adjust_times(segments, extra_end_time=1.0):
+    for i in range(len(segments) - 1):  # We don't need to check the last segment
+        current_end = segments[i]['end']
+        next_start = segments[i + 1]['start']
+
+        gap = next_start - current_end
+
+        # If the gap is more than 1.5 + extra_end_time
+        if gap > 1.5 + extra_end_time:
+            segments[i]['end'] = current_end + extra_end_time
+
+        # If the gap is less than 1.5 + extra_end_time
+        elif gap < 1.5 + extra_end_time:
+            segments[i]['end'] = next_start
+
+    return segments
+
+
 def format_segments(segments: list, max_line_width_px: int = 380, max_lines_per_segment: int = 2):
     segments = split_segments(
         segments, max_line_width_px * max_lines_per_segment)
@@ -133,5 +151,7 @@ def format_segments(segments: list, max_line_width_px: int = 380, max_lines_per_
     for segment in segments:
         segment["text"] = "\n".join(split_string_to_max_lines(
             text=segment["text"], max_width=max_line_width_px, max_lines=max_lines_per_segment))
+
+    segments = adjust_times(segments)
 
     return segments
