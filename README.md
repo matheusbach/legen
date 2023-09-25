@@ -10,13 +10,13 @@ Install FFMpeg from [FFMPeg Oficial Site](https://ffmpeg.org/download.html) or f
 
 Install [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 
-Install [Python](https://www.python.org/downloads/) 3.7 or up. _If using windows, select "Add to PATH" option when installing_
+Install [Python](https://www.python.org/downloads/) 3.8 or up. _If using windows, select "Add to PATH" option when installing_
 
 Clone LeGen from git
 ```sh
 git clone https://github.com/matheusbach/legen.git
 cd legen
-pip install -r requirements.txt
+pip install -r requirements.txt --upgrade
 ```
 And done. Now you can use LeGen
 
@@ -47,7 +47,8 @@ The available arguments are:
 -    **--whisperx**: Use m-bain/whisperX implementation instead of openai/whisper. Unstable!
 -    **--model**: Path or name of the Whisper transcription model to use (default: "medium").
 -    **--dev**: Device to use for the Whisper transcription (options: "cpu", "cuda", "auto"; default: "auto").
--    **--compute_type**: Quantization for the neural network. Ex: float32, float16, int16, int8, ...
+-    **--compute_type**: Quantization for the neural network. Ex: float32, float16, int16, int8, ... (default will use float16 for GPU and float32 for CPU)
+-    **--batch_size**: The higher the value, the faster the processing will be. If you have low RAM or have buggy subtitles, reduce this value. Works only using whisperX. (default: 4)
 -    **--lang**: Language code to use for the subtitles translation (default: "pt").
 -    **-c:v/--video_codec**: Output video codec. Can also be used to define hardware aceleration API. Check supported using [ffmpeg --encoders]. Ex: h264, libx264, h264_vaapi, h264_nvenc, hevc, libx265 hevc_vaapi, hevc_nvenc, hevc_cuvid, hevc_qsv, hevc_amf (default: h264)
 -    **-c:a/--audio_codec**: Output audio codec. Check supported using [ffmpeg --encoders] (default: aac)
@@ -70,13 +71,11 @@ LeGen requires the following **pip** dependencies to be installed:
 - pysrt
 - torch
 - tqdm
-- tqdm
 - whisper
 - vidqa
-- tensorflow
 - m-bain/whisperx
 
-This dependencies can be installed with ```pip install -r requirements.txt --upgrade```
+This dependencies can be installed and updated with ```pip install -r requirements.txt --upgrade```
 
 You also need to [install FFmpeg](https://ffmpeg.org/download.html)
 
