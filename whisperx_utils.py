@@ -25,8 +25,6 @@ def transcribe_audio(model: whisperx.asr.WhisperModel, audio_path: Path, srt_pat
 
     segments = transcribe['segments']
 
-    subtitle_utils.SaveSegmentsToSrt(segments, srt_path.with_name("aaaaaa.srt"))
-
     # Format subtitles
     segments = subtitle_utils.format_segments(segments)
 
