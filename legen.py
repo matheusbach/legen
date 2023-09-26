@@ -8,7 +8,7 @@ from pathlib import Path, PurePath, PurePosixPath
 import ffmpeg_utils
 import file_utils
 import translate_utils
-from utils import time_task, time_func
+from utils import time_task
 
 version = "v0.15.2"
 
@@ -111,7 +111,7 @@ args.model = "large-v2" if args.model == "large" else args.model
 
 if args.norm:
     # normalize video using vidqa
-    with time_func(message_start=f"Running {wblue}vidqa{default} and updating folder modifiation times in {gray}{input_dir}{default}", end="\n"):
+    with time_task(message_start=f"Running {wblue}vidqa{default} and updating folder modifiation times in {gray}{input_dir}{default}", end="\n"):
         subprocess.run(["vidqa", "-i", input_dir, "-m", "unique", "-fd",
                         Path(Path(getframeinfo(currentframe()).filename).resolve().parent, "vidqa_data")])
         # update folder time structure
