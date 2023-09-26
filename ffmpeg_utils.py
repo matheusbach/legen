@@ -10,7 +10,7 @@ from tqdm import tqdm
 import file_utils
 
 
-def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitles: bool, output_video_path: Path, video_codec: str = "h264", audio_codec: str = "aac", subtitle_margin: int = 10):
+def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitles: bool, output_video_path: Path, video_codec: str = "h264", audio_codec: str = "aac"):
     # use only valid srt files
     subtitles_path: [Path] = file_utils.validate_files(subtitles_path)
 
@@ -83,7 +83,7 @@ def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitl
         # insert scale, subtitles filter and hwupload if required
         # scale at minimul height of 480p. it also will make the dimensions divisible by 2
         cmd_ffmpeg.extend(
-            ["-vf", f"format=nv12, scale='ceil((max(480,ih)*iw/ih)/2)*2:ceil(max(480,ih)/2)*2', subtitles=\'{add_ffmpeg_escape_chars(srt_temp.temp_file.name)}\':force_style='Alignment={sub_align},Fontname=Futura,PrimaryColour=&H03fcff,Fontsize=18,BackColour=&H80000000,Bold=1,Spacing=0.09,Outline=1,Shadow=0,MarginL={subtitle_margin},MarginR={subtitle_margin}'" + (', hwupload' if vf_hwupload else '')])
+            ["-vf", f"format=nv12, scale='ceil((max(480,ih)*iw/ih)/2)*2:ceil(max(480,ih)/2)*2', subtitles=\'{add_ffmpeg_escape_chars(srt_temp.temp_file.name)}\':force_style='Alignment={sub_align},Fontname=Futura,PrimaryColour=&H03fcff,Fontsize=18,BackColour=&H80000000,Bold=1,Spacing=0.09,Outline=1,Shadow=0,MarginL=10,MarginR=10'" + (', hwupload' if vf_hwupload else '')])
     else:
         if vf_hwupload:
             cmd_ffmpeg.extend(["-vf", f"format=nv12, hwupload"])

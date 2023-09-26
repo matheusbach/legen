@@ -47,12 +47,11 @@ The available arguments are:
 -    **--whisperx**: Use m-bain/whisperX implementation instead of openai/whisper. Unstable!
 -    **--model**: Path or name of the Whisper transcription model to use (default: "medium").
 -    **--dev**: Device to use for the Whisper transcription (options: "cpu", "cuda", "auto"; default: "auto").
--    **--compute_type**: Quantization for the neural network. Ex: float32, float16, int16, int8, ... (default will use float16 for GPU and float32 for CPU)
--    **--batch_size**: The higher the value, the faster the processing will be. If you have low RAM or have buggy subtitles, reduce this value. Works only using whisperX. (default: 4)
+-    **--compute_type**: Quantization for the neural network. Ex: float32, float16, int16, int8, ... (default will use float16 for GPU and float32 for CPU).
+-    **--batch_size**: The higher the value, the faster the processing will be. If you have low RAM or have buggy subtitles, reduce this value. Works only using whisperX. (default: 4).
 -    **--lang**: Language code to use for the subtitles translation (default: "pt").
--    **-c:v/--video_codec**: Output video codec. Can also be used to define hardware aceleration API. Check supported using [ffmpeg --encoders]. Ex: h264, libx264, h264_vaapi, h264_nvenc, hevc, libx265 hevc_vaapi, hevc_nvenc, hevc_cuvid, hevc_qsv, hevc_amf (default: h264)
--    **-c:a/--audio_codec**: Output audio codec. Check supported using [ffmpeg --encoders] (default: aac)
--    **--subtitle_margin**: Burned subtitle horizontal margins. 100 is about half line size. Useful for fast-reading (default: 10).
+-    **-c:v/--video_codec**: Output video codec. Can also be used to define hardware aceleration API. Check supported using [ffmpeg --encoders]. Ex: h264, libx264, h264_vaapi, h264_nvenc, hevc, libx265 hevc_vaapi, hevc_nvenc, hevc_cuvid, hevc_qsv, hevc_amf (default: h264).
+-    **-c:a/--audio_codec**: Output audio codec. Check supported using [ffmpeg --encoders] (default: aac).
 -    **--srt_out_dir**: The output folder path for the video files with subtitles embedded in the MP4 container and SRT files. (default: legen_srt_[input_dir]).
 -    **--burned_out_dir**: The output folder path for the video files with burned subtitles and embedded in the MP4 container. (default: legen_burned_[lang]_[input_dir]).
 -    **--overwrite**: Overwrite existing files in output directories.

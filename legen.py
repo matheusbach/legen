@@ -9,7 +9,7 @@ import ffmpeg_utils
 import file_utils
 import translate_utils
 
-version = "v0.15"
+version = "v0.15.1"
 
 # Terminal colors
 default = "\033[1;0m"
@@ -60,8 +60,6 @@ parser.add_argument("-c:v", "--video_codec", type=str, default="h264",
                     help="Codec de vídeo destino. Pode ser usado para definir aceleração via GPU ou outra API de video [codec_api], se suportado (ffmpeg -encoders). Ex: h264, libx264, h264_vaapi, h264_nvenc, hevc, libx265 hevc_vaapi, hevc_nvenc, hevc_cuvid, hevc_qsv, hevc_amf (default: h264)")
 parser.add_argument("-c:a", "--audio_codec", type=str, default="aac",
                     help="Codec de audio destino. (default: aac). Ex: aac, libopus, mp3, vorbis")
-parser.add_argument("--subtitle_margin", type=int, default=10,
-                    help="Burned subtitle horizontal margins. 100 is about half line size. Useful for fast-reading (default: 10)")
 parser.add_argument("--srt_out_dir", type=str, default=None,
                     help="Caminho da pasta de saída para os arquivos de vídeo com legenda embutida no container mp4 e arquivos SRT. (default: legen_srt_$input_dir)")
 parser.add_argument("--burned_out_dir", type=str, default=None,
@@ -252,7 +250,7 @@ for path in (item for item in sorted(sorted(Path(input_dir).rglob('*'), key=lamb
                         f"{wblue}Inserting subtitle{default} in mp4 container using {gray}FFmpeg{default}")
                     ffmpeg_utils.insert_subtitle(input_media_path=origin_media_path, subtitles_path=subtitles_path,
                                                  burn_subtitles=False, output_video_path=video_srt_temp.getpath(),
-                                                 video_codec=args.video_codec, audio_codec=args.audio_codec, subtitle_margin=args.subtitle_margin)
+                                                 video_codec=args.video_codec, audio_codec=args.audio_codec)
                     video_srt_temp.save()
             if not args.disable_burn and not args.only_srt_subtitles:
                 if file_utils.file_is_valid(burned_video_path) and not args.overwrite:
@@ -267,7 +265,7 @@ for path in (item for item in sorted(sorted(Path(input_dir).rglob('*'), key=lamb
                         f"{wblue}Inserting subtitle{default} in mp4 container and {wblue}burning{default} using {gray}FFmpeg{default}")
                     ffmpeg_utils.insert_subtitle(input_media_path=origin_media_path, subtitles_path=subtitles_path,
                                                  burn_subtitles=True, output_video_path=video_burned_temp.getpath(),
-                                                 video_codec=args.video_codec, audio_codec=args.audio_codec, subtitle_margin=args.subtitle_margin)
+                                                 video_codec=args.video_codec, audio_codec=args.audio_codec)
                     video_burned_temp.save()
         else:
             print("not a video file")
