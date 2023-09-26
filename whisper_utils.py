@@ -6,6 +6,7 @@ import whisper
 import whisper.transcribe
 import whisperx
 import subtitle_utils
+from utils import time_task
 
 
 def transcribe_audio(model: whisper.model, audio_path: Path, srt_path: Path, lang: str = None, disable_fp16: bool = False):
@@ -13,19 +14,18 @@ def transcribe_audio(model: whisper.model, audio_path: Path, srt_path: Path, lan
     audio = whisperx.load_audio(file=audio_path.as_posix())
     
     # Transcribe
-    transcribe = model.transcribe(
-        audio=audio, language=lang, fp16=False if disable_fp16 else True, verbose=False)
+    with time_task():
+        transcribe = model.transcribe(audio=audio, language=lang, fp16=False if disable_fp16 else True, verbose=False)
 
     # Align using whisperx alignment
-    model_a, metadata = whisperx.load_align_model(
-        language_code=lang, device="cpu")  # force load on cpu due errors on gpu
-    transcribe = whisperx.align(transcript=transcribe["segments"], model=model_a,
-                                align_model_metadata=metadata, audio=audio, device="cpu", return_char_alignments=True)
+    with time_task(message_start="Running alignment & formatting..."):
+        model_a, metadata = whisperx.load_align_model(
+            language_code=lang, device="cpu")  # force load on cpu due errors on gpu
+        transcribe = whisperx.align(transcript=transcribe["segments"], model=model_a,
+                                    align_model_metadata=metadata, audio=audio, device="cpu", return_char_alignments=True)
 
-    segments = transcribe['segments']
-
-    # Format subtitles
-    segments = subtitle_utils.format_segments(segments)
+        # Format subtitles
+        segments = subtitle_utils.format_segments(transcribe['segments'])
 
     # Save the subtitle file
     subtitle_utils.SaveSegmentsToSrt(segments, srt_path)

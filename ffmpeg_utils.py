@@ -20,9 +20,10 @@ def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitl
 
     # add ffmpeg input main media
     cmd_ffmpeg.extend(["-i", "file:" + input_media_path.as_posix()])
-    # map video stream, audio, subtitle, data and metadata 
+    # map video stream, audio, subtitle, data and metadata
     map_index = cmd_ffmpeg.count("-i") - 1
-    cmd_ffmpeg_input_map.extend(["-map", f"{map_index}:V?", "-map", f"{map_index}:a", "-map", f"{map_index}:s?", "-map", f"{map_index}:d?", "-map", f"{map_index}:t?", "-map", f"{map_index}:m?"])
+    cmd_ffmpeg_input_map.extend(["-map", f"{map_index}:V?", "-map", f"{map_index}:a", "-map", f"{map_index}:s?",
+                                "-map", f"{map_index}:d?", "-map", f"{map_index}:t?", "-map", f"{map_index}:m?"])
 
     # detect if input has video channels
     result: str = subprocess.run(["ffprobe", "-i", "file:" + input_media_path.as_posix(), "-show_streams",
@@ -103,7 +104,7 @@ def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitl
 
     # run FFmpeg command with a fancy progress bar
     ff = FfmpegProgress(cmd_ffmpeg)
-    with tqdm(total=100, position=0, ascii="░▒█", desc="Inserting subtitles" if not burn_subtitles else "Burning subtitles", unit="%", unit_scale=True, leave=True, bar_format="{desc} [{bar}] {percentage:3.0f}% | ETA: {remaining} | {rate_fmt}{postfix}") as pbar:
+    with tqdm(total=100, position=0, ascii="░▒█", desc="Inserting subtitles" if not burn_subtitles else "Burning subtitles", unit="%", unit_scale=True, leave=True, bar_format="{desc} [{bar}] {percentage:3.0f}% | {rate_fmt}{postfix} | ETA: {remaining} | ⏱: {elapsed}") as pbar:
         for progress in ff.run_command_with_progress():
             pbar.update(progress - pbar.n)
 
@@ -119,7 +120,7 @@ def extract_audio_wav(input_media_path: Path, output_path: Path):
 
     # run FFmpeg command with a fancy progress bar
     ff = FfmpegProgress(cmd_ffmpeg)
-    with tqdm(total=100, position=0, ascii="░▒█", desc="Extracting audio", unit="%", unit_scale=True, leave=True, bar_format="{desc} {percentage:3.0f}% | ETA: {remaining}") as pbar:
+    with tqdm(total=100, position=0, ascii="░▒█", desc="Extracting audio", unit="%", unit_scale=True, leave=True, bar_format="{desc} {percentage:3.0f}% | ETA: {remaining} | ⏱: {elapsed}") as pbar:
         for progress in ff.run_command_with_progress():
             pbar.update(progress - pbar.n)
 
@@ -148,7 +149,7 @@ def extract_short_wav(input_media_path: Path, output_path: Path):
 
     # run FFmpeg command with a fancy progress bar
     ff = FfmpegProgress(cmd_ffmpeg)
-    with tqdm(total=100, position=0, ascii="░▒█", desc="Extracting audio", unit="%", unit_scale=True, leave=False, bar_format="{desc} {percentage:3.0f}% | ETA: {remaining}") as pbar:
+    with tqdm(total=100, position=0, ascii="░▒█", desc="Extracting audio", unit="%", unit_scale=True, leave=False, bar_format="{desc} {percentage:3.0f}% | ETA: {remaining} | ⏱: {elapsed}") as pbar:
         for progress in ff.run_command_with_progress():
             pbar.update(progress - pbar.n)
 

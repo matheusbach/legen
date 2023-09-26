@@ -6,6 +6,7 @@ import deep_translator
 import pysrt
 import tqdm.asyncio
 import subtitle_utils
+from utils import format_time
 
 # all entence endings for japanese and normal people languages
 sentence_endings = ['.', '!', '?', ')', 'よ', 'ね',
@@ -52,7 +53,7 @@ def translate_srt_file(srt_file_path: Path, translated_subtitle_path: Path, targ
                 run_translate(index, chunk, target_lang))
             tasks.append(task)
 
-        for tsk in tqdm.asyncio.tqdm_asyncio.as_completed(tasks, total=len(tasks), desc="Translating", unit="chunks", unit_scale=False, leave=True, bar_format="{desc} {percentage:3.0f}% | {n_fmt}/{total_fmt} | ETA: {remaining}"):
+        for tsk in tqdm.asyncio.tqdm_asyncio.as_completed(tasks, total=len(tasks), desc="Translating", unit="chunks", unit_scale=False, leave=True, bar_format="{desc} {percentage:3.0f}% | {n_fmt}/{total_fmt} | ETA: {remaining} | ⏱: {elapsed}"):
             await tsk
 
     # Cria um loop de eventos e executa as tasks

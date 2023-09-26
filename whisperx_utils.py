@@ -7,26 +7,25 @@ import whisperx
 import whisper # only for detect language
 
 import subtitle_utils
-#import faster_whisper
-#import numpy as np
+from utils import time_task
 
 def transcribe_audio(model: whisperx.asr.WhisperModel, audio_path: Path, srt_path: Path, lang: str = None, device: str = "cpu", batch_size: int = 4):
     audio = whisperx.load_audio(file=audio_path.as_posix())
 
     # Transcribe
-    transcribe = model.transcribe(
-        audio=audio, language=lang, batch_size=batch_size)
+    with time_task("Running WhisperX transcription engine..."):
+        transcribe = model.transcribe(
+            audio=audio, language=lang, batch_size=batch_size)
 
     # Align
-    model_a, metadata = whisperx.load_align_model(
-        language_code=lang, device="cpu")  # force load on cpu due errors on gpu
-    transcribe = whisperx.align(transcript=transcribe["segments"], model=model_a,
-                                align_model_metadata=metadata, audio=audio, device="cpu", return_char_alignments=True)
+    with time_task(message_start="Running alignment & formatting..."):
+        model_a, metadata = whisperx.load_align_model(
+            language_code=lang, device="cpu")  # force load on cpu due errors on gpu
+        transcribe = whisperx.align(transcript=transcribe["segments"], model=model_a,
+                                    align_model_metadata=metadata, audio=audio, device="cpu", return_char_alignments=True)
 
-    segments = transcribe['segments']
-
-    # Format subtitles
-    segments = subtitle_utils.format_segments(segments)
+        # Format subtitles
+        segments = subtitle_utils.format_segments(transcribe['segments'])
 
     # Save the subtitle file
     subtitle_utils.SaveSegmentsToSrt(segments, srt_path)
