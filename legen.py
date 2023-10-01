@@ -10,7 +10,7 @@ import file_utils
 import translate_utils
 from utils import time_task
 
-version = "v0.15.2"
+version = "v0.15.3"
 
 # Terminal colors
 default = "\033[1;0m"
