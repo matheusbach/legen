@@ -148,14 +148,8 @@ def unjoin_sentences(original_sentence: str, modified_sentence: str, separator: 
     Tries to match the number of lines between the original and modified sentences.
     """
 
-    if modified_sentence is None and original_sentence is not None:
-        return original_sentence
-    elif modified_sentence is None:
+    if original_sentence is None:
         return ' '
-
-    # fix strange formatation returned by google translate, case occuring
-    modified_sentence.replace(f"{separator_unjoin} ", f"{separator_unjoin}").replace(f" {separator_unjoin}", f"{separator_unjoin}").replace(
-        f"{separator_unjoin}.", f".{separator_unjoin}").replace(f"{separator_unjoin},", f",{separator_unjoin}")
 
     # split by separator, remove double spaces and empty or only space strings from list
     original_lines = original_sentence.split(separator)
@@ -163,6 +157,14 @@ def unjoin_sentences(original_sentence: str, modified_sentence: str, separator: 
                       for s in original_lines if s.strip()]
     original_lines = [s for s in original_lines if s]
     original_lines = [s for s in original_lines if s.strip()]
+
+    if modified_sentence is None:
+        return original_lines or ' '
+
+    # fix strange formatation returned by google translate, case occuring
+    modified_sentence.replace(f"{separator_unjoin} ", f"{separator_unjoin}").replace(f" {separator_unjoin}", f"{separator_unjoin}").replace(
+        f"{separator_unjoin}.", f".{separator_unjoin}").replace(f"{separator_unjoin},", f",{separator_unjoin}")
+
     # split by separator, remove double spaces and empty or only space strings from list
     modified_lines = modified_sentence.split(separator_unjoin)
     modified_lines = [s.strip().replace('  ', ' ').lstrip(" ,.:;)")
@@ -219,4 +221,4 @@ def unjoin_sentences(original_sentence: str, modified_sentence: str, separator: 
     while len(new_modified_lines) < len(original_lines):
         new_modified_lines.append(new_modified_lines[-1])
 
-    return new_modified_lines
+    return new_modified_lines or original_lines or ' '
