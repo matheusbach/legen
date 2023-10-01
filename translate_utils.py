@@ -60,6 +60,8 @@ def translate_srt_file(srt_file_path: Path, translated_subtitle_path: Path, targ
     loop = asyncio.get_event_loop()
     loop.run_until_complete(translate_async())
 
+    print('Processing translation...', end='')
+
     # Unjoin lines within each chunk that end with a sentence ending
     unjoined_texts = [unjoin_sentences(
         chunk, translated_chunks[i], separator_unjoin) or "" for i, chunk in enumerate(chunks)]
@@ -77,6 +79,8 @@ def translate_srt_file(srt_file_path: Path, translated_subtitle_path: Path, targ
     # Save the translated SRT file
     os.makedirs(translated_subtitle_path.parent, exist_ok=True)
     subs.save(translated_subtitle_path, encoding='utf-8')
+
+    print('\r                         ', end='\r')
 
     return subs
 

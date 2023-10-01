@@ -145,6 +145,8 @@ def adjust_times(segments, extra_end_time=1.0):
 
 
 def format_segments(segments: list, max_line_width_px: int = 380, max_lines_per_segment: int = 2):
+    print('Formatting segments...', end='')
+
     segments = split_segments(
         segments, max_line_width_px * max_lines_per_segment)
 
@@ -153,5 +155,7 @@ def format_segments(segments: list, max_line_width_px: int = 380, max_lines_per_
             text=segment["text"], max_width=max_line_width_px, max_lines=max_lines_per_segment))
 
     segments = adjust_times(segments)
+    
+    print('\r                      ', end='\r')
 
     return segments
