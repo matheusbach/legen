@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Projeto LeGen</title>
+                <!-- Link para os estilos do Bootstrap -->
+                <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+                    <style>
+                        body {
+                            background-color: #060805;
+                            color: #f8f8f8;
+                        }
+
+                        .card {
+                            background-color: #444;
+                            border: none;
+                        }
+
+                        .card-body {
+                            display: flex;
+                            flex-direction: column;
+                        }
+
+                        .box {
+                            background-color: rgb(32, 63, 36);
+                            border: none;
+                        }
+
+                        .btn {
+                            background-color: #448;
+                            border: none;
+                        }
+
+                        .img-fluid {
+                            max-height: 100%;
+                            display: block;
+                            margin-left: auto;
+                            margin-right: auto;
+                        }
+                    </style>
+                </head>
+
+                <body>
+
+                    <div
+                        class="container mt-5">
+                        <!-- Seção de introdução -->
+                        <div
+                            class="row">
+                            <!-- Descrição do projeto -->
+                            <div class="col-md-6 d-flex flex-column justify-content-center">
+                                <h1 style="font-family: 'Courier New', Courier, monospace; font-weight: bold;">
+                                    <span style="color: blue; font-size: 1.5em; margin: 0; display: inline-block;">Le</span>
+                                    <span style="color: white; font-size: 1.5em; margin: 0; display: inline-block;">Gen</span>
+                                </h1>
+                                <p>
+                                    É um projeto especializado em gerar legendas para vídeos e audios.
+                                    <br>
+                                        <br>A partir de qualquer mídia que contenha fala, o LeGen é capaz de gerar a legenda para ele, sem necessidade de intervenção humana
+                                            <br>
+                                                <br>O software entrega a melhor precisão graças as tecnologias e metodologias avançadas que são empregadas no processo
+                                                </p>
+                                            </div>
+
+                                            <!-- Imagem do projeto -->
+                                            <div class="col-md-6">
+                                                <img src="fino.webp" alt="fino señores" class="img-fluid"></div>
+                                            </div>
+
+                                            <!-- Seção de características do LeGen -->
+                                            <div class="row mt-5">
+
+                                                <div class="col-12 col-md-4 d-flex mb-4">
+                                                    <div class="card flex-fill">
+                                                        <div class="card">
+                                                            <div class="card-body">
+                                                                <h5 class="card-title">Código aberto e de uso gratuito</h5>
+                                                                <p class="card-text">Projeto desenvolvido com o apoio da comunidade. Contribua você também.</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-12 col-md-4 d-flex mb-4">
+                                                    <div class="card flex-fill">
+                                                        <div class="card">
+                                                            <div class="card-body">
+                                                                <h5 class="card-title">Modelos ML treinados</h5>
+                                                                <p class="card-text">Usa modelos do Whisper com alta precisão no processo de transcrição.</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-12 col-md-4 d-flex mb-4">
+                                                    <div class="card flex-fill">
+                                                        <div class="card">
+                                                            <div class="card-body">
+                                                                <h5 class="card-title">Tradução otimizada</h5>
+                                                                <p class="card-text">Tradução usando sistema do Google, com ajuste para evitar fuga de contexto.</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-12 col-md-4 d-flex mb-4">
+                                                    <div class="card flex-fill">
+                                                        <div class="card">
+                                                            <div class="card-body">
+                                                                <h5 class="card-title">Alinhamento texto/fala</h5>
+                                                                <p class="card-text">As falas ficam perfeitamente alinhadas com o texto que aparece no momento</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-12 col-md-4 d-flex mb-4">
+                                                    <div class="card flex-fill">
+                                                        <div class="card">
+                                                            <div class="card-body">
+                                                                <h5 class="card-title">Formato compatível</h5>
+                                                                <p class="card-text">A legenda é separada de forma inteligente em partes e em linhas a fim de otimizar a leitura.</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-12 col-md-4 d-flex mb-4">
+                                                    <div class="card flex-fill">
+                                                        <div class="card">
+                                                            <div class="card-body">
+                                                                <h5 class="card-title">Segmentação otimizada</h5>
+                                                                <p class="card-text">LeGen devolve a legenda em .srt e vídeo com legenda embutida para softsub e gera também hardsubs.</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Seção do Vídeo de Demonstração -->
+                                            <div class="row mt-5">
+                                                <div class="col-12 text-center">
+                                                    <h2>Demonstração de resultado</h2>
+                                                    <video width="80%" controls="controls">
+                                                        <source src="result.mp4" type="video/mp4">
+                                                            Seu navegador não suporta o elemento de vídeo.
+                                                        </video>
+                                                        <p class="mt-3">Vídeo com audio original em inglês, transcrição, tradução e processamento do vídeo feito pelo LeGen</p>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Seção de ações -->
+                                                <div
+                                                    class="row">
+                                                    <!-- GitHub -->
+                                                    <div class="col-12 col-md-4 d-flex mb-4">
+                                                        <div class="card box flex-fill d-flex flex-column">
+                                                            <div class="card-body d-flex flex-column justify-content-between">
+                                                                <div>
+                                                                    <h5 class="card-title text-center">GitHub</h5>
+                                                                    <p class="card-text text-center">Acesse o código fonte do projeto, contribua ou rode por conta própria.</p>
+                                                                </div>
+                                                                <a href="https://github.com/matheusbach/legen" class="btn btn-primary mt-3">Source</a>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Rodar no Colab -->
+                                                    <div class="col-12 col-md-4 d-flex mb-4">
+                                                        <div class="card box flex-fill d-flex flex-column">
+                                                            <div class="card-body d-flex flex-column justify-content-between">
+                                                                <div>
+                                                                    <h5 class="card-title text-center">Rodar no Colab</h5>
+                                                                    <p class="card-text text-center">Execute o LeGen no usando o notebook pronto para o Google Colab.</p>
+                                                                </div>
+                                                                <a href="https://colab.research.google.com/github/matheusbach/legen/blob/main/legen.ipynb" class="btn btn-primary mt-3">Colab Notebook</a>
+                                                                <a href="https://odysee.com/@legen_software:d/legen_no_colab:0" class="btn btn-primary mt-2">Tutorial</a>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Faço por você -->
+                                                    <div class="col-12 col-md-4 d-flex mb-4">
+                                                        <div class="card box flex-fill d-flex flex-column">
+                                                            <div class="card-body d-flex flex-column justify-content-between">
+                                                                <div>
+                                                                    <h5 class="card-title text-center">Faço por você</h5>
+                                                                    <p class="card-text text-center">Deixe-me executar o LeGen para você. Me chame no telegram e solicite orçamento e demonstração gratuita.</p>
+                                                                </div>
+                                                                <a href="https://t.me/matheusbach" class="btn btn-primary mt-3">Link Telegram</a>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+                                        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+                                        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+                                    </body>
+                                </html>
+                            </body>
+                        </body>
+                    </html>
+                </body>
+            </body>
+        </head>
+    </html>
+</html>
