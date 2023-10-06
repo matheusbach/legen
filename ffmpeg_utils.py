@@ -23,7 +23,7 @@ def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitl
     # map video stream, audio, subtitle, data and metadata
     map_index = cmd_ffmpeg.count("-i") - 1
     cmd_ffmpeg_input_map.extend(["-map", f"{map_index}:V?", "-map", f"{map_index}:a", "-map", f"{map_index}:s?",
-                                "-map", f"{map_index}:d?", "-map", f"{map_index}:t?", "-map", f"{map_index}:m?"])
+                                 "-map", f"{map_index}:t?", "-map", f"{map_index}:m?"])
 
     # detect if input has video channels
     result: str = subprocess.run(["ffprobe", "-i", "file:" + input_media_path.as_posix(), "-show_streams",
@@ -42,7 +42,7 @@ def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitl
 
         # get input media duration
         duration_sec = subprocess.run(["ffprobe", "-i", "file:" + input_media_path.as_posix(), "-show_entries", "format=duration", "-v", "quiet", "-of", "csv=p=0"],
-                                      capture_output=True, text=True).stdout.split("\n")[0].replace("\n", "").replace(" ", "").replace("   ", "").replace("00:", "").replace(":", ".")
+                                      capture_output=True, text=True).stdout.split("\n")[0].split('.')[0]
 
         cmd_ffmpeg.extend(["-t", f"{duration_sec}", "-loop", "1",
                           "-framerate", "10", "-i", background_tempfile.getpath().as_posix()])
