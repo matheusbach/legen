@@ -16,14 +16,17 @@ def transcribe_audio(model: whisperx.asr.WhisperModel, audio_path: Path, srt_pat
     with time_task("Running WhisperX transcription engine..."):
         transcribe = model.transcribe(audio=audio, language=lang, batch_size=batch_size)
 
-    # Align
-    with time_task(message_start="Running alignment..."):
-        try:
-            model_a, metadata = whisperx.load_align_model(language_code=lang, device="cuda")
-            transcribe = whisperx.align(transcript=transcribe["segments"], model=model_a, align_model_metadata=metadata, audio=audio, device="cuda", return_char_alignments=True)
-        except Exception:
-            model_a, metadata = whisperx.load_align_model(language_code=lang, device="cpu")  # force load on cpu due errors on gpu
-            transcribe = whisperx.align(transcript=transcribe["segments"], model=model_a, align_model_metadata=metadata, audio=audio, device="cpu", return_char_alignments=True)
+    # Align if possible
+    if lang in whisperx.alignment.DEFAULT_ALIGN_MODELS_HF or lang in whisperx.alignment.DEFAULT_ALIGN_MODELS_TORCH:
+        with time_task(message_start="Running alignment..."):
+            try:
+                model_a, metadata = whisperx.load_align_model(language_code=lang, device="cuda")
+                transcribe = whisperx.align(transcript=transcribe["segments"], model=model_a, align_model_metadata=metadata, audio=audio, device="cuda", return_char_alignments=True)
+            except Exception:
+                model_a, metadata = whisperx.load_align_model(language_code=lang, device="cpu")  # force load on cpu due errors on gpu
+                transcribe = whisperx.align(transcript=transcribe["segments"], model=model_a, align_model_metadata=metadata, audio=audio, device="cpu", return_char_alignments=True)
+    else:
+        print(f"Language {lang} not suported. LeGen can't do the alignment step")
 
     # Format subtitles
     segments = subtitle_utils.format_segments(transcribe['segments'])
