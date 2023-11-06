@@ -32,11 +32,18 @@ def string_width(text, font_name="Futura", font_size=18):
     """
     Determines the width of a string using tkinter.
     """
-    root = tk.Tk()
-    width = tk.font.Font(name=font_name, size=font_size,
-                         weight="bold").measure(text)
-    root.destroy()
-    return width
+    tries_remaining = 5
+    
+    while (tries_remaining > 0):
+        tries_remaining -= 1
+        try:
+            root = tk.Tk()
+            width = tk.font.Font(name=font_name, size=font_size,
+                                weight="bold").measure(text)
+            root.destroy()
+            return width
+        except Exception:
+            pass
 
 
 def is_punctuation_end(word):
