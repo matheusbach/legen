@@ -90,12 +90,16 @@ def translate_srt_file(srt_file_path: Path, translated_subtitle_path: Path, targ
 async def translate_chunk(index, chunk, target_lang):
     while True:
         try:
-
             # Translate the subtitle content of the chunk using Google Translate
             translator = deep_translator.google.GoogleTranslator(
                 source='auto', target=target_lang)
-            translated_chunk = await asyncio.wait_for(asyncio.get_event_loop().run_in_executor(None, translator.translate, chunk), 30)
+            translated_chunk: str = await asyncio.wait_for(asyncio.get_event_loop().run_in_executor(None, translator.translate, chunk), 30)
             await asyncio.sleep(0)
+
+            # if nothing is retuned, return the original chunk
+            if len(translated_chunk.replace(separator.strip(), '').split()) == 0:
+                return chunk
+
             return translated_chunk
         except Exception as e:
             # If an error occurred, retry
