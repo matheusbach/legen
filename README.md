@@ -49,6 +49,7 @@ The available arguments are:
 -    **--dev**: Device to use for the Whisper transcription (options: "cpu", "cuda", "auto"; default: "auto").
 -    **--compute_type**: Quantization for the neural network. Ex: float32, float16, int16, int8, ... (default will use float16 for GPU and float32 for CPU).
 -    **--batch_size**: The higher the value, the faster the processing will be. If you have low RAM or have buggy subtitles, reduce this value. Works only using whisperX. (default: 4).
+-    **--input_lang**: Original language of the input videos. This option skips language detection. (default: "auto").
 -    **--lang**: Language code to use for the subtitles translation (default: "pt").
 -    **-c:v/--video_codec**: Output video codec. Can also be used to define hardware aceleration API. Check supported using [ffmpeg --encoders]. Ex: h264, libx264, h264_vaapi, h264_nvenc, hevc, libx265 hevc_vaapi, hevc_nvenc, hevc_cuvid, hevc_qsv, hevc_amf (default: h264).
 -    **-c:a/--audio_codec**: Output audio codec. Check supported using [ffmpeg --encoders] (default: aac).
