@@ -124,7 +124,7 @@ with time_task(message_start=f"\nLoading " + ("WhisperX" if args.whisperx else "
         import whisperx_utils
     
         whisper_model = whisperx.load_model(
-            whisper_arch=args.model, device=torch_device, compute_type=compute_type)
+            whisper_arch=args.model, device=torch_device, compute_type=compute_type, asr_options={"repetition_penalty": 1, "prompt_reset_on_temperature": 0.5, "no_repeat_ngram_size": 2,})
     else:
         import whisper
 
