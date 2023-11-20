@@ -8,9 +8,9 @@ from pathlib import Path, PurePath, PurePosixPath
 import ffmpeg_utils
 import file_utils
 import translate_utils
-from utils import time_task
+from utils import time_task, audio_extensions, video_extensions
 
-version = "v0.15.3"
+version = "v0.15.4"
 
 # Terminal colors
 default = "\033[1;0m"
@@ -139,9 +139,9 @@ with time_task(message="⌛ Processing files for"):
         with time_task(message_start=f"\nProcessing {yellow}{rel_path.as_posix()}{default}", end="\n", message="⌚ Done in"):
             try:
                 # define file type by extensions
-                if path.suffix.lower() in {".mp4", ".webm", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".vob", ".mts", ".m2ts", ".ts", ".yuv", ".mpg", ".mp2", ".mpeg", ".mpe", ".mpv", ".m2v", ".m4v", ".3gp", ".3g2", ".nsv", ".mts"}:
+                if path.suffix.lower() in video_extensions:
                     file_type = "video"
-                elif path.suffix.lower() in {".aa", ".aac", ".aax", ".act", ".aiff", ".alac", ".amr", ".ape", ".au", ".awb", ".dss", ".dvf", ".flac", ".gsm", ".iklax", ".ivs", ".m4a", ".m4b", ".m4p", ".mpga", ".mmf", ".mp3", ".mpc", ".msv", ".nmf", ".ogg", ".oga", ".mogg", ".opus", ".ra", ".rm", ".raw", ".rf64", ".sln", ".tta", ".voc", ".vox", ".wav", ".wma", ".wv", ".webm", ".8svx"}:
+                elif path.suffix.lower() in audio_extensions:
                     file_type = "audio"
                 else:
                     file_type = "other"
