@@ -161,7 +161,7 @@ def unjoin_sentences(original_sentence: str, modified_sentence: str, separator: 
 
     # split by separator, remove double spaces and empty or only space strings from list
     original_lines = original_sentence.split(separator)
-    original_lines = [s.strip().replace('  ', ' ').lstrip(" ,.:;)")
+    original_lines = [s.strip().replace('  ', ' ').lstrip(" ,.:;)") if s.strip().replace('  ', ' ').lstrip(" ,.:;)") else s
                       for s in original_lines if s.strip()]
     original_lines = [s for s in original_lines if s]
     original_lines = [s for s in original_lines if s.strip()]
@@ -175,7 +175,7 @@ def unjoin_sentences(original_sentence: str, modified_sentence: str, separator: 
 
     # split by separator, remove double spaces and empty or only space strings from list
     modified_lines = modified_sentence.split(separator_unjoin)
-    modified_lines = [s.strip().replace('  ', ' ').lstrip(" ,.:;)")
+    modified_lines = [s.strip().replace('  ', ' ').lstrip(" ,.:;)") if s.strip().replace('  ', ' ').lstrip(" ,.:;)") else s
                       for s in modified_lines if s.strip()]
     modified_lines = [s for s in modified_lines if s]
     modified_lines = [s for s in modified_lines if s.strip()]
