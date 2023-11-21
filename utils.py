@@ -44,5 +44,29 @@ def time_func(func):
         return result
     return wrapper
 
+def check_other_extensions(file_path, extensions_to_check):
+    """
+    Check the existence of files with the same name but different extensions
+    in the same folder.
+
+    Parameters:
+    - file_path (str): The path of the file to check.
+    - extensions_to_check (list): List of extensions to check.
+
+    Returns:
+    - list: List of existing file paths with different extensions.
+    """
+    file_path = Path(file_path)
+    folder = file_path.parent
+    base_name = file_path.stem
+
+    matching_files = [
+        folder / (base_name + ext)
+        for ext in extensions_to_check
+        if (folder / (base_name + ext)).exists()
+    ]
+
+    return matching_files
+
 video_extensions = {".mp4", ".webm", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".vob", ".mts", ".m2ts", ".ts", ".yuv", ".mpg", ".mp2", ".mpeg", ".mpe", ".mpv", ".m2v", ".m4v", ".3gp", ".3g2", ".nsv", ".mts"}
 audio_extensions = {".aa", ".aac", ".aax", ".act", ".aiff", ".alac", ".amr", ".ape", ".au", ".awb", ".dss", ".dvf", ".flac", ".gsm", ".iklax", ".ivs", ".m4a", ".m4b", ".m4p", ".mpga", ".mmf", ".mp3", ".mpc", ".msv", ".nmf", ".ogg", ".oga", ".mogg", ".opus", ".ra", ".rm", ".raw", ".rf64", ".sln", ".tta", ".voc", ".vox", ".wav", ".wma", ".wv", ".webm", ".8svx"}

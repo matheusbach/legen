@@ -3,14 +3,14 @@ import os
 import subprocess
 import time
 from inspect import currentframe, getframeinfo
-from pathlib import Path, PurePath, PurePosixPath
+from pathlib import Path
 
 import ffmpeg_utils
 import file_utils
 import translate_utils
-from utils import time_task, audio_extensions, video_extensions
+from utils import time_task, audio_extensions, video_extensions, check_other_extensions
 
-version = "v0.15.4"
+version = "v0.15.5"
 
 # Terminal colors
 default = "\033[1;0m"
@@ -149,13 +149,16 @@ with time_task(message="⌛ Processing files for"):
                 if file_type == "video" or file_type == "audio":
                     # define paths
                     origin_media_path = path
+                    dupe_filename = len(check_other_extensions(path, list(video_extensions | audio_extensions))) > 1
+                    posfix_extension = path.suffix.lower().replace('.', '_') if dupe_filename else ''
+
                     srt_video_dir = Path(srt_out_dir, rel_path.parent)
                     burned_video_dir = Path(burned_out_dir, rel_path.parent)
                     # output video extension will be changed to .mp4
-                    srt_video_path = Path(srt_out_dir, rel_path.stem + ".mp4")
-                    burned_video_path = Path(burned_video_dir, rel_path.stem + ".mp4")
+                    srt_video_path = Path(srt_out_dir, rel_path.stem + posfix_extension + ".mp4")
+                    burned_video_path = Path(burned_video_dir, rel_path.stem + posfix_extension + ".mp4")
                     subtitle_translated_path = Path(
-                        srt_video_dir, rel_path.stem + f"_{args.lang}.srt")
+                        srt_video_dir, rel_path.stem + posfix_extension + f"_{args.lang}.srt")
                     subtitles_path = []
 
                     if args.input_lang == "auto":
@@ -180,7 +183,7 @@ with time_task(message="⌛ Processing files for"):
                         print(f"Forced input audio language: {gray}{audio_language}{default}")
                     # set path after get transcribed language
                     subtitle_transcribed_path = Path(
-                        srt_video_dir, rel_path.stem + f"_{audio_language}.srt")
+                        srt_video_dir, rel_path.stem + posfix_extension + f"_{audio_language}.srt")
                     # create temp file for .srt
                     transcribed_srt_temp = file_utils.TempFile(
                         subtitle_transcribed_path, file_ext=".srt")
