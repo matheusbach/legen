@@ -45,6 +45,9 @@ def string_width(text, font_name="Futura", font_size=18):
         except Exception:
             pass
 
+    # all failed, return 60% of height per char
+    return len(text) * font_size * 0.60
+
 
 def is_punctuation_end(word):
     """Verifica se a palavra termina com uma pontuação."""
