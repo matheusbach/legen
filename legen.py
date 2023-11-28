@@ -105,7 +105,7 @@ compute_type = args.compute_type if args.compute_type != "default" else "float16
 if args.only_srt_subtitles:
     args.only_video = True
 
-args.model = "large-v2" if args.model == "large" else args.model
+args.model = "large-v3" if args.model == "large" else args.model
 
 # ----------------------------------------------------------------------------
 
