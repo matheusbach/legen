@@ -10,7 +10,7 @@ import file_utils
 import translate_utils
 from utils import time_task, audio_extensions, video_extensions, check_other_extensions
 
-version = "v0.15.5"
+version = "v0.15.6"
 
 # Terminal colors
 default = "\033[1;0m"
@@ -219,7 +219,7 @@ with time_task(message="⌛ Processing files for"):
                     elif file_utils.file_is_valid(subtitle_translated_path):
                         print("Translated file found. Skipping translation.")
                         subtitles_path.insert(0, subtitle_translated_path)
-                    else:
+                    elif transcribed_srt_temp.getvalidpath():
                         # create the temp .srt translated file
                         translated_srt_temp = file_utils.TempFile(
                             subtitle_translated_path, file_ext=".srt")
