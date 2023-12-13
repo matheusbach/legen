@@ -9,7 +9,7 @@ import subtitle_utils
 from utils import time_task
 
 def transcribe_audio(model: whisperx.asr.WhisperModel, audio_path: Path, srt_path: Path, lang: str = None, device: str = "cpu", batch_size: int = 4):
-    audio = whisperx.load_audio(file=audio_path.as_posix())
+    audio = whisperx.load_audio(file=audio_path.as_posix(), sr=model.model.feature_extractor.sampling_rate)
 
     # Transcribe
     with time_task("Running WhisperX transcription engine..."):
@@ -25,7 +25,7 @@ def transcribe_audio(model: whisperx.asr.WhisperModel, audio_path: Path, srt_pat
                 model_a, metadata = whisperx.load_align_model(language_code=lang, device="cpu")  # force load on cpu due errors on gpu
                 transcribe = whisperx.align(transcript=transcribe["segments"], model=model_a, align_model_metadata=metadata, audio=audio, device="cpu", return_char_alignments=True)
     else:
-        print(f"Language {lang} not suported. LeGen can't do the alignment step")
+        print(f"Language {lang} not suported for alignment. Skipping this step")
 
     # Format subtitles
     segments = subtitle_utils.format_segments(transcribe['segments'])
