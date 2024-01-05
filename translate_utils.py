@@ -97,7 +97,7 @@ async def translate_chunk(index, chunk, target_lang):
             await asyncio.sleep(0)
 
             # if nothing is retuned, return the original chunk
-            if len(translated_chunk.replace(separator.strip(), '').split()) == 0:
+            if translated_chunk is None or len(translated_chunk.replace(separator.strip(), '').split()) == 0:
                 return chunk
 
             return translated_chunk
