@@ -11,7 +11,7 @@ from utils import time_task
 
 def transcribe_audio(model: whisper.model, audio_path: Path, srt_path: Path, lang: str = None, disable_fp16: bool = False):
     # Load audio
-    audio = whisperx.load_audio(file=audio_path.as_posix(), sr=model.model.feature_extractor.sampling_rate)
+    audio = whisper.load_audio(file=audio_path.as_posix())
     
     # Transcribe
     with time_task():

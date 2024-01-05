@@ -5,15 +5,12 @@ import tempfile
 from inspect import currentframe, getframeinfo
 from pathlib import Path
 
-
 # return the itens in array that is not inexisting or empty
 def validate_files(paths):
     valid_files = [path for path in paths if file_is_valid(path)]
     return valid_files
 
 # check if a file is existing and not empty
-
-
 def file_is_valid(path):
     if path is not None and path.is_file():
         size = path.stat().st_size
@@ -21,9 +18,46 @@ def file_is_valid(path):
             return True
     return False
 
+# validate if an string is a valid dir or path with valid content
+def check_valid_path(path_str):
+    # create a Path object from the input string
+    path = Path(path_str)
+
+    # check if the path exists
+    if not path.exists():
+        raise FileNotFoundError(f"The path '{path_str}' does not exist.")
+
+    # check if it's a directory with at least one file or a valid file with content
+    if path.is_dir():
+        # check if the directory has at least one file with content
+        files_with_content = [file for file in path.iterdir() if file.is_file() and file.stat().st_size > 0]
+        if not files_with_content:
+            raise ValueError(f"The directory '{path_str}' does not contain any files with content.")
+    elif path.is_file():
+        # check if the file has content
+        if path.stat().st_size == 0:
+            raise ValueError(f"The file '{path_str}' does not contain any content.")
+    else:
+        raise ValueError(f"The path '{path_str}' is neither a valid directory nor a valid file.")
+
+    return path
+
+# validate if an string is a valid dir or path with valid content
+def check_existing_path(path_str):
+    # create a Path object from the input string
+    path = Path(path_str)
+
+    # check if the path exists
+    if not path.exists():
+        raise FileNotFoundError(f"The path '{path_str}' does not exist.")
+
+    # check if it's a directory with at least one file or a valid file with content
+    if not path.is_dir() and not path.is_file():
+        raise ValueError(f"The path '{path_str}' is neither a valid directory nor a valid file.")
+
+    return path_str
+
 # create a tempfile class to use as object
-
-
 class TempFile:
 
     def __init__(self, final_path: Path, file_ext: str = None):
@@ -86,8 +120,6 @@ class TempFile:
             return
 
 # copy an source file to destination if destination file is not equals to source
-
-
 def copy_file_if_different(src_file: Path, dst_file: Path, silent: bool = False):
     if file_is_valid(dst_file):
         # Check if destination file exists and is different from source file
@@ -101,8 +133,6 @@ def copy_file_if_different(src_file: Path, dst_file: Path, silent: bool = False)
         print(f"copied to {dst_file}")
 
 # function to delete dir and all its content using shutil
-
-
 def delete_folder(path: Path):
     if path.is_dir():
         shutil.rmtree(path)

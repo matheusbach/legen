@@ -10,7 +10,7 @@ from tqdm import tqdm
 import file_utils
 
 
-def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitles: bool, output_video_path: Path, video_codec: str = "h264", audio_codec: str = "aac"):
+def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitles: bool, output_video_path: Path, codec_video: str = "h264", codec_audio: str = "aac"):
     # use only valid srt files
     subtitles_path: [Path] = file_utils.validate_files(subtitles_path)
 
@@ -58,9 +58,9 @@ def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitl
         cmd_ffmpeg_input_map.extend(["-map", f"{map_index}:s"])
 
     # add comand to burn subtitles if its demanded and has at least one valid subtitle in the array. Burn the first one. Also ensure hwupload if necessary
-    vf_hwupload = True if video_codec.endswith(
+    vf_hwupload = True if codec_video.endswith(
         ("_nvenc", "_amf", "_v4l2m2m", "_qsv", "_vaapi", "_videotoolbox", "_cuvid")) else False
-    hw_device = video_codec.split("_")[-1] if vf_hwupload else None
+    hw_device = codec_video.split("_")[-1] if vf_hwupload else None
     # set hw_device as cuda if api is nvenc or cuvid
     if hw_device == "nvenc" or hw_device == "cuvid":
         hw_device = "cuda"
@@ -84,7 +84,7 @@ def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitl
         # insert scale, subtitles filter and hwupload if required
         # scale at minimul height of 480p. it also will make the dimensions divisible by 2
         cmd_ffmpeg.extend(
-            ["-vf", f"format=nv12, scale='ceil((max(480,ih)*iw/ih)/2)*2:ceil(max(480,ih)/2)*2', subtitles=\'{add_ffmpeg_escape_chars(srt_temp.temp_file.name)}\':force_style='Alignment={sub_align},Fontname=Futura,PrimaryColour=&H03fcff,Fontsize=18,BackColour=&H80000000,Bold=1,Spacing=0.09,Outline=1,Shadow=0,MarginL=10,MarginR=10'" + (', hwupload' if vf_hwupload else '')])
+            ["-vf", f"format=nv12, scale='ceil((max(480,ih)*iw/ih)/2)*2:ceil(max(480,ih)/2)*2', subtitles=\'{add_ffmpeg_escape_chars(srt_temp.temp_file.name)}\':force_style='Alignment={sub_align},Fontname=Jost,PrimaryColour=&H03fcff,Fontsize=18,BackColour=&H80000000,Bold=1,Spacing=0.09,Outline=1,Shadow=0,MarginL=10,MarginR=10'" + (', hwupload' if vf_hwupload else '')])
     else:
         if vf_hwupload:
             cmd_ffmpeg.extend(["-vf", f"format=nv12, hwupload"])
@@ -97,7 +97,7 @@ def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitl
         cmd_ffmpeg.extend(["-init_hw_device", hw_device])
 
     # add the remaining parameters and output path
-    cmd_ffmpeg.extend(["-c:V", video_codec, "-c:a", audio_codec, "-c:s", "mov_text",
+    cmd_ffmpeg.extend(["-c:V", codec_video, "-c:a", codec_audio, "-c:s", "mov_text",
                        "-af", "loudnorm", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
                        "-sws_flags", "bicubic+accurate_rnd+full_chroma_int+full_chroma_inp",
                        "file:" + output_video_path.as_posix()])

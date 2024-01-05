@@ -28,7 +28,7 @@ def SaveSegmentsToSrt(segments: list, output_path: Path):
     subs.save(output_path)
 
 
-def string_width(text, font_name="Futura", font_size=18):
+def string_width(text, font_name="Jost", font_size=18):
     """
     Determines the width of a string using tkinter.
     """
@@ -54,7 +54,7 @@ def is_punctuation_end(word):
     return any(word.endswith(punct) for punct in ['.', ',', '!', '?', ':', ';'])
 
 
-def split_segments(segments, max_width_px=1440, font_name="Futura", font_size=18):
+def split_segments(segments, max_width_px=1440, font_name="Jost", font_size=18):
     """
     Split segments based on the max width provided.
     """
@@ -98,7 +98,7 @@ def split_segments(segments, max_width_px=1440, font_name="Futura", font_size=18
     return new_segments
 
 
-def split_string_to_max_lines(text, max_width=720, max_lines=2, font_name="Futura", font_size=18):
+def split_string_to_max_lines(text, max_width=720, max_lines=2, font_name="Jost", font_size=18):
     threshold = max_width * 0.8
     total_text_width = string_width(text, font_name, font_size)
 
@@ -155,7 +155,7 @@ def adjust_times(segments, extra_end_time=1.0):
 
 
 def format_segments(segments: list, max_line_width_px: int = 380, max_lines_per_segment: int = 2):
-    print('Formatting segments...', end='')
+    print('Formatting segments...', end='', flush=True)
 
     segments = split_segments(
         segments, max_line_width_px * max_lines_per_segment)
@@ -166,6 +166,6 @@ def format_segments(segments: list, max_line_width_px: int = 380, max_lines_per_
 
     segments = adjust_times(segments)
     
-    print('\r                      ', end='\r')
+    print('\r                      ', end='\r', flush=True)
 
     return segments

@@ -51,16 +51,16 @@ The available arguments are:
 -    **--batch_size**: The higher the value, the faster the processing will be. If you have low RAM or have buggy subtitles, reduce this value. Works only using whisperX. (default: 4).
 -    **--input_lang**: Original language of the input videos. This option skips language detection. (default: "auto").
 -    **--lang**: Language code to use for the subtitles translation (default: "pt").
--    **-c:v/--video_codec**: Output video codec. Can also be used to define hardware aceleration API. Check supported using [ffmpeg --encoders]. Ex: h264, libx264, h264_vaapi, h264_nvenc, hevc, libx265 hevc_vaapi, hevc_nvenc, hevc_cuvid, hevc_qsv, hevc_amf (default: h264).
--    **-c:a/--audio_codec**: Output audio codec. Check supported using [ffmpeg --encoders] (default: aac).
--    **--srt_out_dir**: The output folder path for the video files with subtitles embedded in the MP4 container and SRT files. (default: legen_srt_[input_dir]).
--    **--burned_out_dir**: The output folder path for the video files with burned subtitles and embedded in the MP4 container. (default: legen_burned_[lang]_[input_dir]).
+-    **-c:v/--codec_video**: Output video codec. Can also be used to define hardware aceleration API. Check supported using [ffmpeg --encoders]. Ex: h264, libx264, h264_vaapi, h264_nvenc, hevc, libx265 hevc_vaapi, hevc_nvenc, hevc_cuvid, hevc_qsv, hevc_amf (default: h264).
+-    **-c:a/--codec_audio**: Output audio codec. Check supported using [ffmpeg --encoders] (default: aac).
+-    **--output_softsubs**: The output folder path for the video files with subtitles embedded in the MP4 container and SRT files. (default: legen_srt_[input_dir]).
+-    **--output_hardsubs**: The output folder path for the video files with burned subtitles and embedded in the MP4 container. (default: legen_burned_[lang]_[input_dir]).
 -    **--overwrite**: Overwrite existing files in output directories.
--    **--disable_srt**: Disable .srt file generation and do not insert subtitles in the MP4 container of $srt_out_dir.
--    **--disable_embed**: Don't insert subtitles in mp4 container of $srt_out_dir. This option continue generating .srt files.
--    **--disable_burn**: Disable subtitle burn in $burned_out_dir.
--    **--only_video**: Do not copy other files present in the input directory to the output directories. Only generate the subtitles and videos.
--    **--only_srt_subtitles**: Only generates the subtitles. Do not encode the videos or copy other files.
+-    **--disable_srt**: Disable .srt file generation and do not insert subtitles in the MP4 container of $output_softsubs.
+-    **--disable_softsubs**: Don't insert subtitles in mp4 container of $output_softsubs. This option continue generating .srt files.
+-    **--disable_hardsubs**: Disable subtitle burn in $output_hardsubs.
+-    **--copy_others**: Do not copy other files present in the input directory to the output directories. Only generate the subtitles and videos.
+-    **--only_srt**: Only generates the subtitles. Do not encode the videos or copy other files.
 
 ## Dependencies
 
