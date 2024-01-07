@@ -77,14 +77,19 @@ parser.add_argument("--only_video", default=False, action="store_true",
                     help="Don't copy other (no video) files present in input dir to output dirs. Only generate the subtitles and videos")
 parser.add_argument("--only_srt_subtitles", default=False, action="store_true",
                     help="Just generates the subtitles. Do not encode the videos or copy other files")
+parser.add_argument("--sub_style", type=str, default="'Futura,PrimaryColour=&H03fcff,Fontsize=18,BackColour=&H80000000,Bold=1,Spacing=0.09,Outline=1,Shadow=0,MarginL=10,MarginR=10'",
+                    help="Style of subtitle text. (default: 'Fontname=Futura,PrimaryColour=&H03fcff,Fontsize=18,BackColour=&H80000000,Bold=1,Spacing=0.09,Outline=1,Shadow=0,MarginL=10,MarginR=10').")
+parser.add_argument("--sub_align", type=str, default="2",
+                    help="Set the subtitles position: {'Bottom left': 1, 'Bottom center': 2, 'Bottom right': 3, 'Top left': 5, 'Top center': 6, 'Top right': 7, 'Middle left': 9, 'Middle center': 10, 'Middle right': 11}")
 args = parser.parse_args()
 
 input_dir: Path = Path(args.input_dir)
-
+print("After parsing : " + repr(args.sub_style))
+print("After replace : " + repr(args.sub_style.replace("'", "")))
 # input needs to be a directory (is good to suport single file in future)
-if not input_dir.is_dir():
-    print(f"{red}Invalid input{default} {args.input_dir}\nYou must insert a folder (directory) as input parater. Create a new one containing the files(s) if necessary")
-    raise SystemExit
+#if not input_dir.is_dir():
+#    print(f"{red}Invalid input{default} {args.input_dir}\nYou must insert a folder (directory) as input parater. Create a new one containing the files(s) if necessary")
+#    raise SystemExit
 
 if args.srt_out_dir is None:
     args.srt_out_dir = Path(input_dir.parent, "legen_srt_" + input_dir.name)
@@ -244,7 +249,7 @@ with time_task(message="⌛ Processing files for"):
                             print(f"{wblue}Inserting subtitle{default} in mp4 container using {gray}FFmpeg{default}")
                             ffmpeg_utils.insert_subtitle(input_media_path=origin_media_path, subtitles_path=subtitles_path,
                                                         burn_subtitles=False, output_video_path=video_srt_temp.getpath(),
-                                                        video_codec=args.video_codec, audio_codec=args.audio_codec)
+                                                        video_codec=args.video_codec, audio_codec=args.audio_codec, sub_style=args.sub_style.replace("'", ""), sub_align=args.sub_align)
                             video_srt_temp.save()
                     if not args.disable_burn and not args.only_srt_subtitles:
                         if file_utils.file_is_valid(burned_video_path) and not args.overwrite:
@@ -257,7 +262,7 @@ with time_task(message="⌛ Processing files for"):
                             print(f"{wblue}Inserting subtitle{default} in mp4 container and {wblue}burning{default} using {gray}FFmpeg{default}")
                             ffmpeg_utils.insert_subtitle(input_media_path=origin_media_path, subtitles_path=subtitles_path,
                                                         burn_subtitles=True, output_video_path=video_burned_temp.getpath(),
-                                                        video_codec=args.video_codec, audio_codec=args.audio_codec)
+                                                        video_codec=args.video_codec, audio_codec=args.audio_codec, sub_style=args.sub_style.replace("'", ""), sub_align=args.sub_align)
                             video_burned_temp.save()
                 else:
                     print("not a video file")
