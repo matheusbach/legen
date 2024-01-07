@@ -10,7 +10,7 @@ from tqdm import tqdm
 import file_utils
 
 
-def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitles: bool, output_video_path: Path, video_codec: str = "h264", audio_codec: str = "aac"):
+def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitles: bool, output_video_path: Path, video_codec: str = "h264", audio_codec: str = "aac", sub_style: str = "Futura,PrimaryColour=&H03fcff,Fontsize=18,BackColour=&H80000000,Bold=1,Spacing=0.09,Outline=1,Shadow=0,MarginL=10,MarginR=10", sub_align: str = "2"):
     # use only valid srt files
     subtitles_path: [Path] = file_utils.validate_files(subtitles_path)
 
@@ -70,6 +70,7 @@ def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitl
     if hw_device == "v4l2m2m" or hw_device == "amf":
         hw_device = "vaapi"
 
+    # burning
     if burn_subtitles and len(subtitles_path) > 0:
         # create temp file for .srt
         srt_temp = file_utils.TempFile(
@@ -78,13 +79,15 @@ def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitl
         file_utils.copy_file_if_different(
             subtitles_path[0], srt_temp.getpath(), True)
 
-        # align subtitles to botton center if hass video and to center center if only audio with black screen
-        sub_align = 10 if no_video else 2
+        # align subtitles to bottom center if has a video and to center center if only audio with black screen
+        if no_video:
+            sub_align = 10 #if no_video else 2
 
         # insert scale, subtitles filter and hwupload if required
         # scale at minimul height of 480p. it also will make the dimensions divisible by 2
+
         cmd_ffmpeg.extend(
-            ["-vf", f"format=nv12, scale='ceil((max(480,ih)*iw/ih)/2)*2:ceil(max(480,ih)/2)*2', subtitles=\'{add_ffmpeg_escape_chars(srt_temp.temp_file.name)}\':force_style='Alignment={sub_align},Fontname=Futura,PrimaryColour=&H03fcff,Fontsize=18,BackColour=&H80000000,Bold=1,Spacing=0.09,Outline=1,Shadow=0,MarginL=10,MarginR=10'" + (', hwupload' if vf_hwupload else '')])
+            ["-vf", f"format=nv12, scale='ceil((max(480,ih)*iw/ih)/2)*2:ceil(max(480,ih)/2)*2', subtitles=\'{add_ffmpeg_escape_chars(srt_temp.temp_file.name)}\':force_style='Alignment={sub_align},Fontname={sub_style}'" + (', hwupload' if vf_hwupload else '')])
     else:
         if vf_hwupload:
             cmd_ffmpeg.extend(["-vf", f"format=nv12, hwupload"])
