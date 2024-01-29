@@ -35,7 +35,7 @@ def transcribe_audio(model: whisperx.asr.WhisperModel, audio_path: Path, srt_pat
         except:
             state = "WhisperX"
 
-        print('                                                            \r' + state + ((': ' + str(round(current/total*100)) + '%') if current and total else '') + ((' [' + str(current) + '/' + str(total) + ']') if current and total else ''), end=' ', flush=True)
+        print('\r                                                            \r' + state + ((': ' + str(round(current/total*100)) + '%') if current and total else '') + ((' [' + str(current) + '/' + str(total) + ']') if current and total else ''), end=' ', flush=True)
 
     # Transcribe
     with time_task("Running WhisperX transcription engine...", end='\n'):

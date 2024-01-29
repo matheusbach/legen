@@ -36,45 +36,45 @@ python {__import__('sys').version}
 """)
 time.sleep(1.5)
 
-# define parâmetros e configuraçṍes
-parser = argparse.ArgumentParser(prog="LeGen", description="Normaliza arquivos de vídeo, transcreve legendas a partir do áudio de arquivos de vídeo e áudio, traduz as legendas geradas, salva as legendas em arquivos .srt, insere no container mp4 e queima diretamente em vídeo",
+# Define parameters and configurations
+parser = argparse.ArgumentParser(prog="LeGen", description="Uses AI to locally transcribes speech from media files, generating subtitle files, translates the generated subtitles, inserts them into the mp4 container, and burns them directly into video",
                                  argument_default=True, allow_abbrev=True, add_help=True, usage='LeGen -i INPUT_PATH [other options]')
 parser.add_argument("-i", "--input_path",
-                    help="Caminho das mídias. Pode ser uma pasta contendo arquivos ou arquivo individual", required=True, type=file_utils.check_valid_path)
+                    help="Path to media files. Can be a folder containing files or an individual file", required=True, type=file_utils.check_valid_path)
 parser.add_argument("--norm", default=False, action="store_true",
-                    help="Normalize folder times and run vidqa on input_path before start processing files")
+                    help="Normalize folder times and run vidqa on input_path before starting processing files")
 parser.add_argument("-ts:e", "--transcription_engine", type=str, default="whisperx",
-                    help="Mecanismo de transcrição. Possible values: whisperx (default), whisper")
+                    help="Transcription engine. Possible values: whisperx (default), whisper")
 parser.add_argument("-ts:m", "--transcription_model", type=str, default="medium",
-                    help="Caminho ou nome do modelo de transcrição Whisper. A larger model will cost more resources an be slower, but with better transcription quality. Possible values: tiny, base, snall, medium (default), large, ...")
+                    help="Path or name of the Whisper transcription model. A larger model will consume more resources and be slower, but with better transcription quality. Possible values: tiny, base, small, medium (default), large, ...")
 parser.add_argument("-ts:d", "--transcription_device", type=str, default="auto",
-                    help="Dispositivo para rodar a transcrição pelo Whisper. Possible values: auto (default), cpu, cuda")
+                    help="Device to run the transcription through Whisper. Possible values: auto (default), cpu, cuda")
 parser.add_argument("-ts:c", "--transcription_compute_type", type=str, default="auto",
                     help="Quantization for the neural network. Possible values: auto (default), int8, int8_float32, int8_float16, int8_bfloat16, int16, float16, bfloat16, float32")
 parser.add_argument("-ts:b", "--transcription_batch", type=int, default=4,
-                    help="Simultaneous segments transcribing. The higher the value, the faster the processing will be. If you have low RAM/VRAM, long duration media files or have buggy subtitles, reduce this value to avoid issues. Works only using transcription_engine whisperx. (default: 4)")
+                    help="Number of simultaneous segments being transcribed. Higher values will speed up processing. If you have low RAM/VRAM, long duration media files or have buggy subtitles, reduce this value to avoid issues. Only works using transcription_engine whisperx. (default: 4)")
 parser.add_argument("--translate", type=str, default="none",
-                    help="Translate subtitles to language code if not the same as origin. (default: dont translate)")
+                    help="Translate subtitles to language code if not the same as origin. (default: don't translate)")
 parser.add_argument("--input_lang", type=str, default="auto",
-                    help="Indica (força) idioma da voz das midias de entrada (default: auto)")
+                    help="Indicates (forces) the language of the voice in the input media (default: auto)")
 parser.add_argument("-c:v", "--codec_video", type=str, default="h264", metavar="VIDEO_CODEC",
-                    help="Codec de vídeo destino. Pode ser usado para definir aceleração via GPU ou outra API de video [codec_api], se suportado (ffmpeg -encoders). Ex: h264, libx264, h264_vaapi, h264_nvenc, hevc, libx265 hevc_vaapi, hevc_nvenc, hevc_cuvid, hevc_qsv, hevc_amf (default: h264)")
+                    help="Target video codec. Can be used to set acceleration via GPU or another video API [codec_api], if supported (ffmpeg -encoders). Ex: h264, libx264, h264_vaapi, h264_nvenc, hevc, libx265 hevc_vaapi, hevc_nvenc, hevc_cuvid, hevc_qsv, hevc_amf (default: h264)")
 parser.add_argument("-c:a", "--codec_audio", type=str, default="aac", metavar="AUDIO_CODEC",
-                    help="Codec de audio destino. (default: aac). Ex: aac, libopus, mp3, vorbis")
+                    help="Target audio codec. (default: aac). Ex: aac, libopus, mp3, vorbis")
 parser.add_argument("-o:s", "--output_softsubs", default=None, type=file_utils.check_valid_path,
-                    help="Caminho da pasta ou arquivo de saída para os arquivos de vídeo com legenda softsub (embutida no container mp4 e arquivos SRT). (default: softsubs_ + input_path)")
+                    help="Path to the folder or output file for the video files with embedded softsub (embedded in the mp4 container and .srt files). (default: softsubs_ + input_path)")
 parser.add_argument("-o:h", "--output_hardsubs", default=None, type=file_utils.check_valid_path,
-                    help="Caminho da pasta de saída para os arquivos de vídeo com legendas queimadas no vídeo e embutidas no container mp4. (default: hardsubs_ + input_path)")
+                    help="Output folder path for video files with burned-in captions and embedded in the mp4 container. (default: hardsubs_ + input_path)")
 parser.add_argument("--overwrite", default=False, action="store_true",
-                    help="Overwrite existing files in output dirs")
+                    help="Overwrite existing files in output directories")
 parser.add_argument("--disable_srt", default=False, action="store_true",
                     help="Disable .srt file generation and don't insert subtitles in mp4 container of output_softsubs")
 parser.add_argument("--disable_softsubs", default=False, action="store_true",
-                    help="Don't insert subtitles in mp4 container of output_softsubs. This option continue generating .srt files")
+                    help="Don't insert subtitles in mp4 container of output_softsubs. This option continues generating .srt files")
 parser.add_argument("--disable_hardsubs", default=False, action="store_true",
                     help="Disable subtitle burn in output_hardsubs")
 parser.add_argument("--copy_files", default=False, action="store_true",
-                    help="Copy other (no video) files present in input dir to output dirs. Only generate the subtitles and videos")
+                    help="Copy other (non-video) files present in input directory to output directories. Only generate the subtitles and videos")
 args = parser.parse_args()
 
 if not args.output_softsubs and not args.input_path.is_file():
