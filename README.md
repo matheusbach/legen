@@ -40,7 +40,7 @@ _And done. Now you can use LeGen_
 For dry-run update, use in legen folder:
 ```sh
 git fetch && git reset --hard origin/main && git pull
-pip3 install --upgrade --force-reinstall
+pip3 install -r requirements.txt --upgrade --force-reinstall
 ```
 
 ## Run locally:
