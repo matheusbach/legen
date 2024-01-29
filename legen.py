@@ -61,9 +61,9 @@ parser.add_argument("-c:v", "--codec_video", type=str, default="h264", metavar="
                     help="Target video codec. Can be used to set acceleration via GPU or another video API [codec_api], if supported (ffmpeg -encoders). Ex: h264, libx264, h264_vaapi, h264_nvenc, hevc, libx265 hevc_vaapi, hevc_nvenc, hevc_cuvid, hevc_qsv, hevc_amf (default: h264)")
 parser.add_argument("-c:a", "--codec_audio", type=str, default="aac", metavar="AUDIO_CODEC",
                     help="Target audio codec. (default: aac). Ex: aac, libopus, mp3, vorbis")
-parser.add_argument("-o:s", "--output_softsubs", default=None, type=file_utils.check_valid_path,
+parser.add_argument("-o:s", "--output_softsubs", default=None, type=Path,
                     help="Path to the folder or output file for the video files with embedded softsub (embedded in the mp4 container and .srt files). (default: softsubs_ + input_path)")
-parser.add_argument("-o:h", "--output_hardsubs", default=None, type=file_utils.check_valid_path,
+parser.add_argument("-o:h", "--output_hardsubs", default=None, type=Path,
                     help="Output folder path for video files with burned-in captions and embedded in the mp4 container. (default: hardsubs_ + input_path)")
 parser.add_argument("--overwrite", default=False, action="store_true",
                     help="Overwrite existing files in output directories")
