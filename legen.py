@@ -40,7 +40,7 @@ time.sleep(1.5)
 parser = argparse.ArgumentParser(prog="LeGen", description="Uses AI to locally transcribes speech from media files, generating subtitle files, translates the generated subtitles, inserts them into the mp4 container, and burns them directly into video",
                                  argument_default=True, allow_abbrev=True, add_help=True, usage='LeGen -i INPUT_PATH [other options]')
 parser.add_argument("-i", "--input_path",
-                    help="Path to media files. Can be a folder containing files or an individual file", required=True, type=file_utils.check_valid_path)
+                    help="Path to media files. Can be a folder containing files or an individual file", required=True, type=Path)
 parser.add_argument("--norm", default=False, action="store_true",
                     help="Normalize folder times and run vidqa on input_path before starting processing files")
 parser.add_argument("-ts:e", "--transcription_engine", type=str, default="whisperx",
