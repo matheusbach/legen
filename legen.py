@@ -203,8 +203,9 @@ with time_task(message="⌛ Processing files for"):
                         pass # translation not requested
                     elif args.translate == audio_language:
                         print("Translation is unnecessary because input and output language are the same. Skipping.")
-                    elif (args.disable_hardsubs or file_utils.file_is_valid(hardsub_video_path)) and (args.disable_srt or file_utils.file_is_valid(subtitle_translated_path)) and not args.overwrite:
+                    elif (args.disable_hardsubs or file_utils.file_is_valid(hardsub_video_path)) and (args.disable_srt or (file_utils.file_is_valid(subtitle_translated_path) and file_utils.file_is_valid(subtitle_transcribed_path) and file_utils.file_is_valid(subtitle_translated_path))) and not args.overwrite:
                         print("Translation is unnecessary. Skipping.")
+                        subtitles_path.insert(0, subtitle_translated_path)
                     elif file_utils.file_is_valid(subtitle_translated_path):
                         print("Translated file found. Skipping translation.")
                         subtitles_path.insert(0, subtitle_translated_path)
