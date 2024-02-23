@@ -107,7 +107,7 @@ LeGen requires the following **pip** dependencies to be installed:
 - tqdm
 - whisper
 - vidqa
-- m-bain/whisperx
+- matheusbach/whisperx (fork from m-bain/whisperx)
 
 This dependencies can be installed and updated with ```pip install -r requirements.txt --upgrade```
 
