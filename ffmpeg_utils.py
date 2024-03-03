@@ -23,7 +23,7 @@ def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitl
     # map video stream, audio, subtitle, data and metadata
     map_index = cmd_ffmpeg.count("-i") - 1
     cmd_ffmpeg_input_map.extend(["-map", f"{map_index}:V?", "-map", f"{map_index}:a",
-                                 "-map", f"{map_index}:t?", "-map", f"{map_index}:m?", "-ignore_unknown"])
+                                 "-ignore_unknown"])
 
     # detect if input has video channels
     result: str = subprocess.run(["ffprobe", "-i", "file:" + input_media_path.as_posix(), "-show_streams",
@@ -49,7 +49,7 @@ def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitl
         map_index = cmd_ffmpeg.count("-i") - 1
         # unmap #0, remap #0 with no video, map #1 (generated video from image)
         cmd_ffmpeg_input_map.extend(
-            ["-map", "-0", "-map", f"0:a", "-map", f"0:d?", "-map", f"0:t?", "-map", f"0:m?", "-map", f"{map_index}:V", "-ignore_unknown"])
+            ["-map", "-0", "-map", f"0:a", "-map", f"0:d?", "-map", f"0:t?", "-map", f"{map_index}:V", "-ignore_unknown"])
 
     # map each subtitle
     for i, subtitle in enumerate(subtitles_path):
@@ -98,7 +98,7 @@ def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitl
 
     # add the remaining parameters and output path
     cmd_ffmpeg.extend(["-c:V", codec_video, "-c:a", codec_audio, "-c:s", "mov_text",
-                       "-af", "loudnorm", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+                        "-pix_fmt", "yuv420p", "-movflags", "+faststart",
                        "-sws_flags", "bicubic+accurate_rnd+full_chroma_int+full_chroma_inp",
                        "file:" + output_video_path.as_posix()])
 
