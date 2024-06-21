@@ -1,5 +1,8 @@
 # LeGen
 
+![legen-wide](https://github.com/matheusbach/legen/assets/35426162/05a7acd2-52d5-43e0-8f31-7da7d6aa7c3c)
+
+
 LeGen is a Python script that uses Whisper/WhisperX AI to locally transcribes speech from media files, generating subtitle files, can translates the generated subtitles, inserts them into the mp4 container, and burns them directly into video
 
 This is very useful for making it available in another language, or even just subtitling any video that belongs to you or that you have the proper authorization to do so, be it a film, lecture, course, presentation, interview, etc.
@@ -125,13 +128,24 @@ Not being able to use the software, or encountering an error? open an [issue](ht
 
 Welcome and don't be a sick. We are brazilian, but you can write in other language if you want. https://t.me/+c0VRonlcd9Q2YTAx
 
-## Donations
-
-Monero (XMR): ```86HjTCsiaELEoNhH96rTf3ezGMXgKmHjqFrNmca2tesCESdCTZvRvQ9QWQXPGDtmaZhKz4ryHCdZXFzdbmtGahVa5VMLJnx```
-
 ## Video Tutorials
 
 [PT-BR] [SEMI-OUTDATED] [**Tutorial - LeGen no Google Colab**](https://odysee.com/@legen_software:d/legen_no_colab:0)
+
+## Donations
+
+You can donate to project using:
+Monero (XMR): ```86HjTCsiaELEoNhH96rTf3ezGMXgKmHjqFrNmca2tesCESdCTZvRvQ9QWQXPGDtmaZhKz4ryHCdZXFzdbmtGahVa5VMLJnx```
+LivePix: https://livepix.gg/legendonate
+
+### Donators
+- Picasso Neves
+- Erasmo de Souza Mora
+- viniciuspro
+- Igor
+- NiNi
+
+
 
 ## License
 
