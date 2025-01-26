@@ -67,7 +67,7 @@ Full options list are described bellow:
 
 - `-ts:e`, `--transcription_engine`: Specifies the transcription engine to use. Possible values are "whisperx" and "whisper". Default is "whisperx".
 
-- `-ts:m`, `--transcription_model`: Specifies the path or name of the Whisper transcription model. A larger model will consume more resources and be slower, but with better transcription quality. Possible values: tiny, base, small, medium (default), large, ...
+- `-ts:m`, `--transcription_model`: Specifies the path or name of the Whisper transcription model. A larger model will consume more resources and be slower, but with better transcription quality. Possible values: tiny, base, small, medium, large, large-v3, turbo, large-v3-turbo (default)...
 
 - `-ts:d`, `--transcription_device`: Specifies the device to run the transcription through Whisper. Possible values: auto (default), cpu, cuda.
 

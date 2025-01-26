@@ -10,7 +10,7 @@ import file_utils
 import translate_utils
 from utils import time_task, audio_extensions, video_extensions, check_other_extensions
 
-version = "v0.16"
+version = "v0.17"
 
 # Terminal colors
 default = "\033[1;0m"
@@ -45,8 +45,8 @@ parser.add_argument("--norm", default=False, action="store_true",
                     help="Normalize folder times and run vidqa on input_path before starting processing files")
 parser.add_argument("-ts:e", "--transcription_engine", type=str, default="whisperx",
                     help="Transcription engine. Possible values: whisperx (default), whisper")
-parser.add_argument("-ts:m", "--transcription_model", type=str, default="medium",
-                    help="Path or name of the Whisper transcription model. A larger model will consume more resources and be slower, but with better transcription quality. Possible values: tiny, base, small, medium (default), large, ...")
+parser.add_argument("-ts:m", "--transcription_model", type=str, default="large-v3-turbo",
+                    help="Path or name of the Whisper transcription model. A larger model will consume more resources and be slower, but with better transcription quality. Possible values: tiny, base, small, medium, large, turbo, large-v3-turbo (default) ...")
 parser.add_argument("-ts:d", "--transcription_device", type=str, default="auto",
                     help="Device to run the transcription through Whisper. Possible values: auto (default), cpu, cuda")
 parser.add_argument("-ts:c", "--transcription_compute_type", type=str, default="auto",
