@@ -2,7 +2,10 @@ import os
 from pathlib import Path
 
 import whisperx
-import whisper # only for detect language
+import whisper
+import whisperx.asr
+import whisperx.audio
+import whisperx.utils # only for detect language
 
 import whisper_utils
 import subtitle_utils
@@ -68,7 +71,7 @@ def detect_language(model: whisperx.asr.WhisperModel, audio_path: Path):
             raise Exception("Method invalid for Google Colab") 
         audio = whisperx.load_audio(audio_path.as_posix(), model.model.feature_extractor.sampling_rate)
         audio = whisper.pad_or_trim(audio, model.model.feature_extractor.n_samples)
-        mel = whisperx.asr.log_mel_spectrogram(audio, n_mels=model.model.model.n_mels)
+        mel = whisperx.audio.log_mel_spectrogram(audio, n_mels=model.model.model.n_mels)
         encoder_output = model.model.encode(mel)
         results = model.model.model.detect_language(encoder_output)
         language_token, language_probability = results[0][0]
