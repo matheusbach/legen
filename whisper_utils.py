@@ -5,6 +5,7 @@ import pysrt
 import whisper
 import whisper.transcribe
 import whisperx
+from whisperx import alignment, asr, utils, audio
 import subtitle_utils
 from utils import time_task
 
@@ -18,14 +19,14 @@ def transcribe_audio(model: whisper.model, audio_path: Path, srt_path: Path, lan
         transcribe = model.transcribe(audio=audio, language=lang, fp16=False if disable_fp16 else True, verbose=False)
 
     # Align if possible
-    if lang in whisperx.alignment.DEFAULT_ALIGN_MODELS_HF or lang in whisperx.alignment.DEFAULT_ALIGN_MODELS_TORCH:
+    if lang in alignment.DEFAULT_ALIGN_MODELS_HF or lang in alignment.DEFAULT_ALIGN_MODELS_TORCH:
         with time_task(message_start="Running alignment..."):
             try:
-                model_a, metadata = whisperx.load_align_model(language_code=lang, device="cuda")
-                transcribe = whisperx.align(transcript=transcribe["segments"], model=model_a, align_model_metadata=metadata, audio=audio, device="cuda", return_char_alignments=True)
+                model_a, metadata = alignment.load_align_model(language_code=lang, device="cuda")
+                transcribe = alignment.align(transcript=transcribe["segments"], model=model_a, align_model_metadata=metadata, audio=audio, device="cuda", return_char_alignments=True)
             except Exception:
-                model_a, metadata = whisperx.load_align_model(language_code=lang, device="cpu")  # force load on cpu due errors on gpu
-                transcribe = whisperx.align(transcript=transcribe["segments"], model=model_a, align_model_metadata=metadata, audio=audio, device="cpu", return_char_alignments=True)
+                model_a, metadata = alignment.load_align_model(language_code=lang, device="cpu")  # force load on cpu due errors on gpu
+                transcribe = alignment.align(transcript=transcribe["segments"], model=model_a, align_model_metadata=metadata, audio=audio, device="cpu", return_char_alignments=True)
     else:
         print(f"Language {lang} not suported for alignment. Skipping this step")
 
