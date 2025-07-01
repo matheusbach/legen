@@ -84,6 +84,8 @@ if not args.output_hardsubs and not args.input_path.is_file():
 
 if args.transcription_device == "auto":
     import torch
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
     torch_device = ("cuda" if torch.cuda.is_available() else "cpu")
 else:
     torch_device = str.lower(args.transcription_device)
