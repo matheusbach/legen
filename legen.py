@@ -10,7 +10,7 @@ import file_utils
 import translate_utils
 from utils import time_task, audio_extensions, video_extensions, check_other_extensions
 
-version = "v0.17"
+version = "v0.18"
 
 # Terminal colors
 default = "\033[1;0m"
@@ -55,6 +55,10 @@ parser.add_argument("-ts:b", "--transcription_batch", type=int, default=4,
                     help="Number of simultaneous segments being transcribed. Higher values will speed up processing. If you have low RAM/VRAM, long duration media files or have buggy subtitles, reduce this value to avoid issues. Only works using transcription_engine whisperx. (default: 4)")
 parser.add_argument("--translate", type=str, default="none",
                     help="Translate subtitles to language code if not the same as origin. (default: don't translate)")
+parser.add_argument("--translate_engine", type=str, default="google",
+                    help="Translation engine to use: google (default) or gemini")
+parser.add_argument("--gemini_api_key", type=str, default=None,
+                    help="Gemini API key (required if --translate_engine=gemini)")
 parser.add_argument("--input_lang", type=str, default="auto",
                     help="Indicates (forces) the language of the voice in the input media (default: auto)")
 parser.add_argument("-c:v", "--codec_video", type=str, default="h264", metavar="VIDEO_CODEC",
@@ -76,6 +80,10 @@ parser.add_argument("--disable_hardsubs", default=False, action="store_true",
 parser.add_argument("--copy_files", default=False, action="store_true",
                     help="Copy other (non-video) files present in input directory to output directories. Only generate the subtitles and videos")
 args = parser.parse_args()
+
+# If gemini_api_key is provided and not empty, force translate_engine to 'gemini'
+if args.gemini_api_key and args.gemini_api_key.strip():
+    args.translate_engine = "gemini"
 
 if not args.output_softsubs and not args.input_path.is_file():
     args.output_softsubs = compatibility_path if (compatibility_path := Path(args.input_path.parent, "legen_srt_" + args.input_path.name)).exists() else Path(args.input_path.parent, "softsubs_" + args.input_path.name)
@@ -217,9 +225,14 @@ with time_task(message="⌛ Processing files for"):
                             subtitle_translated_path, file_ext=".srt")
 
                         # translating with google translate public API
-                        print(f"{wblue}Translating{default} with {gray}Google Translate{default}")
+                        print(f"{wblue}Translating{default} with {gray}{args.translate_engine.capitalize()}{default}")
                         subs = translate_utils.translate_srt_file(
-                            transcribed_srt_temp.getvalidpath(), translated_srt_temp.getpath(), args.translate)
+                            transcribed_srt_temp.getvalidpath(),
+                            translated_srt_temp.getpath(),
+                            args.translate,
+                            translate_engine=args.translate_engine,
+                            gemini_api_key=args.gemini_api_key
+                        )
                         if not args.disable_srt:
                             translated_srt_temp.save()
 
