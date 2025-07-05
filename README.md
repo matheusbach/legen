@@ -98,7 +98,7 @@ Full options list are described bellow:
 - `--copy_files`: Copies other (non-video) files present in the input directory to output directories. Only generates the subtitles and videos. By default, this option is false.
 
 - `--translate_engine`: Selects the translation engine. Possible values: `google` (default), `gemini`.
-- `--gemini_api_key`: API key for Gemini translation (required if using `--translate_engine gemini`). et one at https://aistudio.google.com/apikey
+- `--gemini_api_key`: API key for Gemini translation (required if using `--translate_engine gemini`). Get one at https://aistudio.google.com/apikey
 
 Each of these options provides control over various aspects of the video processing workflow. Make sure to refer to the documentation or help message (`LeGen --help`) for more details on each option[Source 0](https://docs.python.org/3/library/argparse.html)[Source 2](https://realpython.com/command-line-interfaces-python-argparse/).
 

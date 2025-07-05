@@ -64,7 +64,6 @@ def translate_srt_file(
         return subs
 
     # Default: Google Translate
-    print("Translating with Google Translate...")
     # Make chunks of at maximum $chunk_max_chars to stay under Google Translate public API limits
     chunks = join_sentences(sub_content, chunk_max_chars) or []
 

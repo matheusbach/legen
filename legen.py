@@ -10,7 +10,7 @@ import file_utils
 import translate_utils
 from utils import time_task, audio_extensions, video_extensions, check_other_extensions
 
-version = "v0.18"
+version = "v0.18.1"
 
 # Terminal colors
 default = "\033[1;0m"
@@ -84,6 +84,12 @@ args = parser.parse_args()
 # If gemini_api_key is provided and not empty, force translate_engine to 'gemini'
 if args.gemini_api_key and args.gemini_api_key.strip():
     args.translate_engine = "gemini"
+    # Set pt-BR as default translation language when pt is selected
+    if args.translate.lower() == 'pt':
+        args.translate = 'pt-BR'
+# Fix google compatibility with pt language
+if args.translate_engine == "google" and args.translate.lower() in ['pt', 'pt-br', 'pt-pt']:
+    args.translate = 'pt'
 
 if not args.output_softsubs and not args.input_path.is_file():
     args.output_softsubs = compatibility_path if (compatibility_path := Path(args.input_path.parent, "legen_srt_" + args.input_path.name)).exists() else Path(args.input_path.parent, "softsubs_" + args.input_path.name)
@@ -224,8 +230,8 @@ with time_task(message="⌛ Processing files for"):
                         translated_srt_temp = file_utils.TempFile(
                             subtitle_translated_path, file_ext=".srt")
 
-                        # translating with google translate public API
-                        print(f"{wblue}Translating{default} with {gray}{args.translate_engine.capitalize()}{default}")
+                        # translating subtitle using Google Translate or Gemini
+                        print(f"{wblue}Translating{default} with {gray}{args.translate_engine.capitalize()}{default} to {gray}{args.translate}{default}")
                         subs = translate_utils.translate_srt_file(
                             transcribed_srt_temp.getvalidpath(),
                             translated_srt_temp.getpath(),
