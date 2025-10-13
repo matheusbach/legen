@@ -7,7 +7,11 @@ import pysrt
 import tqdm.asyncio
 import subtitle_utils
 from utils import format_time
-import gemini_srt_translator as gst
+from gemini_utils import (
+    GeminiTranslationConfig,
+    normalize_api_keys,
+    translate_with_gemini,
+)
 
 # all entence endings for japanese and normal people languages
 sentence_endings = ['.', '!', '?', ')', 'よ', 'ね',
@@ -24,12 +28,12 @@ def translate_srt_file(
     translated_subtitle_path: Path,
     target_lang,
     translate_engine: str = "google",
-    gemini_api_key: str = None
+    gemini_api_keys=None
 ):
     """
     Translate SRT file using the specified engine.
     translate_engine: "google" or "gemini"
-    gemini_api_key: required if translate_engine == "gemini"
+    gemini_api_keys: optional sequence of API keys required if translate_engine == "gemini"
     """
     # Load the original SRT file
     subs = pysrt.open(srt_file_path, encoding='utf-8')
@@ -38,29 +42,21 @@ def translate_srt_file(
     sub_content = [' '.join(sub.text.strip().splitlines()) for sub in subs]
 
     if translate_engine == "gemini":
-        if not gemini_api_key:
+        api_keys = normalize_api_keys(gemini_api_keys)
+        if not api_keys:
             raise ValueError("Gemini API key is required for Gemini translation. Get one at https://aistudio.google.com/apikey")
+
         Path(translated_subtitle_path).unlink(missing_ok=True)
-        
-        gst.gemini_api_key = gemini_api_key
-        gst.input_file = str(srt_file_path)
-        gst.target_language = target_lang
-        gst.free_quota = True
-        gst.resume = False
-        gst.thinking = True
-        gst.skip_upgrade = True
-        gst.progress_log = False
-        gst.thoughts_log = False
-        gst.batch_size = 1000
-        gst.temperature = 0.3
-        gst.top_p = 0.9
-        gst.top_k = 50
-        gst.output_file = str(translated_subtitle_path)
-        
-        gst.translate()
-        
-        # Load the translated SRT file
-        subs = pysrt.open(translated_subtitle_path, encoding='utf-8')
+
+        subs = translate_with_gemini(
+            GeminiTranslationConfig(
+                api_keys=api_keys,
+                input_file=srt_file_path,
+                output_file=translated_subtitle_path,
+                target_language=target_lang,
+            )
+        )
+
         return subs
 
     # Default: Google Translate

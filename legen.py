@@ -8,9 +8,10 @@ from pathlib import Path
 import ffmpeg_utils
 import file_utils
 import translate_utils
+from gemini_utils import normalize_api_keys
 from utils import time_task, audio_extensions, video_extensions, check_other_extensions
 
-version = "v0.18.1"
+version = "v0.18.2"
 
 # Terminal colors
 default = "\033[1;0m"
@@ -57,8 +58,8 @@ parser.add_argument("--translate", type=str, default="none",
                     help="Translate subtitles to language code if not the same as origin. (default: don't translate)")
 parser.add_argument("--translate_engine", type=str, default="google",
                     help="Translation engine to use: google (default) or gemini")
-parser.add_argument("--gemini_api_key", type=str, default=None,
-                    help="Gemini API key (required if --translate_engine=gemini)")
+parser.add_argument("--gemini_api_key", action="append", default=[], type=str,
+                    help="Gemini API key. Repeat or separate by comma/line break to add multiple keys (required if --translate_engine=gemini)")
 parser.add_argument("--input_lang", type=str, default="auto",
                     help="Indicates (forces) the language of the voice in the input media (default: auto)")
 parser.add_argument("-c:v", "--codec_video", type=str, default="h264", metavar="VIDEO_CODEC",
@@ -81,8 +82,11 @@ parser.add_argument("--copy_files", default=False, action="store_true",
                     help="Copy other (non-video) files present in input directory to output directories. Only generate the subtitles and videos")
 args = parser.parse_args()
 
-# If gemini_api_key is provided and not empty, force translate_engine to 'gemini'
-if args.gemini_api_key and args.gemini_api_key.strip():
+args.gemini_api_keys = normalize_api_keys(args.gemini_api_key)
+args.gemini_api_key = args.gemini_api_keys[0] if args.gemini_api_keys else None
+
+# If Gemini API keys are provided, force translate_engine to 'gemini'
+if args.gemini_api_keys:
     args.translate_engine = "gemini"
     # Set pt-BR as default translation language when pt is selected
     if args.translate.lower() == 'pt':
@@ -237,7 +241,7 @@ with time_task(message="⌛ Processing files for"):
                             translated_srt_temp.getpath(),
                             args.translate,
                             translate_engine=args.translate_engine,
-                            gemini_api_key=args.gemini_api_key
+                            gemini_api_keys=args.gemini_api_keys
                         )
                         if not args.disable_srt:
                             translated_srt_temp.save()
