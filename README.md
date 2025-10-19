@@ -3,7 +3,7 @@
 ![legen-wide](https://github.com/matheusbach/legen/assets/35426162/05a7acd2-52d5-43e0-8f31-7da7d6aa7c3c)
 
 
-LeGen is a Python script that uses Whisper/WhisperX AI to locally transcribes speech from media files, generating subtitle files, can translates the generated subtitles, inserts them into the mp4 container, and burns them directly into video
+LeGen is a Python script that uses Whisper/WhisperX AI to locally transcribes speech from media files, generating subtitle files, can translates the generated subtitles, exports them as `.srt` or plain-text `.txt`, inserts them into the mp4 container, and burns them directly into video
 
 This is very useful for making it available in another language, or even just subtitling any video that belongs to you or that you have the proper authorization to do so, be it a film, lecture, course, presentation, interview, etc.
 
@@ -89,7 +89,9 @@ Full options list are described bellow:
 
 - `--overwrite`: Overwrites existing files in output directories. By default, this option is false.
 
-- `--disable_srt`: Disables .srt file generation and doesn't insert subtitles in the mp4 container of output_softsubs. By default, this option is false.
+- `--subtitle_formats`: Specifies which subtitle formats should be exported. Separate multiple values with comma or space. Supported formats: `srt`, `txt`. Example: `--subtitle_formats srt,txt`.
+
+- `--disable_srt`: Disables .srt file generation and doesn't insert subtitles in the mp4 container of output_softsubs. Equivalent to removing `srt` from `--subtitle_formats`. By default, this option is false.
 
 - `--disable_softsubs`: Doesn't insert subtitles in the mp4 container of output_softsubs. This option continues generating .srt files. By default, this option is false.
 

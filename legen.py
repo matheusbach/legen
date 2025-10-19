@@ -7,11 +7,41 @@ from pathlib import Path
 
 import ffmpeg_utils
 import file_utils
+import subtitle_utils
 import translate_utils
 from gemini_utils import normalize_api_keys
 from utils import time_task, audio_extensions, video_extensions, check_other_extensions
 
-version = "v0.18.2"
+version = "v0.18.3"
+
+SUPPORTED_SUBTITLE_FORMATS = {"srt", "txt"}
+
+
+def normalize_subtitle_formats(raw_value):
+    if isinstance(raw_value, (list, tuple)):
+        values = raw_value
+    else:
+        values = [raw_value]
+
+    formats = []
+    for value in values:
+        if value is None:
+            continue
+        parts = str(value).replace(",", " ").split()
+        for part in parts:
+            fmt = part.strip().lower()
+            if fmt:
+                formats.append(fmt)
+
+    if not formats:
+        formats = ["srt"]
+
+    # maintain user order while removing duplicates
+    seen = {}
+    for fmt in formats:
+        seen.setdefault(fmt, None)
+
+    return list(seen.keys())
 
 # Terminal colors
 default = "\033[1;0m"
@@ -74,6 +104,8 @@ parser.add_argument("--overwrite", default=False, action="store_true",
                     help="Overwrite existing files in output directories")
 parser.add_argument("--disable_srt", default=False, action="store_true",
                     help="Disable .srt file generation and don't insert subtitles in mp4 container of output_softsubs")
+parser.add_argument("--subtitle_formats", type=str, default="srt",
+                    help="Subtitle formats to export (separate multiple options with comma or space). Supported: srt, txt")
 parser.add_argument("--disable_softsubs", default=False, action="store_true",
                     help="Don't insert subtitles in mp4 container of output_softsubs. This option continues generating .srt files")
 parser.add_argument("--disable_hardsubs", default=False, action="store_true",
@@ -81,6 +113,31 @@ parser.add_argument("--disable_hardsubs", default=False, action="store_true",
 parser.add_argument("--copy_files", default=False, action="store_true",
                     help="Copy other (non-video) files present in input directory to output directories. Only generate the subtitles and videos")
 args = parser.parse_args()
+
+requested_formats = normalize_subtitle_formats(args.subtitle_formats)
+unsupported_formats = [fmt for fmt in requested_formats if fmt not in SUPPORTED_SUBTITLE_FORMATS]
+if unsupported_formats:
+    parser.error(f"Unsupported subtitle format(s): {', '.join(unsupported_formats)}. Supported formats: {', '.join(sorted(SUPPORTED_SUBTITLE_FORMATS))}")
+
+if args.disable_srt:
+    requested_formats = [fmt for fmt in requested_formats if fmt != "srt"]
+
+if not requested_formats and not args.disable_srt:
+    requested_formats = ["srt"]
+
+args.subtitle_formats = requested_formats
+args.disable_srt = "srt" not in args.subtitle_formats
+args.export_txt = "txt" in args.subtitle_formats
+
+
+def export_txt_if_requested(source_path: Path, target_path: Path):
+    if not args.export_txt:
+        return
+    if source_path is None:
+        return
+    if not args.overwrite and file_utils.file_is_valid(target_path):
+        return
+    subtitle_utils.export_plain_text_from_srt(source_path, target_path)
 
 args.gemini_api_keys = normalize_api_keys(args.gemini_api_key)
 args.gemini_api_key = args.gemini_api_keys[0] if args.gemini_api_keys else None
@@ -216,19 +273,25 @@ with time_task(message="⌛ Processing files for"):
                         # if save .srt is enabled, save it to destination dir, also update path with language code
                         if not args.disable_srt:
                             transcribed_srt_temp.save()
-                    subtitles_path.append(transcribed_srt_temp.getvalidpath())
+                    transcribed_srt_source_path = transcribed_srt_temp.getvalidpath()
+                    if transcribed_srt_source_path:
+                        subtitles_path.append(transcribed_srt_source_path)
                     # translate transcribed subtitle using Google Translate if transcribed language is not equals to target
                     # skip translation if translation has not requested, has equal source and output language, if file is existing (without overwrite neabled) or will not be used in LeGen process
                     if args.translate == "none":
+                        translated_srt_source_path = None
                         pass # translation not requested
                     elif args.translate == audio_language:
                         print("Translation is unnecessary because input and output language are the same. Skipping.")
+                        translated_srt_source_path = None
                     elif (args.disable_hardsubs or file_utils.file_is_valid(hardsub_video_path)) and (args.disable_srt or (file_utils.file_is_valid(subtitle_translated_path) and file_utils.file_is_valid(subtitle_transcribed_path) and file_utils.file_is_valid(subtitle_translated_path))) and not args.overwrite:
                         print("Translation is unnecessary. Skipping.")
                         subtitles_path.insert(0, subtitle_translated_path)
+                        translated_srt_source_path = subtitle_translated_path if file_utils.file_is_valid(subtitle_translated_path) else None
                     elif file_utils.file_is_valid(subtitle_translated_path):
                         print("Translated file found. Skipping translation.")
                         subtitles_path.insert(0, subtitle_translated_path)
+                        translated_srt_source_path = subtitle_translated_path
                     elif transcribed_srt_temp.getvalidpath():
                         # create the temp .srt translated file
                         translated_srt_temp = file_utils.TempFile(
@@ -246,7 +309,14 @@ with time_task(message="⌛ Processing files for"):
                         if not args.disable_srt:
                             translated_srt_temp.save()
 
-                        subtitles_path.insert(0, translated_srt_temp.getvalidpath())
+                        translated_srt_source_path = translated_srt_temp.getvalidpath()
+                        subtitles_path.insert(0, translated_srt_source_path)
+                    else:
+                        translated_srt_source_path = None
+                    if args.export_txt and transcribed_srt_source_path:
+                        export_txt_if_requested(transcribed_srt_source_path, subtitle_transcribed_path.with_suffix(".txt"))
+                    if args.export_txt and translated_srt_source_path:
+                        export_txt_if_requested(translated_srt_source_path, subtitle_translated_path.with_suffix(".txt"))
                     if not args.disable_softsubs:
                         if file_utils.file_is_valid(softsub_video_path) and not args.overwrite:
                             print(f"Existing video file {gray}{softsub_video_path}{default}. Skipping subtitle insert")

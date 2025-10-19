@@ -6,6 +6,31 @@ from pathlib import Path
 import pysrt
 
 
+def _collect_plain_text(subtitles: pysrt.SubRipFile) -> str:
+    texts = []
+    for item in subtitles:
+        normalized = " ".join(item.text.strip().split())
+        if normalized:
+            texts.append(normalized)
+    return " ".join(texts).strip()
+
+
+def export_plain_text_from_srt(source, output_path: Path) -> str:
+    """Save subtitles as a single-line TXT without timestamps or line breaks."""
+    if isinstance(source, pysrt.SubRipFile):
+        subtitles = source
+    else:
+        subtitles = pysrt.open(source, encoding="utf-8")
+
+    plain_text = _collect_plain_text(subtitles)
+
+    os.makedirs(output_path.parent, exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(plain_text)
+
+    return plain_text
+
+
 def SaveSegmentsToSrt(segments: list, output_path: Path):
     # Create the subtitle file
     subs = pysrt.SubRipFile()
