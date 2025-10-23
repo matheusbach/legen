@@ -12,7 +12,7 @@ import translate_utils
 from gemini_utils import normalize_api_keys
 from utils import time_task, audio_extensions, video_extensions, check_other_extensions
 
-version = "v0.18.3"
+version = "v0.18.4"
 
 SUPPORTED_SUBTITLE_FORMATS = {"srt", "txt"}
 

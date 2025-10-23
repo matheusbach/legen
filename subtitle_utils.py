@@ -1,9 +1,40 @@
+import atexit
 import os
 import re
 import tkinter as tk
+import tkinter.font as tk_font
 from pathlib import Path
 
 import pysrt
+
+_STRING_WIDTH_ROOT = None
+_FONT_CACHE = {}
+
+
+def _destroy_string_width_root():
+    global _STRING_WIDTH_ROOT
+    if _STRING_WIDTH_ROOT is None:
+        return
+    try:
+        _STRING_WIDTH_ROOT.destroy()
+    except Exception:
+        pass
+    _STRING_WIDTH_ROOT = None
+
+
+def _ensure_string_width_font(font_name: str, font_size: int) -> tk_font.Font:
+    global _STRING_WIDTH_ROOT
+    if _STRING_WIDTH_ROOT is None:
+        _STRING_WIDTH_ROOT = tk.Tk()
+        _STRING_WIDTH_ROOT.withdraw()
+        atexit.register(_destroy_string_width_root)
+
+    cache_key = (font_name, font_size)
+    font = _FONT_CACHE.get(cache_key)
+    if font is None:
+        font = tk_font.Font(root=_STRING_WIDTH_ROOT, family=font_name, size=font_size, weight="bold")
+        _FONT_CACHE[cache_key] = font
+    return font
 
 
 def _collect_plain_text(subtitles: pysrt.SubRipFile) -> str:
@@ -62,12 +93,11 @@ def string_width(text, font_name="Jost", font_size=18):
     while (tries_remaining > 0):
         tries_remaining -= 1
         try:
-            root = tk.Tk()
-            width = tk.font.Font(name=font_name, size=font_size,
-                                weight="bold").measure(text)
-            root.destroy()
+            font = _ensure_string_width_font(font_name, font_size)
+            width = font.measure(text)
             return width
         except Exception:
+            _destroy_string_width_root()
             pass
 
     # all failed, return 60% of height per char
