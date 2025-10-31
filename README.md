@@ -3,7 +3,7 @@
 ![legen-wide](https://github.com/matheusbach/legen/assets/35426162/05a7acd2-52d5-43e0-8f31-7da7d6aa7c3c)
 
 
-LeGen is a Python script that uses Whisper/WhisperX AI to locally transcribes speech from media files, generating subtitle files, can translates the generated subtitles, exports them as `.srt` or plain-text `.txt`, inserts them into the mp4 container, and burns them directly into video
+LeGen is a Python script that uses Whisper/WhisperX AI to locally transcribes speech from media files, generating subtitle files, can translates the generated subtitles, exports them as `.srt` or plain-text `.txt`, inserts them into the mp4 container, and burns them directly into video. It also understands remote URLs and can fetch videos or playlists with `yt-dlp` before running the transcription pipeline, optionally embedding every available subtitle track directly into the downloaded media.
 
 This is very useful for making it available in another language, or even just subtitling any video that belongs to you or that you have the proper authorization to do so, be it a film, lecture, course, presentation, interview, etc.
 
@@ -31,6 +31,8 @@ Install requirements using pip. Is recommended to create a virtual environment (
 ```sh
 pip3 install -r requirements.txt --upgrade
 ```
+
+Ensure the `yt-dlp` command is available in your shell so LeGen can fetch remote videos. The provided requirements install `yt-dlp` for convenience, and LeGen will use it to embed all subtitle tracks it can find for each item into the MP4 container.
 
 ### GPU compatibility
 
@@ -61,7 +63,7 @@ Users could for example also translate generated subtitles for other language li
 
 Full options list are described bellow:
 
-- `-i`, `--input_path`: Specifies the path to the media files. This can be a folder containing files or an individual file. Example: `LeGen -i /path/to/media/files`.
+- `-i`, `--input_path`: Specifies the path to the media files or a direct video/playlist URL. The CLI will download URLs with `yt-dlp` before processing. Example: `LeGen -i /path/to/media/files` or `LeGen -i https://www.youtube.com/watch?v=…`.
 
 - `--norm`: Normalizes folder times and runs vidqa on the input path before starting to process files. Useful for synchronizing timestamps across multiple media files.
 
@@ -87,7 +89,11 @@ Full options list are described bellow:
 
 - `-o:h`, `--output_hardsubs`: Specifies the output folder path for video files with burned-in captions and embedded in the mp4 container. Default is "hardsubs_" followed by the input path.
 
+- `-o:d`, `--output_downloads`: Overrides the folder used to store media downloaded from URL inputs. Default is `./downloads` when `-i` receives a URL.
+
 - `--overwrite`: Overwrites existing files in output directories. By default, this option is false.
+
+- `-dl:rs`, `--download_remote_subs`: When supplied alongside a URL input, instructs `yt-dlp` to download and embed every subtitle track it can find into the downloaded MP4. By default, remote subtitles are not fetched.
 
 - `--subtitle_formats`: Specifies which subtitle formats should be exported. Separate multiple values with comma or space. Supported formats: `srt`, `txt`. Example: `--subtitle_formats srt,txt`.
 
@@ -104,6 +110,18 @@ Full options list are described bellow:
 
 Each of these options provides control over various aspects of the video processing workflow. Make sure to refer to the documentation or help message (`LeGen --help`) for more details on each option[Source 0](https://docs.python.org/3/library/argparse.html)[Source 2](https://realpython.com/command-line-interfaces-python-argparse/).
 
+### Downloading from URLs
+
+When you pass a HTTP(S) URL to `-i`, LeGen will:
+
+- Invoke `yt-dlp` to download the target video, playlist, or batch feed.
+- Embed every subtitle track the platform exposes directly into the downloaded media **only when `--download_remote_subs` is provided**.
+- Force `mp4` output with the best available video and audio combination.
+- Store the media under `./downloads` or the path provided through `--output_downloads`.
+- Continue the normal transcription/translation pipeline on the freshly downloaded files with no additional steps from you.
+
+If the value supplied to `-i` is neither a reachable URL nor a valid local file/folder, LeGen will abort with a clear error message so you can correct the input.
+
 ## Dependencies
 
 LeGen requires the following **pip** dependencies to be installed:
@@ -117,8 +135,11 @@ LeGen requires the following **pip** dependencies to be installed:
 - vidqa
 - matheusbach/whisperx (fork from m-bain/whisperx)
 - gemini-srt-translator
+- yt-dlp
 
 This dependencies can be installed and updated with ```pip install -r requirements.txt --upgrade```
+
+LeGen requires the `yt-dlp` CLI on your system to download remote content automatically.
 
 You also need to [install FFmpeg](https://ffmpeg.org/download.html)
 

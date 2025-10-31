@@ -8,3 +8,4 @@ whisper
 vidqa
 git+https://github.com/matheusbach/whisperx.git
 gemini-srt-translator
+yt-dlp

@@ -425,3 +425,8 @@ legen-errors.txt
 **.webm
 **.8svx
 **.mts
+
+.venv/
+tmp/
+downloaded/
+downloads/

@@ -15,13 +15,13 @@ class GeminiTranslationConfig:
     input_file: Path
     output_file: Path
     target_language: str
-    batch_size: int = 1000
+    batch_size: int = 400
     temperature: float = 0.3
     top_p: float = 0.9
     top_k: int = 50
     free_quota: bool = True
     resume: bool = False
-    thinking: bool = True
+    thinking: bool = False
     progress_log: bool = False
     thoughts_log: bool = False
 

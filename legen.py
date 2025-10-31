@@ -4,17 +4,26 @@ import subprocess
 import time
 from inspect import currentframe, getframeinfo
 from pathlib import Path
+from urllib.parse import urlparse
 
 import ffmpeg_utils
 import file_utils
+import download_utils
 import subtitle_utils
 import translate_utils
 from gemini_utils import normalize_api_keys
 from utils import time_task, audio_extensions, video_extensions, check_other_extensions
 
-version = "v0.18.4"
+version = "v0.19.0"
 
 SUPPORTED_SUBTITLE_FORMATS = {"srt", "txt"}
+
+
+def looks_like_url(value: str) -> bool:
+    if not value:
+        return False
+    parsed = urlparse(str(value))
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
 
 
 def normalize_subtitle_formats(raw_value):
@@ -71,7 +80,7 @@ time.sleep(1.5)
 parser = argparse.ArgumentParser(prog="LeGen", description="Uses AI to locally transcribes speech from media files, generating subtitle files, translates the generated subtitles, inserts them into the mp4 container, and burns them directly into video",
                                  argument_default=True, allow_abbrev=True, add_help=True, usage='LeGen -i INPUT_PATH [other options]')
 parser.add_argument("-i", "--input_path",
-                    help="Path to media files. Can be a folder containing files or an individual file", required=True, type=Path)
+                    help="Local media path or URL to download before processing", required=True, type=str)
 parser.add_argument("--norm", default=False, action="store_true",
                     help="Normalize folder times and run vidqa on input_path before starting processing files")
 parser.add_argument("-ts:e", "--transcription_engine", type=str, default="whisperx",
@@ -100,8 +109,12 @@ parser.add_argument("-o:s", "--output_softsubs", default=None, type=Path,
                     help="Path to the folder or output file for the video files with embedded softsub (embedded in the mp4 container and .srt files). (default: softsubs_ + input_path)")
 parser.add_argument("-o:h", "--output_hardsubs", default=None, type=Path,
                     help="Output folder path for video files with burned-in captions and embedded in the mp4 container. (default: hardsubs_ + input_path)")
+parser.add_argument("-o:d", "--output_downloads", default=None, type=Path,
+                    help="Destination folder for videos downloaded from URL inputs. (default: ./downloads)")
 parser.add_argument("--overwrite", default=False, action="store_true",
                     help="Overwrite existing files in output directories")
+parser.add_argument("-dl:rs", "--download_remote_subs", default=False, action="store_true",
+                    help="When using a URL input, also download and embed remote subtitle tracks (disabled by default)")
 parser.add_argument("--disable_srt", default=False, action="store_true",
                     help="Disable .srt file generation and don't insert subtitles in mp4 container of output_softsubs")
 parser.add_argument("--subtitle_formats", type=str, default="srt",
@@ -113,6 +126,36 @@ parser.add_argument("--disable_hardsubs", default=False, action="store_true",
 parser.add_argument("--copy_files", default=False, action="store_true",
                     help="Copy other (non-video) files present in input directory to output directories. Only generate the subtitles and videos")
 args = parser.parse_args()
+
+input_path_raw = args.input_path
+
+if looks_like_url(input_path_raw):
+    download_destination = args.output_downloads or Path.cwd() / "downloads"
+    args.output_downloads = Path(download_destination).expanduser().resolve()
+    try:
+        with time_task(message_start=f"\nDownloading media with yt-dlp to {gray}{args.output_downloads}{default}", end="\n"):
+            downloaded_files = download_utils.download_urls(
+                [input_path_raw],
+                args.output_downloads,
+                overwrite=args.overwrite,
+                download_remote_subs=args.download_remote_subs,
+            )
+    except FileNotFoundError as exc:
+        parser.error(str(exc))
+    except RuntimeError as exc:
+        parser.error(str(exc))
+
+    print(f"Downloaded {len(downloaded_files)} file(s) with {gray}yt-dlp{default}. Continuing with local processing from {gray}{args.output_downloads}{default}.")
+    args.input_path = args.output_downloads
+else:
+    candidate_path = Path(input_path_raw).expanduser().resolve()
+    if not candidate_path.exists():
+        parser.error(f"Input path '{input_path_raw}' is neither an existing file/folder nor a downloadable URL.")
+    args.input_path = candidate_path
+
+if args.output_downloads is not None:
+    args.output_downloads = Path(args.output_downloads).expanduser().resolve()
+
 
 requested_formats = normalize_subtitle_formats(args.subtitle_formats)
 unsupported_formats = [fmt for fmt in requested_formats if fmt not in SUPPORTED_SUBTITLE_FORMATS]
@@ -159,8 +202,18 @@ if not args.output_hardsubs and not args.input_path.is_file():
 
 if args.transcription_device == "auto":
     import torch
-    torch.backends.cuda.matmul.allow_tf32 = True
-    torch.backends.cudnn.allow_tf32 = True
+
+    matmul_backend = getattr(torch.backends.cuda, "matmul", None)
+    if matmul_backend is not None and hasattr(matmul_backend, "fp32_precision"):
+        matmul_backend.fp32_precision = "tf32"
+    elif matmul_backend is not None and hasattr(matmul_backend, "allow_tf32"):
+        matmul_backend.allow_tf32 = True
+
+    cudnn_conv_backend = getattr(torch.backends.cudnn, "conv", None)
+    if cudnn_conv_backend is not None and hasattr(cudnn_conv_backend, "fp32_precision"):
+        cudnn_conv_backend.fp32_precision = "tf32"
+    elif hasattr(torch.backends.cudnn, "allow_tf32"):
+        torch.backends.cudnn.allow_tf32 = True
     torch_device = ("cuda" if torch.cuda.is_available() else "cpu")
 else:
     torch_device = str.lower(args.transcription_device)
