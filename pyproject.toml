@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "legen"
+version = "0.19.0"
+description = "Powerfull toolkit that locally transcribes, translates, and masters subtitles for your media"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.9,<3.13"
+license = "GPL-3.0-only"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Matheus Bach" }
+]
+keywords = ["subtitles", "whisper", "translation", "ffmpeg", "yt-dlp"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Video"
+]
+dependencies = [
+    "deep-translator",
+    "ffmpeg-progress-yield",
+    "openai-whisper",
+    "pysrt",
+    "torch",
+    "tqdm",
+    "whisper",
+    "vidqa",
+    "gemini-srt-translator",
+    "yt-dlp",
+    "whisperx @ git+https://github.com/matheusbach/whisperx.git"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8"
+]
+
+[project.urls]
+Homepage = "https://github.com/matheusbach/legen"
+"Issue Tracker" = "https://github.com/matheusbach/legen/issues"
+
+[project.scripts]
+legen = "legen_cli:main"
+
+[tool.setuptools]
+py-modules = [
+    "download_utils",
+    "ffmpeg_utils",
+    "file_utils",
+    "gemini_utils",
+    "legen",
+    "legen_cli",
+    "subtitle_utils",
+    "translate_utils",
+    "utils",
+    "whisper_utils",
+    "whisperx_utils"
+]

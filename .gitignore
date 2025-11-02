@@ -430,3 +430,6 @@ legen-errors.txt
 tmp/
 downloaded/
 downloads/
+build/
+dist/
+*.egg-info/

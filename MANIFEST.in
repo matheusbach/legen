@@ -1,0 +1,9 @@
+include LICENSE
+include README.md
+global-exclude *.py[cod] __pycache__
+prune temp
+prune tmp
+prune downloads
+prune hardsubs_m
+prune softsubs_m
+prune m

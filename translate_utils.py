@@ -145,40 +145,49 @@ async def translate_chunk(index, chunk, target_lang):
 
 
 def join_sentences(lines, max_chars):
-    """
-    Joins the given list of strings in a way that each part ends with a sentence ending.
-    Adds a separator to all lines in the chunk.
-    """
+    """Join sentences in chunks that stay under *max_chars* without breaking the separator mapping."""
     joined_lines = []
     current_chunk = ""
 
-    for line in lines:
-        if not line or line is None:
-            line = 'ㅤ'  # invisible char (not a simple space)
+    for index, line in enumerate(lines):
+        if not line:
+            line = '\u3164'  # invisible char (not a simple space)
 
-        if len(current_chunk) + len(line) + len(separator) <= max_chars:
-            current_chunk += line + separator
-            if any(line.endswith(ending) for ending in sentence_endings):
-                joined_lines.append(current_chunk)
-                current_chunk = ""
-        else:
-            if current_chunk:
-                joined_lines.append(current_chunk)
-                current_chunk = ""
-            if len(current_chunk) + len(line) + len(separator) <= max_chars:
-                current_chunk += line + separator
-            else:
-                # if a single line exceed max_chars, use maximum posible number of words. Discart the remaining
-                end_index = line.rfind(
-                    ' ', 0, max_chars - (1 + len(separator)))
+        addition = line + separator
 
-                if end_index == - (1 + len(separator)):
-                    end_index = max_chars - (1 + len(separator))
+        # if adding the current line would overflow, flush the chunk first
+        if current_chunk and len(current_chunk) + len(line) + len(separator) > max_chars:
+            joined_lines.append(current_chunk)
+            current_chunk = ""
 
-                joined_lines.append(
-                    (line[:end_index] + '…' + separator)[:max_chars])
+        if len(addition) > max_chars:
+            # a single line exceeds the limit; truncate conservatively
+            end_index = line.rfind(' ', 0, max_chars - (1 + len(separator)))
+            if end_index == -(1 + len(separator)):
+                end_index = max_chars - (1 + len(separator))
+            joined_lines.append((line[:end_index] + '\u2026' + separator)[:max_chars])
+            continue
 
-    # append a chunk wich doenst have a formal end with sentence endings
+        current_chunk += addition
+
+        is_last_line = index == len(lines) - 1
+        ends_sentence = any(line.endswith(ending) for ending in sentence_endings)
+
+        if not ends_sentence and not is_last_line:
+            continue
+
+        if is_last_line:
+            joined_lines.append(current_chunk)
+            current_chunk = ""
+            continue
+
+        next_line = lines[index + 1] or '\u3164'
+        next_addition_length = len(next_line) + len(separator)
+
+        if len(current_chunk) + next_addition_length > max_chars:
+            joined_lines.append(current_chunk)
+            current_chunk = ""
+
     if current_chunk:
         joined_lines.append(current_chunk)
 
@@ -205,7 +214,8 @@ def unjoin_sentences(original_sentence: str, modified_sentence: str, separator: 
         return original_lines or ' '
 
     # fix strange formatation returned by google translate, case occuring
-    modified_sentence.replace(f"{separator_unjoin} ", f"{separator_unjoin}").replace(f" {separator_unjoin}", f"{separator_unjoin}").replace(
+    modified_sentence = modified_sentence.replace(f"{separator_unjoin} ", f"{separator_unjoin}").replace(
+        f" {separator_unjoin}", f"{separator_unjoin}").replace(
         f"{separator_unjoin}.", f".{separator_unjoin}").replace(f"{separator_unjoin},", f",{separator_unjoin}")
 
     # split by separator, remove double spaces and empty or only space strings from list
@@ -254,8 +264,10 @@ def unjoin_sentences(original_sentence: str, modified_sentence: str, separator: 
 
         # append remaining if is the last loop
         if i == len(original_lines) - 1:
-            ' '.join([generated_line, ' '.join(
-                modified_words[current_index:])])
+            tail = ' '.join(modified_words[current_index:])
+            if tail:
+                generated_line = ' '.join([generated_line, tail]).strip()
+            current_index = len(modified_words)
 
         # Add modified sentence to the new list
         new_modified_lines.append(generated_line.replace("  ", " ").strip())

@@ -3,7 +3,7 @@
 ![legen-wide](https://github.com/matheusbach/legen/assets/35426162/05a7acd2-52d5-43e0-8f31-7da7d6aa7c3c)
 
 
-LeGen is a Python script that uses Whisper/WhisperX AI to locally transcribes speech from media files, generating subtitle files, can translates the generated subtitles, exports them as `.srt` or plain-text `.txt`, inserts them into the mp4 container, and burns them directly into video. It also understands remote URLs and can fetch videos or playlists with `yt-dlp` before running the transcription pipeline, optionally embedding every available subtitle track directly into the downloaded media.
+LeGen is a fast, AI-powered subtitle studio that runs right on your machine. It taps into Whisper and WhisperX to transcribe speech, translates the results into the language you need, then exports polished `.srt`/`.txt` files, muxes them into MP4 containers, or even burns them straight into the video. LeGen also speaks fluent `yt-dlp`, pulling remote videos or playlists and embedding every subtitle track it can find before the pipeline kicks in.
 
 This is very useful for making it available in another language, or even just subtitling any video that belongs to you or that you have the proper authorization to do so, be it a film, lecture, course, presentation, interview, etc.
 
@@ -13,7 +13,10 @@ LeGen works on Google Colab, using their computing power to do the work. Aceess 
 
  <a href='https://colab.research.google.com/github/matheusbach/legen/blob/main/legen.ipynb' style='padding-left: 0.5rem;'><img src='https://colab.research.google.com/assets/colab-badge.svg' alt='Google Colab'></a>
 
-## Install locally:
+## Install
+
+### From PyPI (soon)
+
 
 Install FFMpeg from [FFMPeg Oficial Site](https://ffmpeg.org/download.html) or from your linux package manager. _If using windows, prefer gyan_dev release full `choco install ffmpeg-full`_
 
