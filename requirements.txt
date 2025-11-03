@@ -1,6 +1,6 @@
-deep_translator
-ffmpeg_progress_yield
-openai_whisper
+deep-translator
+ffmpeg-progress-yield
+openai-whisper
 pysrt
 torch
 tqdm
