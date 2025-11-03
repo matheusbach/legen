@@ -136,7 +136,7 @@ LeGen requires the following **pip** dependencies to be installed:
 - tqdm
 - whisper
 - vidqa
-- matheusbach/whisperx (fork from m-bain/whisperx)
+- whisperx-legen-fork (legen flavored fork from m-bain/whisperx)
 - gemini-srt-translator
 - yt-dlp
 

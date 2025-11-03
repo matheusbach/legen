@@ -14,7 +14,17 @@ import translate_utils
 from gemini_utils import normalize_api_keys
 from utils import time_task, audio_extensions, video_extensions, check_other_extensions
 
-version = "v0.19.0"
+VERSION = "0.19.1"
+version = f"v{VERSION}"
+__version__ = VERSION
+__all__ = [
+    "VERSION",
+    "__version__",
+    "build_parser",
+    "looks_like_url",
+    "main",
+    "normalize_subtitle_formats",
+]
 
 SUPPORTED_SUBTITLE_FORMATS = {"srt", "txt"}
 

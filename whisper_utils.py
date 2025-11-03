@@ -4,8 +4,8 @@ from pathlib import Path
 import pysrt
 import whisper
 import whisper.transcribe
-import whisperx
-from whisperx import alignment, asr, utils, audio
+import whisperx_legen_fork as whisperx
+from whisperx_legen_fork import alignment, asr, utils, audio
 import subtitle_utils
 from utils import time_task
 

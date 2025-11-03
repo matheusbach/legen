@@ -1,9 +1,9 @@
 import os
 from pathlib import Path
 
-import whisperx
+import whisperx_legen_fork as whisperx
 import whisper
-from whisperx import asr, audio as wx_audio, alignment, utils
+from whisperx_legen_fork import asr, audio as wx_audio, alignment, utils
 import whisper_utils
 import subtitle_utils
 from utils import time_task

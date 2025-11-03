@@ -37,7 +37,7 @@ dependencies = [
     "vidqa",
     "gemini-srt-translator",
     "yt-dlp",
-    "whisperx @ git+https://github.com/matheusbach/whisperx.git"
+    "whisperx-legen-fork"
 ]
 
 [project.optional-dependencies]
