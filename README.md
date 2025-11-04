@@ -15,8 +15,17 @@ LeGen works on Google Colab, using their computing power to do the work. Aceess 
 
 ## Install
 
-### From PyPI (soon)
+### From PyPI
 
+Install the published package directly from [PyPI](https://pypi.org/project/legen/):
+
+```sh
+pip install legen
+```
+
+The `legen` console script will be added to your PATH and mirrors all CLI options documented below.
+
+### From source
 
 Install FFMpeg from [FFMPeg Oficial Site](https://ffmpeg.org/download.html) or from your linux package manager. _If using windows, prefer gyan_dev release full `choco install ffmpeg-full`_
 
