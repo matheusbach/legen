@@ -3,6 +3,7 @@ ffmpeg-progress-yield
 openai-whisper
 pysrt
 torch
+torchaudio<2.9
 tqdm
 whisper
 vidqa

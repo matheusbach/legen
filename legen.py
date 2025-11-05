@@ -14,7 +14,7 @@ import translate_utils
 from gemini_utils import normalize_api_keys
 from utils import time_task, audio_extensions, video_extensions, check_other_extensions
 
-VERSION = "0.19.2"
+VERSION = "0.19.3"
 version = f"v{VERSION}"
 __version__ = VERSION
 __all__ = [
