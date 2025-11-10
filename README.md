@@ -1,5 +1,16 @@
 # LeGen
 
+![GitHub stars](https://img.shields.io/github/stars/matheusbach/legen?style=flat-square)
+![GitHub forks](https://img.shields.io/github/forks/matheusbach/legen?style=flat-square)
+![GitHub watchers](https://img.shields.io/github/watchers/matheusbach/legen?style=flat-square)
+![GitHub issues](https://img.shields.io/github/issues/matheusbach/legen?style=flat-square)
+![GitHub license](https://img.shields.io/github/license/matheusbach/legen?style=flat-square)
+![GitHub last commit](https://img.shields.io/github/last-commit/matheusbach/legen?style=flat-square)
+![Release](https://img.shields.io/github/v/release/matheusbach/legen?style=flat-square)
+![PyPI downloads total](https://pepy.tech/badge/legen)
+![PyPI downloads last month](https://pepy.tech/badge/legen/month)
+
+
 ![legen-wide](https://github.com/matheusbach/legen/assets/35426162/05a7acd2-52d5-43e0-8f31-7da7d6aa7c3c)
 
 
