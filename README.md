@@ -15,6 +15,30 @@ LeGen works on Google Colab, using their computing power to do the work. Aceess 
 
 ## Install
 
+### Using uv (recommended)
+
+Install uv by following the [official installation guide](https://docs.astral.sh/uv/getting-started/installation/). Once uv is available, install the latest LeGen release from PyPI with:
+
+```sh
+uv tool install legen
+```
+
+This command downloads the published wheel via uv's pip-compatible resolver and creates an isolated environment that exposes a `legen` launcher on your PATH. Keep FFmpeg installed on the host so the CLI can access it (see "From source" below for platform-specific tips).
+
+To update an existing installation to the newest version, run:
+
+```sh
+uv tool upgrade legen
+```
+
+Run the CLI just like any other command-line tool:
+
+```sh
+legen -i /path/to/video.mp4
+```
+
+If your shell cannot find the command, ensure uv's tool shims directory (usually `~/.local/bin`) is on your PATH, or invoke the tool through uv directly with `uv tool run legen -i /path/to/video.mp4`.
+
 ### From PyPI
 
 Install the published package directly from [PyPI](https://pypi.org/project/legen/):
@@ -25,13 +49,13 @@ pip install legen
 
 The `legen` console script will be added to your PATH and mirrors all CLI options documented below.
 
-### From source
+### From source (pip)
 
 Install FFMpeg from [FFMPeg Oficial Site](https://ffmpeg.org/download.html) or from your linux package manager. _If using windows, prefer gyan_dev release full `choco install ffmpeg-full`_
 
 Install [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 
-Install [Python](https://www.python.org/downloads/) Recomended version: 3.12.x. _If using windows, select "Add to PATH" option when installing_
+Install [Python](https://www.python.org/downloads/) Recomended version: 3.12.x (LeGen currently supports CPython 3.9 up to 3.12). _If using windows, select "Add to PATH" option when installing_
 
 Clone LeGen using git
 ```sh
@@ -54,7 +78,9 @@ _And done. Now you can use LeGen_
 
 ### Update
 
-For dry-run update, use in legen folder:
+If you installed the packaged CLI with uv, use `uv tool upgrade legen` as shown above.
+
+For pip-based environments:
 ```sh
 git fetch && git reset --hard origin/main && git pull
 pip3 install -r requirements.txt --upgrade --force-reinstall
@@ -65,6 +91,12 @@ pip3 install -r requirements.txt --upgrade --force-reinstall
 To use LeGen, run the following command:
 
 The minimum comand line is:
+
+```sh
+legen -i [input_path]
+```
+
+If you installed from source without uv, replace the command with:
 
 ```sh
 python3 legen.py -i [input_path]
@@ -86,6 +118,8 @@ Full options list are described bellow:
 - `-ts:d`, `--transcription_device`: Specifies the device to run the transcription through Whisper. Possible values: auto (default), cpu, cuda.
 
 - `-ts:c`, `--transcription_compute_type`: Specifies the quantization for the neural network. Possible values: auto (default), int8, int8_float32, int8_float16, int8_bfloat16, int16, float16, bfloat16, float32.
+
+- `-ts:v`, `--transcription_vad`: Selects the voice-activity detector used by WhisperX. Options: silero (default), pyannote.
 
 - `-ts:b`, `--transcription_batch`: Specifies the number of simultaneous segments being transcribed. Higher values will speed up processing. If you have low RAM/VRAM, long duration media files or have buggy subtitles, reduce this value to avoid issues. Only works using transcription_engine whisperx. Default is 4.
 
@@ -133,6 +167,30 @@ When you pass a HTTP(S) URL to `-i`, LeGen will:
 - Continue the normal transcription/translation pipeline on the freshly downloaded files with no additional steps from you.
 
 If the value supplied to `-i` is neither a reachable URL nor a valid local file/folder, LeGen will abort with a clear error message so you can correct the input.
+
+## Run with Docker
+
+You can run LeGen inside a container, keeping the host Python environment clean while still persisting downloads and outputs on disk.
+
+1. Build the image with `docker compose build` (or `docker compose pull` once a registry image is available).
+2. Place the media you want to process inside `./data` or mount a different host folder to `/data` when invoking Docker.
+3. Run LeGen through Compose: `docker compose run --rm legen -i /data/my-video.mp4 --translate pt`. All generated downloads and subtitles stay under the mapped `downloads`, `softsubs_m`, and `hardsubs_m` directories.
+
+To use a GPU-enabled Docker setup, add `--gpus all` to the compose command (Docker Engine 19.03+ with the NVIDIA Container Toolkit). LeGen will detect the GPU automatically, but you can still override it with `--transcription_device` if needed.
+
+### Passing CLI arguments inside Docker
+- Compose  command arguments override the default `--help`. Example: `docker compose run --rm legen -i /data/my-video.mp4 --translate pt --download_remote_subs`.
+- Provide Gemini keys when translating with Gemini: `docker compose run --rm legen --gemini_api_key YOUR_KEY -i /data/file.mp4 --translate_engine gemini --translate en`.
+- Forward environment variables if you prefer: `docker compose run --rm --env GEMINI_API_KEY=YOUR_KEY legen --gemini_api_key "$GEMINI_API_KEY" -i /data/file.mp4`.
+- Run the raw image without Compose: `docker run --rm -it -v "$PWD/data:/data" -v "$PWD/downloads:/app/downloads" legen:local -i /data/input.mp4 --disable_hardsubs`.
+- Keep the container running interactively for multiple executions by starting a shell: `docker compose run --rm --entrypoint /bin/bash legen`.
+- List all CLI options from inside the container: `docker compose run --rm legen --help`.
+
+## GPU acceleration
+
+LeGen automatically selects the best accelerator at runtime (`cuda` > `mps` > `cpu`). When a compatible GPU is available, transcription and alignment transparently run on it; otherwise the pipeline falls back to the CPU. You can still force a specific backend with `--transcription_device`.
+
+With Docker, the image installs the CUDA-enabled PyTorch wheels by default. Expose GPUs to the container using the NVIDIA Container Toolkit (`docker compose run --rm --gpus all legen ...`). If you need a CPU-only image, build with `docker compose build --build-arg PYTORCH_INSTALL_CUDA=false`.
 
 ## Dependencies
 

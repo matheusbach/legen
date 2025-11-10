@@ -20,10 +20,19 @@ def transcribe_audio(model: whisper.model, audio_path: Path, srt_path: Path, lan
 
     # Align if possible
     if lang in alignment.DEFAULT_ALIGN_MODELS_HF or lang in alignment.DEFAULT_ALIGN_MODELS_TORCH:
+        model_device = str(getattr(model, "device", "cpu"))
+        alignment_device = "cuda" if model_device.startswith("cuda") else "cpu"
+        if alignment_device == "cuda":
+            try:
+                import torch
+                if not torch.cuda.is_available():
+                    alignment_device = "cpu"
+            except Exception:
+                alignment_device = "cpu"
         with time_task(message_start="Running alignment..."):
             try:
-                model_a, metadata = alignment.load_align_model(language_code=lang, device="cuda")
-                transcribe = alignment.align(transcript=transcribe["segments"], model=model_a, align_model_metadata=metadata, audio=audio, device="cuda", return_char_alignments=True)
+                model_a, metadata = alignment.load_align_model(language_code=lang, device=alignment_device)
+                transcribe = alignment.align(transcript=transcribe["segments"], model=model_a, align_model_metadata=metadata, audio=audio, device=alignment_device, return_char_alignments=True)
             except Exception:
                 model_a, metadata = alignment.load_align_model(language_code=lang, device="cpu")  # force load on cpu due errors on gpu
                 transcribe = alignment.align(transcript=transcribe["segments"], model=model_a, align_model_metadata=metadata, audio=audio, device="cpu", return_char_alignments=True)

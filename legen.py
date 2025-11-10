@@ -1,20 +1,32 @@
+from __future__ import annotations
+
 import argparse
 import os
 import subprocess
+import sys
 import time
+import warnings
 from inspect import currentframe, getframeinfo
 from pathlib import Path
+from typing import Sequence
 from urllib.parse import urlparse
 
+import download_utils
 import ffmpeg_utils
 import file_utils
-import download_utils
 import subtitle_utils
 import translate_utils
 from gemini_utils import normalize_api_keys
-from utils import time_task, audio_extensions, video_extensions, check_other_extensions
+from utils import audio_extensions, check_other_extensions, time_task, video_extensions
 
-VERSION = "0.19.3"
+warnings.filterwarnings("ignore", category=SyntaxWarning, module=r"pyannote\.database\.")
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    message="torchaudio._backend.list_audio_backends has been deprecated",
+)
+
+VERSION = "0.19.6"
 version = f"v{VERSION}"
 __version__ = VERSION
 __all__ = [
@@ -71,7 +83,9 @@ yellow = "\033[1;33m"
 green = "\033[1;32m"
 red = "\033[1;31m"
 
-print(f"""
+
+def _print_banner() -> None:
+    banner = f"""
 {blue}888              {gray} .d8888b.                   
 {blue}888              {gray}d88P  Y88b                  
 {blue}888              {gray}888    888                  
@@ -82,357 +96,385 @@ print(f"""
 {blue}88888888 "Y8888  {gray} "Y8888P88  "Y8888  888  888
 
 legen {version} - github.com/matheusbach/legen{default}
-python {__import__('sys').version}
-""")
-time.sleep(1.5)
-
-# Define parameters and configurations
-parser = argparse.ArgumentParser(prog="LeGen", description="Uses AI to locally transcribes speech from media files, generating subtitle files, translates the generated subtitles, inserts them into the mp4 container, and burns them directly into video",
-                                 argument_default=True, allow_abbrev=True, add_help=True, usage='LeGen -i INPUT_PATH [other options]')
-parser.add_argument("-i", "--input_path",
-                    help="Local media path or URL to download before processing", required=True, type=str)
-parser.add_argument("--norm", default=False, action="store_true",
-                    help="Normalize folder times and run vidqa on input_path before starting processing files")
-parser.add_argument("-ts:e", "--transcription_engine", type=str, default="whisperx",
-                    help="Transcription engine. Possible values: whisperx (default), whisper")
-parser.add_argument("-ts:m", "--transcription_model", type=str, default="large-v3-turbo",
-                    help="Path or name of the Whisper transcription model. A larger model will consume more resources and be slower, but with better transcription quality. Possible values: tiny, base, small, medium, large, turbo, large-v3-turbo (default) ...")
-parser.add_argument("-ts:d", "--transcription_device", type=str, default="auto",
-                    help="Device to run the transcription through Whisper. Possible values: auto (default), cpu, cuda")
-parser.add_argument("-ts:c", "--transcription_compute_type", type=str, default="auto",
-                    help="Quantization for the neural network. Possible values: auto (default), int8, int8_float32, int8_float16, int8_bfloat16, int16, float16, bfloat16, float32")
-parser.add_argument("-ts:b", "--transcription_batch", type=int, default=4,
-                    help="Number of simultaneous segments being transcribed. Higher values will speed up processing. If you have low RAM/VRAM, long duration media files or have buggy subtitles, reduce this value to avoid issues. Only works using transcription_engine whisperx. (default: 4)")
-parser.add_argument("--translate", type=str, default="none",
-                    help="Translate subtitles to language code if not the same as origin. (default: don't translate)")
-parser.add_argument("--translate_engine", type=str, default="google",
-                    help="Translation engine to use: google (default) or gemini")
-parser.add_argument("--gemini_api_key", action="append", default=[], type=str,
-                    help="Gemini API key. Repeat or separate by comma/line break to add multiple keys (required if --translate_engine=gemini)")
-parser.add_argument("--input_lang", type=str, default="auto",
-                    help="Indicates (forces) the language of the voice in the input media (default: auto)")
-parser.add_argument("-c:v", "--codec_video", type=str, default="h264", metavar="VIDEO_CODEC",
-                    help="Target video codec. Can be used to set acceleration via GPU or another video API [codec_api], if supported (ffmpeg -encoders). Ex: h264, libx264, h264_vaapi, h264_nvenc, hevc, libx265 hevc_vaapi, hevc_nvenc, hevc_cuvid, hevc_qsv, hevc_amf (default: h264)")
-parser.add_argument("-c:a", "--codec_audio", type=str, default="aac", metavar="AUDIO_CODEC",
-                    help="Target audio codec. (default: aac). Ex: aac, libopus, mp3, vorbis")
-parser.add_argument("-o:s", "--output_softsubs", default=None, type=Path,
-                    help="Path to the folder or output file for the video files with embedded softsub (embedded in the mp4 container and .srt files). (default: softsubs_ + input_path)")
-parser.add_argument("-o:h", "--output_hardsubs", default=None, type=Path,
-                    help="Output folder path for video files with burned-in captions and embedded in the mp4 container. (default: hardsubs_ + input_path)")
-parser.add_argument("-o:d", "--output_downloads", default=None, type=Path,
-                    help="Destination folder for videos downloaded from URL inputs. (default: ./downloads)")
-parser.add_argument("--overwrite", default=False, action="store_true",
-                    help="Overwrite existing files in output directories")
-parser.add_argument("-dl:rs", "--download_remote_subs", default=False, action="store_true",
-                    help="When using a URL input, also download and embed remote subtitle tracks (disabled by default)")
-parser.add_argument("--disable_srt", default=False, action="store_true",
-                    help="Disable .srt file generation and don't insert subtitles in mp4 container of output_softsubs")
-parser.add_argument("--subtitle_formats", type=str, default="srt",
-                    help="Subtitle formats to export (separate multiple options with comma or space). Supported: srt, txt")
-parser.add_argument("--disable_softsubs", default=False, action="store_true",
-                    help="Don't insert subtitles in mp4 container of output_softsubs. This option continues generating .srt files")
-parser.add_argument("--disable_hardsubs", default=False, action="store_true",
-                    help="Disable subtitle burn in output_hardsubs")
-parser.add_argument("--copy_files", default=False, action="store_true",
-                    help="Copy other (non-video) files present in input directory to output directories. Only generate the subtitles and videos")
-args = parser.parse_args()
-
-input_path_raw = args.input_path
-
-if looks_like_url(input_path_raw):
-    download_destination = args.output_downloads or Path.cwd() / "downloads"
-    args.output_downloads = Path(download_destination).expanduser().resolve()
-    try:
-        with time_task(message_start=f"\nDownloading media with yt-dlp to {gray}{args.output_downloads}{default}", end="\n"):
-            downloaded_files = download_utils.download_urls(
-                [input_path_raw],
-                args.output_downloads,
-                overwrite=args.overwrite,
-                download_remote_subs=args.download_remote_subs,
-            )
-    except FileNotFoundError as exc:
-        parser.error(str(exc))
-    except RuntimeError as exc:
-        parser.error(str(exc))
-
-    print(f"Downloaded {len(downloaded_files)} file(s) with {gray}yt-dlp{default}. Continuing with local processing from {gray}{args.output_downloads}{default}.")
-    args.input_path = args.output_downloads
-else:
-    candidate_path = Path(input_path_raw).expanduser().resolve()
-    if not candidate_path.exists():
-        parser.error(f"Input path '{input_path_raw}' is neither an existing file/folder nor a downloadable URL.")
-    args.input_path = candidate_path
-
-if args.output_downloads is not None:
-    args.output_downloads = Path(args.output_downloads).expanduser().resolve()
+python {sys.version}
+"""
+    print(banner)
+    time.sleep(1)
 
 
-requested_formats = normalize_subtitle_formats(args.subtitle_formats)
-unsupported_formats = [fmt for fmt in requested_formats if fmt not in SUPPORTED_SUBTITLE_FORMATS]
-if unsupported_formats:
-    parser.error(f"Unsupported subtitle format(s): {', '.join(unsupported_formats)}. Supported formats: {', '.join(sorted(SUPPORTED_SUBTITLE_FORMATS))}")
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="LeGen", description="Uses AI to locally transcribes speech from media files, generating subtitle files, translates the generated subtitles, inserts them into the mp4 container, and burns them directly into video",
+                                     argument_default=True, allow_abbrev=True, add_help=True, usage='LeGen -i INPUT_PATH [other options]')
+    parser.add_argument("-i", "--input_path",
+                        help="Local media path or URL to download before processing", required=True, type=str)
+    parser.add_argument("--norm", default=False, action="store_true",
+                        help="Normalize folder times and run vidqa on input_path before starting processing files")
+    parser.add_argument("-ts:e", "--transcription_engine", type=str, default="whisperx",
+                        help="Transcription engine. Possible values: whisperx (default), whisper")
+    parser.add_argument("-ts:m", "--transcription_model", type=str, default="large-v3-turbo",
+                        help="Path or name of the Whisper transcription model. A larger model will consume more resources and be slower, but with better transcription quality. Possible values: tiny, base, small, medium, large, turbo, large-v3-turbo (default) ...")
+    parser.add_argument("-ts:d", "--transcription_device", type=str, default="auto",
+                        help="Device to run the transcription through Whisper. Possible values: auto (default), cpu, cuda")
+    parser.add_argument("-ts:c", "--transcription_compute_type", type=str, default="auto",
+                        help="Quantization for the neural network. Possible values: auto (default), int8, int8_float32, int8_float16, int8_bfloat16, int16, float16, bfloat16, float32")
+    parser.add_argument("-ts:v", "--transcription_vad", type=str.lower, default="silero", choices=["pyannote", "silero"],
+                        help="Voice activity detector to segment audio before transcription when using whisperx. Defaults to silero (CPU friendly).")
+    parser.add_argument("-ts:b", "--transcription_batch", type=int, default=4,
+                        help="Number of simultaneous segments being transcribed. Higher values will speed up processing. If you have low RAM/VRAM, long duration media files or have buggy subtitles, reduce this value to avoid issues. Only works using transcription_engine whisperx. (default: 4)")
+    parser.add_argument("--translate", type=str, default="none",
+                        help="Translate subtitles to language code if not the same as origin. (default: don't translate)")
+    parser.add_argument("--translate_engine", type=str, default="google",
+                        help="Translation engine to use: google (default) or gemini")
+    parser.add_argument("--gemini_api_key", action="append", default=[], type=str,
+                        help="Gemini API key. Repeat or separate by comma/line break to add multiple keys (required if --translate_engine=gemini)")
+    parser.add_argument("--input_lang", type=str, default="auto",
+                        help="Indicates (forces) the language of the voice in the input media (default: auto)")
+    parser.add_argument("-c:v", "--codec_video", type=str, default="h264", metavar="VIDEO_CODEC",
+                        help="Target video codec. Can be used to set acceleration via GPU or another video API [codec_api], if supported (ffmpeg -encoders). Ex: h264, libx264, h264_vaapi, h264_nvenc, hevc, libx265 hevc_vaapi, hevc_nvenc, hevc_cuvid, hevc_qsv, hevc_amf (default: h264)")
+    parser.add_argument("-c:a", "--codec_audio", type=str, default="aac", metavar="AUDIO_CODEC",
+                        help="Target audio codec. (default: aac). Ex: aac, libopus, mp3, vorbis")
+    parser.add_argument("-o:s", "--output_softsubs", default=None, type=Path,
+                        help="Path to the folder or output file for the video files with embedded softsub (embedded in the mp4 container and .srt files). (default: softsubs_ + input_path)")
+    parser.add_argument("-o:h", "--output_hardsubs", default=None, type=Path,
+                        help="Output folder path for video files with burned-in captions and embedded in the mp4 container. (default: hardsubs_ + input_path)")
+    parser.add_argument("-o:d", "--output_downloads", default=None, type=Path,
+                        help="Destination folder for videos downloaded from URL inputs. (default: ./downloads)")
+    parser.add_argument("--overwrite", default=False, action="store_true",
+                        help="Overwrite existing files in output directories")
+    parser.add_argument("-dl:rs", "--download_remote_subs", default=False, action="store_true",
+                        help="When using a URL input, also download and embed remote subtitle tracks (disabled by default)")
+    parser.add_argument("--disable_srt", default=False, action="store_true",
+                        help="Disable .srt file generation and don't insert subtitles in mp4 container of output_softsubs")
+    parser.add_argument("--subtitle_formats", type=str, default="srt",
+                        help="Subtitle formats to export (separate multiple options with comma or space). Supported: srt, txt")
+    parser.add_argument("--disable_softsubs", default=False, action="store_true",
+                        help="Don't insert subtitles in mp4 container of output_softsubs. This option continues generating .srt files")
+    parser.add_argument("--disable_hardsubs", default=False, action="store_true",
+                        help="Disable subtitle burn in output_hardsubs")
+    parser.add_argument("--copy_files", default=False, action="store_true",
+                        help="Copy other (non-video) files present in input directory to output directories. Only generate the subtitles and videos")
+    return parser
 
-if args.disable_srt:
-    requested_formats = [fmt for fmt in requested_formats if fmt != "srt"]
 
-if not requested_formats and not args.disable_srt:
-    requested_formats = ["srt"]
+def main(argv: Sequence[str] | None = None) -> int:
+    _print_banner()
+    parser = build_parser()
+    args = parser.parse_args(list(argv) if argv is not None else None)
 
-args.subtitle_formats = requested_formats
-args.disable_srt = "srt" not in args.subtitle_formats
-args.export_txt = "txt" in args.subtitle_formats
+    input_path_raw = args.input_path
 
+    if looks_like_url(input_path_raw):
+        download_destination = args.output_downloads or Path.cwd() / "downloads"
+        args.output_downloads = Path(download_destination).expanduser().resolve()
+        try:
+            with time_task(message_start=f"\nDownloading media with yt-dlp to {gray}{args.output_downloads}{default}", end="\n"):
+                downloaded_files = download_utils.download_urls(
+                    [input_path_raw],
+                    args.output_downloads,
+                    overwrite=args.overwrite,
+                    download_remote_subs=args.download_remote_subs,
+                )
+        except FileNotFoundError as exc:
+            parser.error(str(exc))
+        except RuntimeError as exc:
+            parser.error(str(exc))
 
-def export_txt_if_requested(source_path: Path, target_path: Path):
-    if not args.export_txt:
-        return
-    if source_path is None:
-        return
-    if not args.overwrite and file_utils.file_is_valid(target_path):
-        return
-    subtitle_utils.export_plain_text_from_srt(source_path, target_path)
-
-args.gemini_api_keys = normalize_api_keys(args.gemini_api_key)
-args.gemini_api_key = args.gemini_api_keys[0] if args.gemini_api_keys else None
-
-# If Gemini API keys are provided, force translate_engine to 'gemini'
-if args.gemini_api_keys:
-    args.translate_engine = "gemini"
-    # Set pt-BR as default translation language when pt is selected
-    if args.translate.lower() == 'pt':
-        args.translate = 'pt-BR'
-# Fix google compatibility with pt language
-if args.translate_engine == "google" and args.translate.lower() in ['pt', 'pt-br', 'pt-pt']:
-    args.translate = 'pt'
-
-if not args.output_softsubs and not args.input_path.is_file():
-    args.output_softsubs = compatibility_path if (compatibility_path := Path(args.input_path.parent, "legen_srt_" + args.input_path.name)).exists() else Path(args.input_path.parent, "softsubs_" + args.input_path.name)
-if not args.output_hardsubs and not args.input_path.is_file():
-    args.output_hardsubs = compatibility_path if (compatibility_path := Path(args.input_path.parent, "legen_burned_" + args.input_path.name)).exists() else Path(args.input_path.parent, "hardsubs_" + args.input_path.name)
-
-if args.transcription_device == "auto":
-    import torch
-
-    matmul_backend = getattr(torch.backends.cuda, "matmul", None)
-    if matmul_backend is not None and hasattr(matmul_backend, "fp32_precision"):
-        matmul_backend.fp32_precision = "tf32"
-    elif matmul_backend is not None and hasattr(matmul_backend, "allow_tf32"):
-        matmul_backend.allow_tf32 = True
-
-    cudnn_conv_backend = getattr(torch.backends.cudnn, "conv", None)
-    if cudnn_conv_backend is not None and hasattr(cudnn_conv_backend, "fp32_precision"):
-        cudnn_conv_backend.fp32_precision = "tf32"
-    elif hasattr(torch.backends.cudnn, "allow_tf32"):
-        torch.backends.cudnn.allow_tf32 = True
-    torch_device = ("cuda" if torch.cuda.is_available() else "cpu")
-else:
-    torch_device = str.lower(args.transcription_device)
-
-transcription_compute_type = args.transcription_compute_type if args.transcription_compute_type != "default" else "float16" if not torch_device == "cpu" else "float32"
-
-args.transcription_model = "large-v3" if args.transcription_model == "large" else args.transcription_model
-
-# ----------------------------------------------------------------------------
-
-if args.norm:
-    # normalize video using vidqa
-    with time_task(message_start=f"Running {wblue}vidqa{default} and updating folder modifiation times in {gray}{args.input_path}{default}", end="\n"):
-        subprocess.run(["vidqa", "-i", args.input_path, "-m", "unique", "-fd",
-                        Path(Path(getframeinfo(currentframe()).filename).resolve().parent, "vidqa_data")])
-        # update folder time structure
-        file_utils.update_folder_times(args.input_path)
-
-# load whisper model
-with time_task(message_start=f"\nLoading {args.transcription_engine} model: {wblue}{args.transcription_model}{default} ({transcription_compute_type}) on {wblue}{torch_device}{default}", end="\n"):
-    if args.transcription_engine == 'whisperx':
-        import whisperx
-        import whisperx_utils
-    
-        whisper_model = whisperx.load_model(
-            whisper_arch=args.transcription_model, device=torch_device, compute_type=transcription_compute_type, asr_options={"repetition_penalty": 1, "prompt_reset_on_temperature": 0.5, "no_repeat_ngram_size": 2,})
-    elif args.transcription_engine == 'whisper':
-        import whisper
-
-        import whisper_utils
-        whisper_model = whisper.load_model(
-            name=args.transcription_model, device=torch_device, in_memory=True)
+        print(f"Downloaded {len(downloaded_files)} file(s) with {gray}yt-dlp{default}. Continuing with local processing from {gray}{args.output_downloads}{default}.")
+        args.input_path = args.output_downloads
     else:
-        raise ValueError(f'Unsupported transcription engine {args.transcription_engine}. Supported values: whisperx, whisper')
+        candidate_path = Path(input_path_raw).expanduser().resolve()
+        if not candidate_path.exists():
+            parser.error(f"Input path '{input_path_raw}' is neither an existing file/folder nor a downloadable URL.")
+        args.input_path = candidate_path
 
-with time_task(message="⌛ Processing files for"):
-    path: Path
-    for path in (item for item in sorted(sorted(Path(args.input_path).rglob('*'), key=lambda x: x.stat().st_mtime), key=lambda x: len(x.parts)) if item.is_file()):
-        rel_path = path.relative_to(args.input_path)
-        with time_task(message_start=f"\nProcessing {yellow}{rel_path.as_posix()}{default}", end="\n", message="⌚ Done in"):
-            try:
-                # define file type by extensions
-                if path.suffix.lower() in video_extensions:
-                    file_type = "video"
-                elif path.suffix.lower() in audio_extensions:
-                    file_type = "audio"
-                else:
-                    file_type = "other"
+    if args.output_downloads is not None:
+        args.output_downloads = Path(args.output_downloads).expanduser().resolve()
 
-                if file_type == "video" or file_type == "audio":
-                    # define paths
-                    origin_media_path = path
-                    dupe_filename = len(check_other_extensions(path, list(video_extensions | audio_extensions))) > 1
-                    posfix_extension = path.suffix.lower().replace('.', '_') if dupe_filename else ''
+    requested_formats = normalize_subtitle_formats(args.subtitle_formats)
+    unsupported_formats = [fmt for fmt in requested_formats if fmt not in SUPPORTED_SUBTITLE_FORMATS]
+    if unsupported_formats:
+        parser.error(f"Unsupported subtitle format(s): {', '.join(unsupported_formats)}. Supported formats: {', '.join(sorted(SUPPORTED_SUBTITLE_FORMATS))}")
 
-                    softsub_video_dir = Path(args.output_softsubs, rel_path.parent)
-                    burned_video_dir = Path(args.output_hardsubs, rel_path.parent)
-                    # output video extension will be changed to .mp4
-                    softsub_video_path = Path(args.output_softsubs, rel_path.stem + posfix_extension + ".mp4")
-                    hardsub_video_path = Path(burned_video_dir, rel_path.stem + posfix_extension + ".mp4")
-                    subtitle_translated_path = Path(
-                        softsub_video_dir, rel_path.stem + posfix_extension + f"_{args.translate}.srt")
-                    subtitles_path = []
+    if args.disable_srt:
+        requested_formats = [fmt for fmt in requested_formats if fmt != "srt"]
 
-                    if args.input_lang == "auto":
-                        # extract audio
-                        audio_short_extracted = file_utils.TempFile(
-                            None, file_ext=".wav")
-                        ffmpeg_utils.extract_short_wav(
-                            origin_media_path, audio_short_extracted.getpath())
-                        # detect language
-                        print("Detecting audio language: ", end='', flush=True)
-                        if args.transcription_engine == 'whisperx':
-                            audio_language = whisperx_utils.detect_language(
-                                whisper_model, audio_short_extracted.getpath())
-                        if args.transcription_engine == 'whisper':
-                            audio_language = whisper_utils.detect_language(
-                                whisper_model, audio_short_extracted.getpath())
-                        print(f"{gray}{audio_language}{default}")
+    if not requested_formats and not args.disable_srt:
+        requested_formats = ["srt"]
 
-                        audio_short_extracted.destroy()
+    args.subtitle_formats = requested_formats
+    args.disable_srt = "srt" not in args.subtitle_formats
+    args.export_txt = "txt" in args.subtitle_formats
+
+    def export_txt_if_requested(source_path: Path, target_path: Path):
+        if not args.export_txt:
+            return
+        if source_path is None:
+            return
+        if not args.overwrite and file_utils.file_is_valid(target_path):
+            return
+        subtitle_utils.export_plain_text_from_srt(source_path, target_path)
+
+    args.gemini_api_keys = normalize_api_keys(args.gemini_api_key)
+    args.gemini_api_key = args.gemini_api_keys[0] if args.gemini_api_keys else None
+
+    if args.gemini_api_keys:
+        args.translate_engine = "gemini"
+        if args.translate.lower() == 'pt':
+            args.translate = 'pt-BR'
+    if args.translate_engine == "google" and args.translate.lower() in ['pt', 'pt-br', 'pt-pt']:
+        args.translate = 'pt'
+
+    if not args.output_softsubs and not args.input_path.is_file():
+        args.output_softsubs = compatibility_path if (compatibility_path := Path(args.input_path.parent, "legen_srt_" + args.input_path.name)).exists() else Path(args.input_path.parent, "softsubs_" + args.input_path.name)
+    if not args.output_hardsubs and not args.input_path.is_file():
+        args.output_hardsubs = compatibility_path if (compatibility_path := Path(args.input_path.parent, "legen_burned_" + args.input_path.name)).exists() else Path(args.input_path.parent, "hardsubs_" + args.input_path.name)
+
+    device_info = None
+    resolved_compute_type = None
+
+    if args.transcription_device == "auto":
+        # centralized, more robust device detection
+        from device_utils import select_torch_device
+
+        try:
+            device_info = select_torch_device(
+                preferred="auto",
+                model_name=args.transcription_model,
+                compute_type=args.transcription_compute_type,
+            )
+        except Exception as exc:
+            print(f"{yellow}Device detection failed ({exc}). Falling back to CPU.{default}")
+            torch_device = "cpu"
+        else:
+            torch_device = device_info.backend
+            resolved_compute_type = device_info.resolved_compute_type
+            for message in device_info.messages:
+                print(message)
+            for issue in device_info.issues:
+                print(f"{yellow}{issue}{default}")
+            for note in device_info.notes:
+                print(f"{gray}{note}{default}")
+
+        # If we have PyTorch and CUDA was selected, try to enable TF32 where
+        # possible for a small speedup on Ampere+ hardware. Keep this best-effort
+        # and ignore any failures.
+        try:
+            import torch
+
+            if torch_device.startswith("cuda"):
+                matmul_backend = getattr(torch.backends.cuda, "matmul", None)
+                if matmul_backend is not None and hasattr(matmul_backend, "fp32_precision"):
+                    matmul_backend.fp32_precision = "tf32"
+                elif matmul_backend is not None and hasattr(matmul_backend, "allow_tf32"):
+                    matmul_backend.allow_tf32 = True
+
+                cudnn_conv_backend = getattr(torch.backends.cudnn, "conv", None)
+                if cudnn_conv_backend is not None and hasattr(cudnn_conv_backend, "fp32_precision"):
+                    cudnn_conv_backend.fp32_precision = "tf32"
+                elif hasattr(torch.backends.cudnn, "allow_tf32"):
+                    torch.backends.cudnn.allow_tf32 = True
+        except Exception:
+            # ignore failures in optional PyTorch tuning
+            pass
+    else:
+        torch_device = str(args.transcription_device).lower()
+
+    if resolved_compute_type:
+        transcription_compute_type = resolved_compute_type
+    elif args.transcription_compute_type in {"auto", "default"}:
+        if torch_device.startswith("cuda"):
+            transcription_compute_type = "float16"
+        elif torch_device == "mps":
+            transcription_compute_type = "float16"
+        else:
+            transcription_compute_type = "float32"
+    else:
+        transcription_compute_type = args.transcription_compute_type
+
+    args.transcription_model = "large-v3" if args.transcription_model == "large" else args.transcription_model
+
+    if args.norm:
+        with time_task(message_start=f"Running {wblue}vidqa{default} and updating folder modifiation times in {gray}{args.input_path}{default}", end="\n"):
+            subprocess.run(["vidqa", "-i", args.input_path, "-m", "unique", "-fd",
+                            Path(Path(getframeinfo(currentframe()).filename).resolve().parent, "vidqa_data")])
+            file_utils.update_folder_times(args.input_path)
+
+    with time_task(message_start=f"\nLoading {args.transcription_engine} model: {wblue}{args.transcription_model}{default} ({transcription_compute_type}) on {wblue}{torch_device}{default}", end="\n"):
+        if args.transcription_engine == 'whisperx':
+            import whisperx_legen_fork as whisperx
+            import whisperx_utils
+
+            whisper_model = whisperx.load_model(
+                whisper_arch=args.transcription_model,
+                device=torch_device,
+                compute_type=transcription_compute_type,
+                vad_method=args.transcription_vad,
+                asr_options={"repetition_penalty": 1, "prompt_reset_on_temperature": 0.5, "no_repeat_ngram_size": 2,},
+            )
+        elif args.transcription_engine == 'whisper':
+            import whisper
+
+            import whisper_utils
+            whisper_model = whisper.load_model(
+                name=args.transcription_model, device=torch_device, in_memory=True)
+        else:
+            raise ValueError(f'Unsupported transcription engine {args.transcription_engine}. Supported values: whisperx, whisper')
+
+    with time_task(message="⌛ Processing files for"):
+        path: Path
+        for path in (item for item in sorted(sorted(Path(args.input_path).rglob('*'), key=lambda x: x.stat().st_mtime), key=lambda x: len(x.parts)) if item.is_file()):
+            rel_path = path.relative_to(args.input_path)
+            with time_task(message_start=f"\nProcessing {yellow}{rel_path.as_posix()}{default}", end="\n", message="⌚ Done in"):
+                try:
+                    if path.suffix.lower() in video_extensions:
+                        file_type = "video"
+                    elif path.suffix.lower() in audio_extensions:
+                        file_type = "audio"
                     else:
-                        audio_language = args.input_lang
-                        print(f"Forced input audio language: {gray}{audio_language}{default}")
-                    # set path after get transcribed language
-                    subtitle_transcribed_path = Path(
-                        softsub_video_dir, rel_path.stem + posfix_extension + f"_{audio_language}.srt")
-                    # create temp file for .srt
-                    transcribed_srt_temp = file_utils.TempFile(
-                        subtitle_transcribed_path, file_ext=".srt")
-                    # skip transcription if transcribed srt for this language is existing (without overwrite neabled) or will not be used in LeGen process
-                    if (file_utils.file_is_valid(subtitle_transcribed_path)) or ((args.disable_hardsubs or file_utils.file_is_valid(hardsub_video_path)) and (args.disable_srt or file_utils.file_is_valid(subtitle_transcribed_path))) and not args.overwrite:
-                        print("Transcription is unnecessary. Skipping.")
-                    else:
-                        # extract audio
-                        audio_extracted = file_utils.TempFile(None, file_ext=".wav")
-                        ffmpeg_utils.extract_audio_wav(
-                            origin_media_path, audio_extracted.getpath())
-                        # transcribe saving subtitles to temp .srt file
-                        if args.transcription_engine == 'whisperx':
-                            print(f"{wblue}Transcribing{default} with {gray}WhisperX{default}")
-                            whisperx_utils.transcribe_audio(
-                                whisper_model, audio_extracted.getpath(), transcribed_srt_temp.getpath(), audio_language, device=torch_device, batch_size=args.transcription_batch)
-                        if args.transcription_engine == 'whisper':
-                            print(f"{wblue}Transcribing{default} with {gray}Whisper{default}")
-                            whisper_utils.transcribe_audio(
-                                model=whisper_model, audio_path=audio_extracted.getpath(), srt_path=transcribed_srt_temp.getpath(), lang=audio_language, disable_fp16=False if transcription_compute_type == "float16" or transcription_compute_type == "fp16" else True)
+                        file_type = "other"
 
-                        audio_extracted.destroy()
-                        # if save .srt is enabled, save it to destination dir, also update path with language code
-                        if not args.disable_srt:
-                            transcribed_srt_temp.save()
-                    transcribed_srt_source_path = transcribed_srt_temp.getvalidpath()
-                    if transcribed_srt_source_path:
-                        subtitles_path.append(transcribed_srt_source_path)
-                    # translate transcribed subtitle using Google Translate if transcribed language is not equals to target
-                    # skip translation if translation has not requested, has equal source and output language, if file is existing (without overwrite neabled) or will not be used in LeGen process
-                    if args.translate == "none":
-                        translated_srt_source_path = None
-                        pass # translation not requested
-                    elif args.translate == audio_language:
-                        print("Translation is unnecessary because input and output language are the same. Skipping.")
-                        translated_srt_source_path = None
-                    elif (args.disable_hardsubs or file_utils.file_is_valid(hardsub_video_path)) and (args.disable_srt or (file_utils.file_is_valid(subtitle_translated_path) and file_utils.file_is_valid(subtitle_transcribed_path) and file_utils.file_is_valid(subtitle_translated_path))) and not args.overwrite:
-                        print("Translation is unnecessary. Skipping.")
-                        subtitles_path.insert(0, subtitle_translated_path)
-                        translated_srt_source_path = subtitle_translated_path if file_utils.file_is_valid(subtitle_translated_path) else None
-                    elif file_utils.file_is_valid(subtitle_translated_path):
-                        print("Translated file found. Skipping translation.")
-                        subtitles_path.insert(0, subtitle_translated_path)
-                        translated_srt_source_path = subtitle_translated_path
-                    elif transcribed_srt_temp.getvalidpath():
-                        # create the temp .srt translated file
-                        translated_srt_temp = file_utils.TempFile(
-                            subtitle_translated_path, file_ext=".srt")
+                    if file_type == "video" or file_type == "audio":
+                        origin_media_path = path
+                        dupe_filename = len(check_other_extensions(path, list(video_extensions | audio_extensions))) > 1
+                        posfix_extension = path.suffix.lower().replace('.', '_') if dupe_filename else ''
 
-                        # translating subtitle using Google Translate or Gemini
-                        print(f"{wblue}Translating{default} with {gray}{args.translate_engine.capitalize()}{default} to {gray}{args.translate}{default}")
-                        subs = translate_utils.translate_srt_file(
-                            transcribed_srt_temp.getvalidpath(),
-                            translated_srt_temp.getpath(),
-                            args.translate,
-                            translate_engine=args.translate_engine,
-                            gemini_api_keys=args.gemini_api_keys
-                        )
-                        if not args.disable_srt:
-                            translated_srt_temp.save()
+                        softsub_video_dir = Path(args.output_softsubs, rel_path.parent)
+                        burned_video_dir = Path(args.output_hardsubs, rel_path.parent)
+                        softsub_video_path = Path(args.output_softsubs, rel_path.stem + posfix_extension + ".mp4")
+                        hardsub_video_path = Path(burned_video_dir, rel_path.stem + posfix_extension + ".mp4")
+                        subtitle_translated_path = Path(
+                            softsub_video_dir, rel_path.stem + posfix_extension + f"_{args.translate}.srt")
+                        subtitles_path = []
 
-                        translated_srt_source_path = translated_srt_temp.getvalidpath()
-                        subtitles_path.insert(0, translated_srt_source_path)
-                    else:
-                        translated_srt_source_path = None
-                    if args.export_txt and transcribed_srt_source_path:
-                        export_txt_if_requested(transcribed_srt_source_path, subtitle_transcribed_path.with_suffix(".txt"))
-                    if args.export_txt and translated_srt_source_path:
-                        export_txt_if_requested(translated_srt_source_path, subtitle_translated_path.with_suffix(".txt"))
-                    if not args.disable_softsubs:
-                        if file_utils.file_is_valid(softsub_video_path) and not args.overwrite:
-                            print(f"Existing video file {gray}{softsub_video_path}{default}. Skipping subtitle insert")
+                        if args.input_lang == "auto":
+                            audio_short_extracted = file_utils.TempFile(
+                                None, file_ext=".wav")
+                            ffmpeg_utils.extract_short_wav(
+                                origin_media_path, audio_short_extracted.getpath())
+                            print("Detecting audio language: ", end='', flush=True)
+                            if args.transcription_engine == 'whisperx':
+                                audio_language = whisperx_utils.detect_language(
+                                    whisper_model, audio_short_extracted.getpath())
+                            if args.transcription_engine == 'whisper':
+                                audio_language = whisper_utils.detect_language(
+                                    whisper_model, audio_short_extracted.getpath())
+                            print(f"{gray}{audio_language}{default}")
+
+                            audio_short_extracted.destroy()
                         else:
-                            # create the temp .mp4 with srt in video container
-                            video_softsubs_temp = file_utils.TempFile(
-                                softsub_video_path, file_ext=".mp4")
-
-                            # insert subtitle into container using ffmpeg
-                            print(f"{wblue}Inserting subtitle{default} in mp4 container using {gray}FFmpeg{default}")
-                            ffmpeg_utils.insert_subtitle(input_media_path=origin_media_path, subtitles_path=subtitles_path,
-                                                        burn_subtitles=False, output_video_path=video_softsubs_temp.getpath(),
-                                                        codec_video=args.codec_video, codec_audio=args.codec_audio)
-                            video_softsubs_temp.save()
-                    if not args.disable_hardsubs:
-                        if file_utils.file_is_valid(hardsub_video_path) and not args.overwrite:
-                            print(f"Existing video file {gray}{hardsub_video_path}{default}. Skipping subtitle burn")
+                            audio_language = args.input_lang
+                            print(f"Forced input audio language: {gray}{audio_language}{default}")
+                        subtitle_transcribed_path = Path(
+                            softsub_video_dir, rel_path.stem + posfix_extension + f"_{audio_language}.srt")
+                        transcribed_srt_temp = file_utils.TempFile(
+                            subtitle_transcribed_path, file_ext=".srt")
+                        if (file_utils.file_is_valid(subtitle_transcribed_path)) or ((args.disable_hardsubs or file_utils.file_is_valid(hardsub_video_path)) and (args.disable_srt or file_utils.file_is_valid(subtitle_transcribed_path))) and not args.overwrite:
+                            print("Transcription is unnecessary. Skipping.")
                         else:
-                            # create the temp .mp4 with srt in video container
-                            video_hardsubs_temp = file_utils.TempFile(
-                                hardsub_video_path, file_ext=".mp4")
-                            # insert subtitle into container and burn using ffmpeg
-                            print(f"{wblue}Inserting subtitle{default} in mp4 container and {wblue}burning{default} using {gray}FFmpeg{default}")
-                            ffmpeg_utils.insert_subtitle(input_media_path=origin_media_path, subtitles_path=subtitles_path,
-                                                        burn_subtitles=True, output_video_path=video_hardsubs_temp.getpath(),
-                                                        codec_video=args.codec_video, codec_audio=args.codec_audio)
-                            video_hardsubs_temp.save()
-                else:
-                    print("not a video file")
-                    if args.copy_files:
-                        if not args.disable_srt:
-                            # copia o arquivo extra para pasta que contém também os arquivos srt
-                            file_utils.copy_file_if_different(path, Path(
-                                args.output_softsubs, rel_path))
+                            audio_extracted = file_utils.TempFile(None, file_ext=".wav")
+                            ffmpeg_utils.extract_audio_wav(
+                                origin_media_path, audio_extracted.getpath())
+                            if args.transcription_engine == 'whisperx':
+                                print(f"{wblue}Transcribing{default} with {gray}WhisperX{default}")
+                                whisperx_utils.transcribe_audio(
+                                    whisper_model, audio_extracted.getpath(), transcribed_srt_temp.getpath(), audio_language, device=torch_device, batch_size=args.transcription_batch)
+                            if args.transcription_engine == 'whisper':
+                                print(f"{wblue}Transcribing{default} with {gray}Whisper{default}")
+                                whisper_utils.transcribe_audio(
+                                    model=whisper_model, audio_path=audio_extracted.getpath(), srt_path=transcribed_srt_temp.getpath(), lang=audio_language, disable_fp16=False if transcription_compute_type == "float16" or transcription_compute_type == "fp16" else True)
+
+                            audio_extracted.destroy()
+                            if not args.disable_srt:
+                                transcribed_srt_temp.save()
+                        transcribed_srt_source_path = transcribed_srt_temp.getvalidpath()
+                        if transcribed_srt_source_path:
+                            subtitles_path.append(transcribed_srt_source_path)
+                        if args.translate == "none":
+                            translated_srt_source_path = None
+                        elif args.translate == audio_language:
+                            print("Translation is unnecessary because input and output language are the same. Skipping.")
+                            translated_srt_source_path = None
+                        elif (args.disable_hardsubs or file_utils.file_is_valid(hardsub_video_path)) and (args.disable_srt or (file_utils.file_is_valid(subtitle_translated_path) and file_utils.file_is_valid(subtitle_transcribed_path) and file_utils.file_is_valid(subtitle_translated_path))) and not args.overwrite:
+                            print("Translation is unnecessary. Skipping.")
+                            subtitles_path.insert(0, subtitle_translated_path)
+                            translated_srt_source_path = subtitle_translated_path if file_utils.file_is_valid(subtitle_translated_path) else None
+                        elif file_utils.file_is_valid(subtitle_translated_path):
+                            print("Translated file found. Skipping translation.")
+                            subtitles_path.insert(0, subtitle_translated_path)
+                            translated_srt_source_path = subtitle_translated_path
+                        elif transcribed_srt_temp.getvalidpath():
+                            translated_srt_temp = file_utils.TempFile(
+                                subtitle_translated_path, file_ext=".srt")
+
+                            print(f"{wblue}Translating{default} with {gray}{args.translate_engine.capitalize()}{default} to {gray}{args.translate}{default}")
+                            translate_utils.translate_srt_file(
+                                transcribed_srt_temp.getvalidpath(),
+                                translated_srt_temp.getpath(),
+                                args.translate,
+                                translate_engine=args.translate_engine,
+                                gemini_api_keys=args.gemini_api_keys
+                            )
+                            if not args.disable_srt:
+                                translated_srt_temp.save()
+
+                            translated_srt_source_path = translated_srt_temp.getvalidpath()
+                            subtitles_path.insert(0, translated_srt_source_path)
+                        else:
+                            translated_srt_source_path = None
+                        if args.export_txt and transcribed_srt_source_path:
+                            export_txt_if_requested(transcribed_srt_source_path, subtitle_transcribed_path.with_suffix(".txt"))
+                        if args.export_txt and translated_srt_source_path:
+                            export_txt_if_requested(translated_srt_source_path, subtitle_translated_path.with_suffix(".txt"))
+                        if not args.disable_softsubs:
+                            if file_utils.file_is_valid(softsub_video_path) and not args.overwrite:
+                                print(f"Existing video file {gray}{softsub_video_path}{default}. Skipping subtitle insert")
+                            else:
+                                video_softsubs_temp = file_utils.TempFile(
+                                    softsub_video_path, file_ext=".mp4")
+
+                                print(f"{wblue}Inserting subtitle{default} in mp4 container using {gray}FFmpeg{default}")
+                                ffmpeg_utils.insert_subtitle(input_media_path=origin_media_path, subtitles_path=subtitles_path,
+                                                            burn_subtitles=False, output_video_path=video_softsubs_temp.getpath(),
+                                                            codec_video=args.codec_video, codec_audio=args.codec_audio)
+                                video_softsubs_temp.save()
                         if not args.disable_hardsubs:
-                            # copia o arquivo extra para pasta que contém os videos queimados
-                            file_utils.copy_file_if_different(path, Path(
-                                args.output_hardsubs, rel_path))
-            except Exception as e:
-                file = path.as_posix()
-                print(f"{red}ERROR !!!{default} {file}")
-                print(f"{yellow}check legen-errors.txt for details{default}")
-                # extract the relevant information from the exception object
-                current_time = time.strftime("%y/%m/%d %H:%M:%S", time.localtime())
+                            if file_utils.file_is_valid(hardsub_video_path) and not args.overwrite:
+                                print(f"Existing video file {gray}{hardsub_video_path}{default}. Skipping subtitle burn")
+                            else:
+                                video_hardsubs_temp = file_utils.TempFile(
+                                    hardsub_video_path, file_ext=".mp4")
+                                print(f"{wblue}Inserting subtitle{default} in mp4 container and {wblue}burning{default} using {gray}FFmpeg{default}")
+                                ffmpeg_utils.insert_subtitle(input_media_path=origin_media_path, subtitles_path=subtitles_path,
+                                                            burn_subtitles=True, output_video_path=video_hardsubs_temp.getpath(),
+                                                            codec_video=args.codec_video, codec_audio=args.codec_audio)
+                                video_hardsubs_temp.save()
+                    else:
+                        print("not a video file")
+                        if args.copy_files:
+                            if not args.disable_srt:
+                                file_utils.copy_file_if_different(path, Path(
+                                    args.output_softsubs, rel_path))
+                            if not args.disable_hardsubs:
+                                file_utils.copy_file_if_different(path, Path(
+                                    args.output_hardsubs, rel_path))
+                except Exception as e:  # noqa: BLE001
+                    file = path.as_posix()
+                    print(f"{red}ERROR !!!{default} {file}")
+                    print(f"{yellow}check legen-errors.txt for details{default}")
+                    current_time = time.strftime("%y/%m/%d %H:%M:%S", time.localtime())
 
-                error_message = f"[{current_time}] {file}: {type(e).__name__}: {str(e)}"
-                # write the error message to a file
-                with open(Path(Path(getframeinfo(currentframe()).filename).resolve().parent, "legen-errors.txt"), "a") as f:
-                    f.write(error_message + "\n")
-                    f.close()
+                    error_message = f"[{current_time}] {file}: {type(e).__name__}: {str(e)}"
+                    with open(Path(Path(getframeinfo(currentframe()).filename).resolve().parent, "legen-errors.txt"), "a") as f:
+                        f.write(error_message + "\n")
+                        f.close()
 
     print("Deleting temp folder")
     file_utils.delete_folder(
         Path(Path(getframeinfo(currentframe()).filename).resolve().parent, "temp"))
 
     print(f"{green}Tasks done!{default}")
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())
