@@ -19,6 +19,10 @@ import translate_utils
 from gemini_utils import normalize_api_keys
 from utils import audio_extensions, check_other_extensions, time_task, video_extensions
 
+# Fix for matplotlib backend issue in some environments (e.g. Colab)
+if os.environ.get("MPLBACKEND") == "module://matplotlib_inline.backend_inline":
+    os.environ.pop("MPLBACKEND")
+
 warnings.filterwarnings("ignore", category=SyntaxWarning, module=r"pyannote\.database\.")
 warnings.filterwarnings(
     "ignore",
