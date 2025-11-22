@@ -6,6 +6,18 @@ import subprocess
 import sys
 import time
 import warnings
+import logging
+
+# Filter warnings early
+warnings.filterwarnings("ignore", category=SyntaxWarning, module=r"pyannote\.database.*")
+warnings.filterwarnings("ignore", category=UserWarning, message="pkg_resources is deprecated as an API")
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    message="torchaudio._backend.list_audio_backends has been deprecated",
+)
+logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
+
 from inspect import currentframe, getframeinfo
 from pathlib import Path
 from typing import Sequence
@@ -22,13 +34,6 @@ from utils import audio_extensions, check_other_extensions, time_task, video_ext
 # Fix for matplotlib backend issue in some environments (e.g. Colab)
 if os.environ.get("MPLBACKEND") == "module://matplotlib_inline.backend_inline":
     os.environ.pop("MPLBACKEND")
-
-warnings.filterwarnings("ignore", category=SyntaxWarning, module=r"pyannote\.database\.")
-warnings.filterwarnings(
-    "ignore",
-    category=UserWarning,
-    message="torchaudio._backend.list_audio_backends has been deprecated",
-)
 
 VERSION = "0.19.6"
 version = f"v{VERSION}"
