@@ -52,6 +52,7 @@ Homepage = "https://github.com/matheusbach/legen"
 
 [project.scripts]
 legen = "legen_cli:main"
+legen-translate = "translate_utils:main"
 
 [tool.setuptools]
 py-modules = [

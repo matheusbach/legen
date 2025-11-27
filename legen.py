@@ -352,7 +352,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         softsub_video_path = Path(args.output_softsubs, rel_path.stem + posfix_extension + ".mp4")
                         hardsub_video_path = Path(burned_video_dir, rel_path.stem + posfix_extension + ".mp4")
                         subtitle_translated_path = Path(
-                            softsub_video_dir, rel_path.stem + posfix_extension + f"_{args.translate}.srt")
+                            softsub_video_dir, rel_path.stem + posfix_extension + f"_{args.translate.lower()}.srt")
                         subtitles_path = []
 
                         if args.input_lang == "auto":
@@ -374,7 +374,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                             audio_language = args.input_lang
                             print(f"Forced input audio language: {gray}{audio_language}{default}")
                         subtitle_transcribed_path = Path(
-                            softsub_video_dir, rel_path.stem + posfix_extension + f"_{audio_language}.srt")
+                            softsub_video_dir, rel_path.stem + posfix_extension + f"_{audio_language.lower()}.srt")
                         transcribed_srt_temp = file_utils.TempFile(
                             subtitle_transcribed_path, file_ext=".srt")
                         if (file_utils.file_is_valid(subtitle_transcribed_path)) or ((args.disable_hardsubs or file_utils.file_is_valid(hardsub_video_path)) and (args.disable_srt or file_utils.file_is_valid(subtitle_transcribed_path))) and not args.overwrite:
@@ -421,7 +421,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                                 translated_srt_temp.getpath(),
                                 args.translate,
                                 translate_engine=args.translate_engine,
-                                gemini_api_keys=args.gemini_api_keys
+                                gemini_api_keys=args.gemini_api_keys,
+                                overwrite=args.overwrite
                             )
                             if not args.disable_srt:
                                 translated_srt_temp.save()

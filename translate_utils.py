@@ -1,6 +1,10 @@
+from __future__ import annotations
+
+import argparse
 import asyncio
 import os
 from pathlib import Path
+from typing import Sequence
 
 import deep_translator
 import pysrt
@@ -28,7 +32,8 @@ def translate_srt_file(
     translated_subtitle_path: Path,
     target_lang,
     translate_engine: str = "google",
-    gemini_api_keys=None
+    gemini_api_keys=None,
+    overwrite: bool = False,
 ):
     """
     Translate SRT file using the specified engine.
@@ -46,7 +51,11 @@ def translate_srt_file(
         if not api_keys:
             raise ValueError("Gemini API key is required for Gemini translation. Get one at https://aistudio.google.com/apikey")
 
-        Path(translated_subtitle_path).unlink(missing_ok=True)
+        if overwrite:
+            Path(translated_subtitle_path).unlink(missing_ok=True)
+            resume = False
+        else:
+            resume = True
 
         subs = translate_with_gemini(
             GeminiTranslationConfig(
@@ -54,6 +63,7 @@ def translate_srt_file(
                 input_file=srt_file_path,
                 output_file=translated_subtitle_path,
                 target_language=target_lang,
+                resume=resume,
             )
         )
 
@@ -277,3 +287,143 @@ def unjoin_sentences(original_sentence: str, modified_sentence: str, separator: 
         new_modified_lines.append(new_modified_lines[-1])
 
     return new_modified_lines or original_lines or ' '
+
+
+def build_cli_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="translate_utils",
+        description="Translate one or more SRT files using LeGen translation helpers.",
+        argument_default=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-i",
+        "--input_path",
+        required=True,
+        help="Path to an .srt file or a directory containing .srt files.",
+    )
+    parser.add_argument(
+        "-o",
+        "--output_path",
+        help="Destination directory or .srt file. Defaults to the source folder.",
+    )
+    parser.add_argument(
+        "--translate",
+        required=True,
+        help="Target language code (e.g., en, es, pt-BR).",
+    )
+    parser.add_argument(
+        "--translate_engine",
+        type=str.lower,
+        choices=("google", "gemini"),
+        default="google",
+        help="Translation engine to use: google (default) or gemini.",
+    )
+    parser.add_argument(
+        "--gemini_api_key",
+        action="append",
+        default=[],
+        type=str,
+        help=(
+            "Gemini API key. Repeat or separate by comma/line break to add multiple keys "
+            "(required for --translate_engine=gemini)."
+        ),
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite translated files if they already exist.",
+    )
+    return parser
+
+
+def _output_path_is_file(candidate: Path | None) -> bool:
+    if candidate is None:
+        return False
+    if candidate.exists():
+        return candidate.is_file()
+    return candidate.suffix.lower() == ".srt"
+
+
+def _derive_destination(source: Path, base_output: Path | None, target_language: str, input_root: Path | None = None) -> Path:
+    suffix = f"_{target_language.lower()}.srt"
+    if base_output is None:
+        return source.with_name(f"{source.stem}{suffix}")
+
+    if base_output.suffix.lower() == ".srt" and not base_output.is_dir():
+        return base_output
+
+    # If base_output is a directory (or intended to be one)
+    if input_root and source.is_relative_to(input_root):
+        rel_path = source.relative_to(input_root)
+        dest_dir = base_output / rel_path.parent
+        return dest_dir / f"{source.stem}{suffix}"
+
+    return base_output / f"{source.stem}{suffix}"
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = build_cli_parser()
+    args = parser.parse_args(list(argv) if argv is not None else None)
+
+    input_path = Path(args.input_path).expanduser().resolve()
+    if not input_path.exists():
+        parser.error(f"Input path '{args.input_path}' does not exist.")
+
+    output_path = Path(args.output_path).expanduser().resolve() if hasattr(args, "output_path") and args.output_path else None
+    target_language = args.translate.strip()
+    if not target_language or target_language.lower() == "none":
+        parser.error("Provide a valid target language via --translate (e.g., en, es, pt-BR).")
+
+    gemini_api_keys = normalize_api_keys(getattr(args, "gemini_api_key", []))
+    if args.translate_engine == "gemini" and not gemini_api_keys:
+        parser.error("Gemini API key is required when --translate_engine=gemini.")
+
+    input_root = None
+    if input_path.is_file():
+        if input_path.suffix.lower() != ".srt":
+            parser.error("Input file must be an .srt file.")
+        source_files = [input_path]
+    elif input_path.is_dir():
+        input_root = input_path
+        source_files = sorted(input_path.rglob("*.srt"))
+        if not source_files:
+            parser.error(f"No .srt files found inside directory '{input_path}'.")
+    else:
+        parser.error(f"Input path '{input_path}' is neither a file nor a directory.")
+
+    output_is_file = _output_path_is_file(output_path)
+    if output_is_file and len(source_files) > 1:
+        parser.error("When translating multiple files the output path must be a directory.")
+
+    translated = 0
+    skipped = 0
+    target_suffix = f"_{target_language.lower()}.srt"
+    for source in source_files:
+        if source.name.lower().endswith(target_suffix):
+            skipped += 1
+            continue
+
+        destination = _derive_destination(source, output_path, target_language, input_root)
+        if destination.exists() and not getattr(args, "overwrite", False):
+            print(f"Skipping existing file {destination}")
+            skipped += 1
+            continue
+
+        translate_srt_file(
+            source,
+            destination,
+            target_language,
+            translate_engine=args.translate_engine,
+            gemini_api_keys=gemini_api_keys,
+            overwrite=getattr(args, "overwrite", False),
+        )
+        print(f"Translated {source} -> {destination}")
+        translated += 1
+
+    total = len(source_files)
+    print(f"Finished translating {translated}/{total} file(s). {skipped} skipped.")
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())
