@@ -15,13 +15,13 @@ class GeminiTranslationConfig:
     input_file: Path
     output_file: Path
     target_language: str
-    batch_size: int = 400
+    batch_size: int = 500
     temperature: float = 0.3
     top_p: float = 0.9
     top_k: int = 50
     free_quota: bool = True
     resume: bool = False
-    thinking: bool = False
+    thinking: bool = True
     progress_log: bool = False
     thoughts_log: bool = False
 
@@ -69,6 +69,16 @@ class MultiKeyGeminiTranslator(gst.GeminiSRTTranslator):
 
 
 def translate_with_gemini(config: GeminiTranslationConfig) -> pysrt.SubRipFile:
+    additional_instructions = (
+        "CRITICAL INSTRUCTIONS:\n"
+        "1. You MUST return exactly the same number of objects as the input batch.\n"
+        "2. Check the input segments count and ensure your output count matches exactly.\n"
+        "3. Do not skip any index. Every input object must have a corresponding output object.\n"
+        "4. If a line is empty in input, keep it empty in output.\n"
+        "5. If a line has content, it MUST be translated. Do not return empty strings for non-empty input.\n"
+        "6. Do not merge or split subtitles.\n"
+    )
+
     translator = MultiKeyGeminiTranslator(
         api_keys=config.api_keys,
         target_language=config.target_language,
@@ -83,6 +93,7 @@ def translate_with_gemini(config: GeminiTranslationConfig) -> pysrt.SubRipFile:
         thinking=config.thinking,
         progress_log=config.progress_log,
         thoughts_log=config.thoughts_log,
+        description=additional_instructions,
     )
 
     translator.translate()
