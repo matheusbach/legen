@@ -1466,7 +1466,7 @@ wheels = [
 
 [[package]]
 name = "legen"
-version = "0.19.6"
+version = "0.19.7"
 source = { editable = "." }
 dependencies = [
     { name = "deep-translator" },

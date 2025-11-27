@@ -10,9 +10,9 @@ from tqdm import tqdm
 import file_utils
 
 
-def insert_subtitle(input_media_path: Path, subtitles_path: [Path], burn_subtitles: bool, output_video_path: Path, codec_video: str = "h264", codec_audio: str = "aac"):
+def insert_subtitle(input_media_path: Path, subtitles_path: list[Path], burn_subtitles: bool, output_video_path: Path, codec_video: str = "h264", codec_audio: str = "aac"):
     # use only valid srt files
-    subtitles_path: [Path] = file_utils.validate_files(subtitles_path)
+    subtitles_path: list[Path] = file_utils.validate_files(subtitles_path)
 
     # insert in comand the basics of ffmpeg
     cmd_ffmpeg = ["ffmpeg", "-y"]

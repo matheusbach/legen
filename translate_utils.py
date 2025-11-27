@@ -51,11 +51,9 @@ def translate_srt_file(
         if not api_keys:
             raise ValueError("Gemini API key is required for Gemini translation. Get one at https://aistudio.google.com/apikey")
 
-        if overwrite:
-            Path(translated_subtitle_path).unlink(missing_ok=True)
-            resume = False
-        else:
-            resume = True
+        # Force cleanup of previous runs to avoid resume/progress issues
+        Path(translated_subtitle_path).unlink(missing_ok=True)
+        Path(str(translated_subtitle_path) + ".progress").unlink(missing_ok=True)
 
         subs = translate_with_gemini(
             GeminiTranslationConfig(
@@ -63,7 +61,7 @@ def translate_srt_file(
                 input_file=srt_file_path,
                 output_file=translated_subtitle_path,
                 target_language=target_lang,
-                resume=resume,
+                resume=False
             )
         )
 
