@@ -35,7 +35,7 @@ from utils import audio_extensions, check_other_extensions, time_task, video_ext
 if os.environ.get("MPLBACKEND") == "module://matplotlib_inline.backend_inline":
     os.environ.pop("MPLBACKEND")
 
-VERSION = "0.19.6"
+VERSION = "0.19.7"
 version = f"v{VERSION}"
 __version__ = VERSION
 __all__ = [
@@ -233,10 +233,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.translate_engine == "google" and args.translate.lower() in ['pt', 'pt-br', 'pt-pt']:
         args.translate = 'pt'
 
-    if not args.output_softsubs and not args.input_path.is_file():
-        args.output_softsubs = compatibility_path if (compatibility_path := Path(args.input_path.parent, "legen_srt_" + args.input_path.name)).exists() else Path(args.input_path.parent, "softsubs_" + args.input_path.name)
-    if not args.output_hardsubs and not args.input_path.is_file():
-        args.output_hardsubs = compatibility_path if (compatibility_path := Path(args.input_path.parent, "legen_burned_" + args.input_path.name)).exists() else Path(args.input_path.parent, "hardsubs_" + args.input_path.name)
+    if not args.output_softsubs:
+        if args.input_path.is_file():
+            args.output_softsubs = Path(args.input_path.parent, "softsubs")
+        else:
+            args.output_softsubs = compatibility_path if (compatibility_path := Path(args.input_path.parent, "legen_srt_" + args.input_path.name)).exists() else Path(args.input_path.parent, "softsubs_" + args.input_path.name)
+    if not args.output_hardsubs:
+        if args.input_path.is_file():
+            args.output_hardsubs = Path(args.input_path.parent, "hardsubs")
+        else:
+            args.output_hardsubs = compatibility_path if (compatibility_path := Path(args.input_path.parent, "legen_burned_" + args.input_path.name)).exists() else Path(args.input_path.parent, "hardsubs_" + args.input_path.name)
 
     device_info = None
     resolved_compute_type = None
@@ -331,8 +337,16 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     with time_task(message="⌛ Processing files for"):
         path: Path
-        for path in (item for item in sorted(sorted(Path(args.input_path).rglob('*'), key=lambda x: x.stat().st_mtime), key=lambda x: len(x.parts)) if item.is_file()):
-            rel_path = path.relative_to(args.input_path)
+        if args.input_path.is_file():
+            files_iterator = [args.input_path]
+        else:
+            files_iterator = (item for item in sorted(sorted(Path(args.input_path).rglob('*'), key=lambda x: x.stat().st_mtime), key=lambda x: len(x.parts)) if item.is_file())
+
+        for path in files_iterator:
+            if args.input_path.is_file():
+                rel_path = Path(path.name)
+            else:
+                rel_path = path.relative_to(args.input_path)
             with time_task(message_start=f"\nProcessing {yellow}{rel_path.as_posix()}{default}", end="\n", message="⌚ Done in"):
                 try:
                     if path.suffix.lower() in video_extensions:
