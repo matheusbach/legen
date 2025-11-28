@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "legen"
-version = "0.19.7"
+version = "0.19.8"
 description = "Powerfull toolkit that locally transcribes, translates, and masters subtitles for your media"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.9,<3.13"

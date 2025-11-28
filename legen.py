@@ -35,7 +35,7 @@ from utils import audio_extensions, check_other_extensions, time_task, video_ext
 if os.environ.get("MPLBACKEND") == "module://matplotlib_inline.backend_inline":
     os.environ.pop("MPLBACKEND")
 
-VERSION = "0.19.7"
+VERSION = "0.19.8"
 version = f"v{VERSION}"
 __version__ = VERSION
 __all__ = [
