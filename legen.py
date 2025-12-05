@@ -309,8 +309,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     args.transcription_model = "large-v3" if args.transcription_model == "large" else args.transcription_model
 
     if args.norm:
+        vidqa_executable = "vidqa"
+        local_vidqa = Path(sys.executable).parent / "vidqa"
+        if local_vidqa.exists() and os.access(local_vidqa, os.X_OK):
+            vidqa_executable = str(local_vidqa)
+
         with time_task(message_start=f"Running {wblue}vidqa{default} and updating folder modifiation times in {gray}{args.input_path}{default}", end="\n"):
-            subprocess.run(["vidqa", "-i", args.input_path, "-m", "unique", "-fd",
+            subprocess.run([vidqa_executable, "-i", args.input_path, "-m", "unique", "-fd",
                             Path(Path(getframeinfo(currentframe()).filename).resolve().parent, "vidqa_data")])
             file_utils.update_folder_times(args.input_path)
 

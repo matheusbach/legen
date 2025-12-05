@@ -11,6 +11,12 @@ from typing import Iterable, List
 
 def _resolve_downloader() -> str:
     """Return the executable name for yt-dlp."""
+    # First check if yt-dlp is in the same directory as the python executable
+    # This handles cases where legen is installed via 'uv tool install'
+    local_downloader = Path(sys.executable).parent / "yt-dlp"
+    if local_downloader.exists() and os.access(local_downloader, os.X_OK):
+        return str(local_downloader)
+
     downloader = "yt-dlp"
     if shutil.which(downloader):
         return downloader
