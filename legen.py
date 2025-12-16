@@ -11,11 +11,7 @@ import logging
 # Filter warnings early
 warnings.filterwarnings("ignore", category=SyntaxWarning, module=r"pyannote\.database.*")
 warnings.filterwarnings("ignore", category=UserWarning, message="pkg_resources is deprecated as an API")
-warnings.filterwarnings(
-    "ignore",
-    category=UserWarning,
-    message="torchaudio._backend.list_audio_backends has been deprecated",
-)
+warnings.filterwarnings("ignore", category=UserWarning, message="torchaudio._backend.list_audio_backends has been deprecated",)
 logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 
 from inspect import currentframe, getframeinfo
@@ -163,6 +159,43 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--copy_files", default=False, action="store_true",
                         help="Copy other (non-video) files present in input directory to output directories. Only generate the subtitles and videos")
     return parser
+
+
+def patch_torch_hub():
+    """
+    Monkeypatch torch.hub.load to add retries for transient errors (like 503).
+    """
+    try:
+        import torch.hub
+        import time
+        from urllib.error import HTTPError
+        
+        original_load = torch.hub.load
+
+        def retrying_load(*args, **kwargs):
+            max_retries = 5
+            for attempt in range(max_retries):
+                try:
+                    return original_load(*args, **kwargs)
+                except Exception as e:
+                    # Check for 503 or other transient errors
+                    is_transient = False
+                    error_str = str(e)
+                    if isinstance(e, HTTPError) and e.code in [500, 502, 503, 504]:
+                        is_transient = True
+                    elif "503" in error_str or "504" in error_str or "Connection reset" in error_str:
+                        is_transient = True
+                    
+                    if is_transient and attempt < max_retries - 1:
+                        wait_time = 2 ** attempt
+                        print(f"Download failed with {e}, retrying in {wait_time} seconds...")
+                        time.sleep(wait_time)
+                        continue
+                    raise e
+        
+        torch.hub.load = retrying_load
+    except ImportError:
+        pass
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -321,6 +354,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     with time_task(message_start=f"\nLoading {args.transcription_engine} model: {wblue}{args.transcription_model}{default} ({transcription_compute_type}) on {wblue}{torch_device}{default}", end="\n"):
         if args.transcription_engine == 'whisperx':
+            patch_torch_hub()
             import whisperx_legen_fork as whisperx
             import whisperx_utils
 
