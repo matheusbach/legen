@@ -266,10 +266,9 @@ def _resolve_compute_type(
 
 	if req in {"auto", "default"}:
 		if backend == "cuda":
-			if supports_fp16:
-				return "float16", issues
-			issues.append("FP16 unsupported; using float32.")
-			return "float32", issues
+			if not supports_fp16:
+				issues.append("FP16 may be unsupported on this GPU; it could run slower or fail. Consider int8_float16 if issues occur.")
+			return "float16", issues
 		if backend == "mps":
 			return "float16", issues
 		return "float32", issues
@@ -280,9 +279,8 @@ def _resolve_compute_type(
 		return replacement, issues
 
 	if backend in {"cuda", "mps"} and req in _FP16_COMPUTE_TYPES and not supports_fp16:
-		replacement = "float32" if auto_mode else req
-		issues.append(f"{req} unsupported on detected GPU; using {replacement}.")
-		return replacement, issues
+		issues.append(f"{req} may be unsupported on detected GPU; it could run slower or fail. Consider int8_float16 or float32 if problems occur.")
+		return req, issues
 
 	return req, issues
 
