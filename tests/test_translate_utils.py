@@ -63,6 +63,28 @@ class TranslateUtilsTests(unittest.TestCase):
         self.assertEqual(translate_mock.call_args.kwargs["translate_engine"], "google")
         self.assertEqual(translate_mock.call_args.kwargs["gemini_api_keys"], [])
 
+    def test_cli_auto_selects_gemini_when_api_key_provided(self):
+        tmp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp_dir.cleanup)
+
+        input_file = Path(tmp_dir.name) / "sample.srt"
+        input_file.write_text("1\n00:00:00,000 --> 00:00:01,000\nHello\n", encoding="utf-8")
+
+        with mock.patch.object(translate_utils, "translate_srt_file", autospec=True) as translate_mock:
+            exit_code = translate_utils.main([
+                "-i",
+                str(input_file),
+                "--translate",
+                "es",
+                "--gemini_api_key",
+                "dummy-key",
+            ])
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(translate_mock.call_count, 1)
+        self.assertEqual(translate_mock.call_args.kwargs["translate_engine"], "gemini")
+        self.assertEqual(translate_mock.call_args.kwargs["gemini_api_keys"], ["dummy-key"])
+
     def test_cli_requires_directory_output_for_multiple_inputs(self):
         tmp_dir = tempfile.TemporaryDirectory()
         self.addCleanup(tmp_dir.cleanup)

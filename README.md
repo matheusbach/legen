@@ -120,6 +120,8 @@ Full options list are described bellow:
 
 - `-i`, `--input_path`: Specifies the path to the media files or a direct video/playlist URL. The CLI will download URLs with `yt-dlp` before processing. Example: `LeGen -i /path/to/media/files` or `LeGen -i https://www.youtube.com/watch?v=…`.
 
+- `--process_input_subs` (alias: `--process_srt_inputs`): Also process existing `.srt` subtitle files found in the input path (translate/TLTW). If a subtitle filename matches a media filename in the same folder (e.g. `video.mp4` + `video.srt` or `video_en.srt`), LeGen will use that `.srt` instead of transcribing the audio. Subtitles without a matching media file are processed as standalone inputs (no MP4 output).
+
 - `--norm`: Normalizes folder times and runs vidqa on the input path before starting to process files. Useful for synchronizing timestamps across multiple media files.
 
 - `-ts:e`, `--transcription_engine`: Specifies the transcription engine to use. Possible values are "whisperx" and "whisper". Default is "whisperx".
@@ -137,6 +139,8 @@ Full options list are described bellow:
 - `--translate`: Translates subtitles to a language code if they are not the same as the original. The language code should be specified after the equals sign. For example, `LeGen --translate=fr` would translate the subtitles to French.
 
 - `--input_lang`: Indicates (forces) the language of the voice in the input media. Default is "auto".
+
+	When `--process_input_subs` is enabled, a non-`auto` `--input_lang` also forces the assumed source language for input `.srt` files.
 
 - `-c:v`, `--codec_video`: Specifies the target video codec. Can be used to set acceleration via GPU or another video API [codec_api], if supported (ffmpeg -encoders). Examples include h264, libx264, h264_vaapi, h264_nvenc, hevc, libx265 hevc_vaapi, hevc_nvenc, hevc_cuvid, hevc_qsv, hevc_amf. Default is h264.
 
@@ -162,10 +166,14 @@ Full options list are described bellow:
 
 - `--copy_files`: Copies other (non-video) files present in the input directory to output directories. Only generates the subtitles and videos. By default, this option is false.
 
-- `--translate_engine`: Selects the translation engine. Possible values: `google` (default), `gemini`.
+- `--translate_engine`: Selects the translation engine. Possible values: `google` (default), `gemini`. If you provide `--gemini_api_key` and do not explicitly set `--translate_engine`, LeGen will prefer `gemini` when translation is enabled.
 - `--gemini_api_key`: Gemini API key used for translation when `--translate_engine gemini`. Repeat the flag or separate keys with commas/line breaks to supply multiple keys (useful for rotating free-tier quotas). Get your keys at https://aistudio.google.com/apikey
+- `--tltw`: Generates a Gemini-powered "Too Long To Watch" summary from the subtitles. Uses translated subtitles when a target language is provided, otherwise the original transcript. Requires `--gemini_api_key`.
+- `--output_tltw`: Destination directory for TLTW summaries. Defaults to the softsubs output folder and mirrors the input directory structure.
 
-Each of these options provides control over various aspects of the video processing workflow. Make sure to refer to the documentation or help message (`LeGen --help`) for more details on each option[Source 0](https://docs.python.org/3/library/argparse.html)[Source 2](https://realpython.com/command-line-interfaces-python-argparse/).
+TLTW output is a Markdown document with `# Title`, `*Tags:*`, `## Key Points`, and a timestamped `## Summary` section (chapter-title style lines like `HH:MM:SS description`).
+
+Each of these options provides control over various aspects of the video processing workflow. Use the help message (`LeGen --help`) for more details.
 
 ### Downloading from URLs
 
@@ -253,6 +261,18 @@ LivePix: https://livepix.gg/legendonate
 - Igor
 - NiNi
 - PopularC
+- brauliobo
+- luizc2026
+- Waldomiro
+- fabiodfmelo
+- Soya198
+- Ob1iiz
+- rdoolfo
+- The MDK Trader
+- Hastur
+- Fábio Delicato
+- Lucas9925677
+- Rodolfo Pereira
 
 
 ## License

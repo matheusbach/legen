@@ -361,7 +361,8 @@ def _derive_destination(source: Path, base_output: Path | None, target_language:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_cli_parser()
-    args = parser.parse_args(list(argv) if argv is not None else None)
+    raw_argv = list(argv) if argv is not None else []
+    args = parser.parse_args(raw_argv if argv is not None else None)
 
     input_path = Path(args.input_path).expanduser().resolve()
     if not input_path.exists():
@@ -373,6 +374,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("Provide a valid target language via --translate (e.g., en, es, pt-BR).")
 
     gemini_api_keys = normalize_api_keys(getattr(args, "gemini_api_key", []))
+    translate_engine_explicit = any(str(item).startswith("--translate_engine") for item in raw_argv)
+    if (
+        not translate_engine_explicit
+        and target_language
+        and target_language.lower() != "none"
+        and args.translate_engine == "google"
+        and gemini_api_keys
+    ):
+        args.translate_engine = "gemini"
+
     if args.translate_engine == "gemini" and not gemini_api_keys:
         parser.error("Gemini API key is required when --translate_engine=gemini.")
 

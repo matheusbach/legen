@@ -27,13 +27,18 @@ class DownloadUtilsTests(unittest.TestCase):
 
     @patch("download_utils.shutil.which", return_value="/usr/bin/yt-dlp")
     def test_resolve_downloader_found(self, mock_which):
-        self.assertEqual(download_utils._resolve_downloader(), "yt-dlp")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Ensure the "local yt-dlp next to sys.executable" fast-path is not taken.
+            with patch("download_utils.sys.executable", new=str(Path(tmpdir) / "python")):
+                self.assertEqual(download_utils._resolve_downloader(), "yt-dlp")
         mock_which.assert_called_once_with("yt-dlp")
 
     @patch("download_utils.shutil.which", return_value=None)
     def test_resolve_downloader_missing(self, mock_which):
-        with self.assertRaises(FileNotFoundError):
-            download_utils._resolve_downloader()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch("download_utils.sys.executable", new=str(Path(tmpdir) / "python")):
+                with self.assertRaises(FileNotFoundError):
+                    download_utils._resolve_downloader()
         mock_which.assert_called_once_with("yt-dlp")
 
     @patch("download_utils._append_downloaded_suffix_to_subtitles")

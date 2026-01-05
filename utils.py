@@ -2,6 +2,7 @@ import time
 from pathlib import Path
 
 from contextlib import contextmanager
+import re
 
 
 @contextmanager
@@ -70,3 +71,32 @@ def check_other_extensions(file_path, extensions_to_check):
 
 video_extensions = {".mp4", ".webm", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".vob", ".mts", ".m2ts", ".ts", ".yuv", ".mpg", ".mp2", ".mpeg", ".mpe", ".mpv", ".m2v", ".m4v", ".3gp", ".3g2", ".nsv", ".mts"}
 audio_extensions = {".aa", ".aac", ".aax", ".act", ".aiff", ".alac", ".amr", ".ape", ".au", ".awb", ".dss", ".dvf", ".flac", ".gsm", ".iklax", ".ivs", ".m4a", ".m4b", ".m4p", ".mpga", ".mmf", ".mp3", ".mpc", ".msv", ".nmf", ".ogg", ".oga", ".mogg", ".opus", ".ra", ".rm", ".raw", ".rf64", ".sln", ".tta", ".voc", ".vox", ".wav", ".wma", ".wv", ".webm", ".8svx"}
+
+
+_LANG_SUFFIX_RE = re.compile(r"^(?P<lang>[A-Za-z]{2,3}(?:-[A-Za-z]{2,4})?)$")
+
+
+def split_lang_suffix(stem: str) -> tuple[str, str | None]:
+    """Split a trailing language suffix from a filename stem.
+
+    Examples:
+      - "video_pt-br" -> ("video", "pt-br")
+      - "video_en" -> ("video", "en")
+      - "video" -> ("video", None)
+
+    The matching is intentionally conservative to avoid misclassifying stems.
+    """
+    if not stem:
+        return stem, None
+
+    if "_" not in stem:
+        return stem, None
+
+    base, maybe_lang = stem.rsplit("_", 1)
+    if not base:
+        return stem, None
+
+    if _LANG_SUFFIX_RE.match(maybe_lang or ""):
+        return base, maybe_lang.lower()
+
+    return stem, None

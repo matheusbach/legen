@@ -9,4 +9,5 @@ whisper
 vidqa
 whisperx-legen-fork
 gemini-srt-translator
+google-generativeai
 yt-dlp

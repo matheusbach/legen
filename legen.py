@@ -24,14 +24,14 @@ import ffmpeg_utils
 import file_utils
 import subtitle_utils
 import translate_utils
-from gemini_utils import normalize_api_keys
-from utils import audio_extensions, check_other_extensions, time_task, video_extensions
+from gemini_utils import GeminiSummaryConfig, generate_tltw, normalize_api_keys
+from utils import audio_extensions, check_other_extensions, split_lang_suffix, time_task, video_extensions
 
 # Fix for matplotlib backend issue in some environments (e.g. Colab)
 if os.environ.get("MPLBACKEND") == "module://matplotlib_inline.backend_inline":
     os.environ.pop("MPLBACKEND")
 
-VERSION = "0.19.8"
+VERSION = "0.20.0"
 version = f"v{VERSION}"
 __version__ = VERSION
 __all__ = [
@@ -132,6 +132,10 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Translation engine to use: google (default) or gemini")
     parser.add_argument("--gemini_api_key", action="append", default=[], type=str,
                         help="Gemini API key. Repeat or separate by comma/line break to add multiple keys (required if --translate_engine=gemini)")
+    parser.add_argument("--tltw", action="store_true", default=False,
+                        help="Generate a Gemini 'Too Long To Watch' summary from subtitles (requires --gemini_api_key)")
+    parser.add_argument("--output_tltw", type=Path, default=None,
+                        help="Directory to save TLTW summaries. Defaults to the softsubs output folder")
     parser.add_argument("--input_lang", type=str, default="auto",
                         help="Indicates (forces) the language of the voice in the input media (default: auto)")
     parser.add_argument("-c:v", "--codec_video", type=str, default="h264", metavar="VIDEO_CODEC",
@@ -158,6 +162,14 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Disable subtitle burn in output_hardsubs")
     parser.add_argument("--copy_files", default=False, action="store_true",
                         help="Copy other (non-video) files present in input directory to output directories. Only generate the subtitles and videos")
+    parser.add_argument(
+        "--process_input_subs",
+        "--process_srt_inputs",
+        dest="process_input_subs",
+        default=False,
+        action="store_true",
+        help="Also process existing .srt subtitle files found in the input path (translate/TLTW). When a subtitle matches a media filename, it is used instead of transcription.",
+    )
     return parser
 
 
@@ -201,7 +213,8 @@ def patch_torch_hub():
 def main(argv: Sequence[str] | None = None) -> int:
     _print_banner()
     parser = build_parser()
-    args = parser.parse_args(list(argv) if argv is not None else None)
+    raw_argv = list(argv) if argv is not None else sys.argv[1:]
+    args = parser.parse_args(raw_argv if argv is not None else None)
 
     input_path_raw = args.input_path
 
@@ -259,10 +272,26 @@ def main(argv: Sequence[str] | None = None) -> int:
     args.gemini_api_keys = normalize_api_keys(args.gemini_api_key)
     args.gemini_api_key = args.gemini_api_keys[0] if args.gemini_api_keys else None
 
-    if args.gemini_api_keys:
+    translate_engine_explicit = any(str(item).startswith("--translate_engine") for item in raw_argv)
+    if (
+        not translate_engine_explicit
+        and args.translate
+        and str(args.translate).lower() != "none"
+        and args.translate_engine == "google"
+        and args.gemini_api_keys
+    ):
+        # If the user provided Gemini keys but did not explicitly choose an engine,
+        # prefer Gemini translation.
         args.translate_engine = "gemini"
-        if args.translate.lower() == 'pt':
-            args.translate = 'pt-BR'
+
+    if args.tltw and not args.gemini_api_keys:
+        parser.error("Gemini API key is required for TLTW summaries. Provide --gemini_api_key.")
+
+    if args.translate_engine == "gemini" and not args.gemini_api_keys:
+        parser.error("Gemini API key is required when --translate_engine=gemini. Provide --gemini_api_key.")
+
+    if args.translate_engine == "gemini" and args.translate.lower() == 'pt':
+        args.translate = 'pt-BR'
     if args.translate_engine == "google" and args.translate.lower() in ['pt', 'pt-br', 'pt-pt']:
         args.translate = 'pt'
 
@@ -276,6 +305,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.output_hardsubs = Path(args.input_path.parent, "hardsubs")
         else:
             args.output_hardsubs = compatibility_path if (compatibility_path := Path(args.input_path.parent, "legen_burned_" + args.input_path.name)).exists() else Path(args.input_path.parent, "hardsubs_" + args.input_path.name)
+
+    if args.output_tltw:
+        args.output_tltw = Path(args.output_tltw).expanduser().resolve()
+    else:
+        args.output_tltw = args.output_softsubs
 
     device_info = None
     resolved_compute_type = None
@@ -375,6 +409,36 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise ValueError(f'Unsupported transcription engine {args.transcription_engine}. Supported values: whisperx, whisper')
 
     with time_task(message="⌛ Processing files for"):
+        # Pre-scan subtitle inputs so we can (a) use them instead of transcription
+        # for matching media, and (b) process standalone subtitle files.
+        srt_index: dict[tuple[Path, str], list[Path]] = {}
+        srt_linked_to_media: set[Path] = set()
+
+        if args.process_input_subs and args.input_path.is_dir():
+            media_keys: set[tuple[Path, str]] = set()
+            for media_path in args.input_path.rglob("*"):
+                if not media_path.is_file():
+                    continue
+                ext = media_path.suffix.lower()
+                if ext not in (video_extensions | audio_extensions):
+                    continue
+                rel_media = media_path.relative_to(args.input_path)
+                media_keys.add((rel_media.parent, rel_media.stem))
+
+            for srt_path in args.input_path.rglob("*.srt"):
+                if not srt_path.is_file():
+                    continue
+                rel_srt = srt_path.relative_to(args.input_path)
+                base_stem, _ = split_lang_suffix(rel_srt.stem)
+                key = (rel_srt.parent, base_stem)
+                srt_index.setdefault(key, []).append(srt_path)
+                if key in media_keys:
+                    srt_linked_to_media.add(srt_path)
+
+            # deterministic selection order
+            for key in list(srt_index.keys()):
+                srt_index[key] = sorted(srt_index[key])
+
         path: Path
         if args.input_path.is_file():
             files_iterator = [args.input_path]
@@ -392,6 +456,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                         file_type = "video"
                     elif path.suffix.lower() in audio_extensions:
                         file_type = "audio"
+                    elif args.process_input_subs and path.suffix.lower() == ".srt":
+                        file_type = "subtitle"
                     else:
                         file_type = "other"
 
@@ -408,52 +474,78 @@ def main(argv: Sequence[str] | None = None) -> int:
                             softsub_video_dir, rel_path.stem + posfix_extension + f"_{args.translate.lower()}.srt")
                         subtitles_path = []
 
-                        if args.input_lang == "auto":
-                            audio_short_extracted = file_utils.TempFile(
-                                None, file_ext=".wav")
-                            ffmpeg_utils.extract_short_wav(
-                                origin_media_path, audio_short_extracted.getpath())
-                            print("Detecting audio language: ", end='', flush=True)
-                            if args.transcription_engine == 'whisperx':
-                                audio_language = whisperx_utils.detect_language(
-                                    whisper_model, audio_short_extracted.getpath())
-                            if args.transcription_engine == 'whisper':
-                                audio_language = whisper_utils.detect_language(
-                                    whisper_model, audio_short_extracted.getpath())
-                            print(f"{gray}{audio_language}{default}")
+                        # If enabled, prefer an existing subtitle file matching this media name
+                        linked_srt: Path | None = None
+                        linked_srt_lang: str | None = None
+                        if args.process_input_subs and args.input_path.is_dir():
+                            candidates = srt_index.get((rel_path.parent, rel_path.stem), [])
+                            if candidates:
+                                linked_srt = candidates[0]
+                                _, linked_srt_lang = split_lang_suffix(linked_srt.stem)
 
-                            audio_short_extracted.destroy()
-                        else:
-                            audio_language = args.input_lang
-                            print(f"Forced input audio language: {gray}{audio_language}{default}")
-                        subtitle_transcribed_path = Path(
-                            softsub_video_dir, rel_path.stem + posfix_extension + f"_{audio_language.lower()}.srt")
-                        transcribed_srt_temp = file_utils.TempFile(
-                            subtitle_transcribed_path, file_ext=".srt")
-                        if (file_utils.file_is_valid(subtitle_transcribed_path)) or ((args.disable_hardsubs or file_utils.file_is_valid(hardsub_video_path)) and (args.disable_srt or file_utils.file_is_valid(subtitle_transcribed_path))) and not args.overwrite:
-                            print("Transcription is unnecessary. Skipping.")
-                        else:
-                            audio_extracted = file_utils.TempFile(None, file_ext=".wav")
-                            ffmpeg_utils.extract_audio_wav(
-                                origin_media_path, audio_extracted.getpath())
-                            if args.transcription_engine == 'whisperx':
-                                print(f"{wblue}Transcribing{default} with {gray}WhisperX{default}")
-                                whisperx_utils.transcribe_audio(
-                                    whisper_model, audio_extracted.getpath(), transcribed_srt_temp.getpath(), audio_language, device=torch_device, batch_size=args.transcription_batch)
-                            if args.transcription_engine == 'whisper':
-                                print(f"{wblue}Transcribing{default} with {gray}Whisper{default}")
-                                whisper_utils.transcribe_audio(
-                                    model=whisper_model, audio_path=audio_extracted.getpath(), srt_path=transcribed_srt_temp.getpath(), lang=audio_language, disable_fp16=False if transcription_compute_type == "float16" or transcription_compute_type == "fp16" else True)
+                        if linked_srt is not None:
+                            if args.input_lang != "auto":
+                                audio_language = args.input_lang
+                            else:
+                                audio_language = linked_srt_lang or "auto"
+                            subtitle_transcribed_path = Path(
+                                softsub_video_dir, rel_path.stem + posfix_extension + f"_{audio_language.lower()}.srt")
+                            transcribed_srt_temp = file_utils.TempFile(
+                                subtitle_transcribed_path, file_ext=".srt")
 
-                            audio_extracted.destroy()
-                            if not args.disable_srt:
-                                transcribed_srt_temp.save()
+                            if file_utils.file_is_valid(subtitle_transcribed_path) and not args.overwrite:
+                                print(f"Existing subtitle file {gray}{subtitle_transcribed_path}{default}. Skipping copy.")
+                            else:
+                                file_utils.copy_file_if_different(linked_srt, transcribed_srt_temp.getpath(), silent=True)
+                                if not args.disable_srt:
+                                    transcribed_srt_temp.save()
+                        else:
+                            if args.input_lang == "auto":
+                                audio_short_extracted = file_utils.TempFile(
+                                    None, file_ext=".wav")
+                                ffmpeg_utils.extract_short_wav(
+                                    origin_media_path, audio_short_extracted.getpath())
+                                print("Detecting audio language: ", end='', flush=True)
+                                if args.transcription_engine == 'whisperx':
+                                    audio_language = whisperx_utils.detect_language(
+                                        whisper_model, audio_short_extracted.getpath())
+                                if args.transcription_engine == 'whisper':
+                                    audio_language = whisper_utils.detect_language(
+                                        whisper_model, audio_short_extracted.getpath())
+                                print(f"{gray}{audio_language}{default}")
+
+                                audio_short_extracted.destroy()
+                            else:
+                                audio_language = args.input_lang
+                                print(f"Forced input audio language: {gray}{audio_language}{default}")
+                            subtitle_transcribed_path = Path(
+                                softsub_video_dir, rel_path.stem + posfix_extension + f"_{audio_language.lower()}.srt")
+                            transcribed_srt_temp = file_utils.TempFile(
+                                subtitle_transcribed_path, file_ext=".srt")
+                            if (file_utils.file_is_valid(subtitle_transcribed_path)) or ((args.disable_hardsubs or file_utils.file_is_valid(hardsub_video_path)) and (args.disable_srt or file_utils.file_is_valid(subtitle_transcribed_path))) and not args.overwrite:
+                                print("Transcription is unnecessary. Skipping.")
+                            else:
+                                audio_extracted = file_utils.TempFile(None, file_ext=".wav")
+                                ffmpeg_utils.extract_audio_wav(
+                                    origin_media_path, audio_extracted.getpath())
+                                if args.transcription_engine == 'whisperx':
+                                    print(f"{wblue}Transcribing{default} with {gray}WhisperX{default}")
+                                    whisperx_utils.transcribe_audio(
+                                        whisper_model, audio_extracted.getpath(), transcribed_srt_temp.getpath(), audio_language, device=torch_device, batch_size=args.transcription_batch)
+                                if args.transcription_engine == 'whisper':
+                                    print(f"{wblue}Transcribing{default} with {gray}Whisper{default}")
+                                    whisper_utils.transcribe_audio(
+                                        model=whisper_model, audio_path=audio_extracted.getpath(), srt_path=transcribed_srt_temp.getpath(), lang=audio_language, disable_fp16=False if transcription_compute_type == "float16" or transcription_compute_type == "fp16" else True)
+
+                                audio_extracted.destroy()
+                                if not args.disable_srt:
+                                    transcribed_srt_temp.save()
                         transcribed_srt_source_path = transcribed_srt_temp.getvalidpath()
                         if transcribed_srt_source_path:
                             subtitles_path.append(transcribed_srt_source_path)
                         if args.translate == "none":
                             translated_srt_source_path = None
-                        elif args.translate == audio_language:
+                        elif audio_language != "auto" and args.translate == audio_language:
                             print("Translation is unnecessary because input and output language are the same. Skipping.")
                             translated_srt_source_path = None
                         elif (args.disable_hardsubs or file_utils.file_is_valid(hardsub_video_path)) and (args.disable_srt or (file_utils.file_is_valid(subtitle_translated_path) and file_utils.file_is_valid(subtitle_transcribed_path) and file_utils.file_is_valid(subtitle_translated_path))) and not args.overwrite:
@@ -488,6 +580,31 @@ def main(argv: Sequence[str] | None = None) -> int:
                             export_txt_if_requested(transcribed_srt_source_path, subtitle_transcribed_path.with_suffix(".txt"))
                         if args.export_txt and translated_srt_source_path:
                             export_txt_if_requested(translated_srt_source_path, subtitle_translated_path.with_suffix(".txt"))
+                        if args.tltw:
+                            summary_source_path = translated_srt_source_path or transcribed_srt_source_path
+                            summary_language = "auto-detect" if audio_language == "auto" else audio_language
+                            if summary_source_path and translated_srt_source_path and summary_source_path == translated_srt_source_path and args.translate.lower() != "none":
+                                summary_language = args.translate
+
+                            if summary_source_path:
+                                summary_output_dir = Path(args.output_tltw, rel_path.parent)
+                                summary_filename = f"{rel_path.stem + posfix_extension}_tltw_{str(summary_language).lower()}.md"
+                                summary_output_path = summary_output_dir / summary_filename
+
+                                if file_utils.file_is_valid(summary_output_path) and not args.overwrite:
+                                    print(f"Existing TLTW summary {gray}{summary_output_path}{default}. Skipping.")
+                                else:
+                                    print(f"{wblue}Generating TLTW summary{default} with {gray}Gemini{default}")
+                                    generate_tltw(
+                                        GeminiSummaryConfig(
+                                            api_keys=args.gemini_api_keys,
+                                            subtitle_file=summary_source_path,
+                                            output_file=summary_output_path,
+                                            language=summary_language,
+                                        )
+                                    )
+                            else:
+                                print("No subtitles available for TLTW summary. Skipping.")
                         if not args.disable_softsubs:
                             if file_utils.file_is_valid(softsub_video_path) and not args.overwrite:
                                 print(f"Existing video file {gray}{softsub_video_path}{default}. Skipping subtitle insert")
@@ -511,6 +628,88 @@ def main(argv: Sequence[str] | None = None) -> int:
                                                             burn_subtitles=True, output_video_path=video_hardsubs_temp.getpath(),
                                                             codec_video=args.codec_video, codec_audio=args.codec_audio)
                                 video_hardsubs_temp.save()
+                    elif file_type == "subtitle":
+                        # Standalone subtitle files (not linked to any media) can be translated and summarized.
+                        if args.input_path.is_dir() and path in srt_linked_to_media:
+                            print("Subtitle matches a media file; it will be used during media processing. Skipping standalone processing.")
+                            continue
+
+                        # Derive base stem and language from filename suffix convention: name_lang.srt
+                        base_stem, lang_from_suffix = split_lang_suffix(rel_path.stem)
+                        if args.input_lang != "auto":
+                            subtitle_language = args.input_lang
+                        else:
+                            subtitle_language = lang_from_suffix or "auto"
+
+                        softsub_dir = Path(args.output_softsubs, rel_path.parent)
+                        subtitle_transcribed_path = Path(softsub_dir, f"{base_stem}_{subtitle_language.lower()}.srt")
+                        subtitle_translated_path = Path(softsub_dir, f"{base_stem}_{args.translate.lower()}.srt")
+
+                        transcribed_srt_temp = file_utils.TempFile(subtitle_transcribed_path, file_ext=".srt")
+                        if file_utils.file_is_valid(subtitle_transcribed_path) and not args.overwrite:
+                            print(f"Existing subtitle file {gray}{subtitle_transcribed_path}{default}. Skipping copy.")
+                            transcribed_srt_source_path = subtitle_transcribed_path
+                        else:
+                            file_utils.copy_file_if_different(path, transcribed_srt_temp.getpath(), silent=True)
+                            if not args.disable_srt:
+                                transcribed_srt_temp.save()
+                            transcribed_srt_source_path = transcribed_srt_temp.getvalidpath()
+
+                        if args.translate == "none":
+                            translated_srt_source_path = None
+                        elif subtitle_language != "auto" and args.translate == subtitle_language:
+                            print("Translation is unnecessary because input and output language are the same. Skipping.")
+                            translated_srt_source_path = None
+                        elif file_utils.file_is_valid(subtitle_translated_path) and not args.overwrite:
+                            print("Translated file found. Skipping translation.")
+                            translated_srt_source_path = subtitle_translated_path
+                        elif transcribed_srt_source_path:
+                            translated_srt_temp = file_utils.TempFile(subtitle_translated_path, file_ext=".srt")
+                            print(f"{wblue}Translating{default} with {gray}{args.translate_engine.capitalize()}{default} to {gray}{args.translate}{default}")
+                            translate_utils.translate_srt_file(
+                                transcribed_srt_source_path,
+                                translated_srt_temp.getpath(),
+                                args.translate,
+                                translate_engine=args.translate_engine,
+                                gemini_api_keys=args.gemini_api_keys,
+                                overwrite=args.overwrite,
+                            )
+                            if not args.disable_srt:
+                                translated_srt_temp.save()
+                            translated_srt_source_path = translated_srt_temp.getvalidpath()
+                        else:
+                            translated_srt_source_path = None
+
+                        if args.export_txt and transcribed_srt_source_path:
+                            export_txt_if_requested(transcribed_srt_source_path, subtitle_transcribed_path.with_suffix(".txt"))
+                        if args.export_txt and translated_srt_source_path:
+                            export_txt_if_requested(translated_srt_source_path, subtitle_translated_path.with_suffix(".txt"))
+
+                        if args.tltw:
+                            summary_source_path = translated_srt_source_path or transcribed_srt_source_path
+                            summary_language = "auto-detect" if subtitle_language == "auto" else subtitle_language
+                            if summary_source_path and translated_srt_source_path and summary_source_path == translated_srt_source_path and args.translate.lower() != "none":
+                                summary_language = args.translate
+
+                            if summary_source_path:
+                                summary_output_dir = Path(args.output_tltw, rel_path.parent)
+                                summary_filename = f"{base_stem}_tltw_{str(summary_language).lower()}.md"
+                                summary_output_path = summary_output_dir / summary_filename
+
+                                if file_utils.file_is_valid(summary_output_path) and not args.overwrite:
+                                    print(f"Existing TLTW summary {gray}{summary_output_path}{default}. Skipping.")
+                                else:
+                                    print(f"{wblue}Generating TLTW summary{default} with {gray}Gemini{default}")
+                                    generate_tltw(
+                                        GeminiSummaryConfig(
+                                            api_keys=args.gemini_api_keys,
+                                            subtitle_file=summary_source_path,
+                                            output_file=summary_output_path,
+                                            language=summary_language,
+                                        )
+                                    )
+                            else:
+                                print("No subtitles available for TLTW summary. Skipping.")
                     else:
                         print("not a video file")
                         if args.copy_files:

@@ -96,8 +96,8 @@ def test_fp16_falls_back_when_gpu_does_not_support(monkeypatch) -> None:
 	info = device_utils.select_torch_device(preferred="auto", model_name="small", compute_type="auto")
 
 	assert info.backend == "cuda"
-	assert info.resolved_compute_type == "float32"
-	assert any("FP16 unsupported" in issue for issue in info.issues)
+	assert info.resolved_compute_type == "float16"
+	assert any("FP16 may be unsupported" in issue for issue in info.issues)
 
 
 def test_lower_compute_type_reduces_vram_requirement(monkeypatch) -> None:
