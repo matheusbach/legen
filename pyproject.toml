@@ -27,6 +27,7 @@ classifiers = [
     "Topic :: Multimedia :: Video"
 ]
 dependencies = [
+    "setuptools",
     "deep-translator",
     "ffmpeg-progress-yield",
     "openai-whisper",
