@@ -16,8 +16,6 @@ import { useRef } from 'react'
 
 type Engine = 'google' | 'gemini'
 
-              <p className="label">Resultado</p>
-
 type TranslateConfig = {
   engine: Engine
   language: string
@@ -47,6 +45,7 @@ type TltwConfig = {
 }
 
 type Tool = 'translate' | 'converter' | 'tltw' | 'editor'
+type UiLanguage = 'pt' | 'en' | 'es'
 const PAGE_SIZE = 200
 
 const GOOGLE_LANGUAGES: Array<{ code: string; label: string }> = [
@@ -205,10 +204,20 @@ function resolveSystemLanguage(): string {
   return 'en'
 }
 
+function resolveSystemUiLanguage(): UiLanguage {
+  if (typeof navigator === 'undefined') return 'en'
+  const raw = (navigator.language || 'en').toLowerCase().trim()
+  if (!raw) return 'en'
+  if (raw.startsWith('pt')) return 'pt'
+  if (raw.startsWith('es')) return 'es'
+  return 'en'
+}
+
 function App() {
   const defaultLanguage = useMemo(() => resolveSystemLanguage(), [])
+  const defaultUiLanguage = useMemo(() => resolveSystemUiLanguage(), [])
   const [rawInput, setRawInput] = useState('')
-  const [sourceName, setSourceName] = useState('Aguardando SRT')
+  const [sourceName, setSourceName] = useState('SRT')
   const [entries, setEntries] = useState<SubtitleEntry[]>([])
   const [translatedEntries, setTranslatedEntries] = useState<SubtitleEntry[]>([])
   const [translatedSrt, setTranslatedSrt] = useState('')
@@ -231,6 +240,360 @@ function App() {
   const [translatePage, setTranslatePage] = useState(0)
   const [editorPage, setEditorPage] = useState(0)
   const [activeTool, setActiveTool] = useState<Tool>('translate')
+  const [uiLanguage, setUiLanguage] = useState<UiLanguage>(defaultUiLanguage)
+
+  const i18n = useMemo(
+    () => ({
+      pt: {
+        appEyebrow: 'LeGen Web',
+        appTitle: 'Traduza, resuma e edite legendas em segundos.',
+        appLead:
+          'Importe seu SRT e use tradução com Google ou Gemini, gere TLTW com um clique e faça ajustes finos no editor.',
+        importSrt: 'Importar SRT',
+        segmentsCount: 'segmentos',
+        segmentsDetected: 'segmentos detectados.',
+        noFile: 'Nenhum arquivo',
+        modes: 'Modos',
+        modeTranslate: 'Tradução',
+        modeTranslateDesc: 'Google / Gemini',
+        modeTranslateInfo: 'Combina sentenças, traduz e remonta sem perder linha do tempo.',
+        modeConverter: 'Converter',
+        modeConverterDesc: 'SRT → TXT',
+        modeTltw: 'TLTW',
+        modeTltwDesc: 'Gemini 2.5 Flash',
+        modeEditor: 'Editor',
+        modeEditorDesc: 'Segmentos e tempos',
+        srtInput: 'Entrada SRT',
+        fileLabel: 'Arquivo',
+        waitingFile: 'Aguardando arquivo',
+        pasteSrt: 'Cole o SRT aqui...',
+        ready: 'Pronto',
+        loadingFile: 'Carregando arquivo...',
+        processingSrt: 'Processando SRT...',
+        applyingEdit: 'Aplicando edição...',
+        translating: 'Traduzindo...',
+        processingGemini: 'Processando Gemini...',
+        copied: 'Copiado para a área de transferência.',
+        editedApplied: 'Legenda editada aplicada.',
+        preparingBatches: 'Preparando lotes...',
+        processingBatch: 'Processando lote',
+        assemblingSubtitle: 'Montando legenda',
+        loadingCaptions: 'Legendas carregadas',
+        cantReadSrt: 'Não foi possível ler o SRT.',
+        translationDone: 'Tradução concluída.',
+        completed: 'Concluído',
+        canceled: 'Cancelar',
+        canceledState: 'Cancelado',
+        previous: 'Anterior',
+        next: 'Próxima',
+        page: 'Página',
+        translationCanceled: 'Tradução cancelada.',
+        unknownTranslateError: 'Erro desconhecido ao traduzir.',
+        generatingTltw: 'Gerando TLTW...',
+        preparingPrompt: 'Preparando prompt...',
+        sendingGemini: 'Enviando para Gemini...',
+        tltwSuccess: 'TLTW gerado com sucesso.',
+        tltwCanceled: 'TLTW cancelado.',
+        tltwError: 'Erro ao gerar TLTW.',
+        tltwPhaseError: 'Erro ao gerar',
+        result: 'Resultado',
+        interfaceLanguage: 'Idioma da interface',
+        outputLanguage: 'Idioma de saída',
+        language: 'Idioma',
+        downloadSrt: 'Baixar SRT',
+        startTranslation: 'Traduzir',
+        engineLabel: 'Engine',
+        engineGoogle: 'Google Translate (gratuito)',
+        engineGemini: 'Gemini (preciso)',
+        isoHint: 'Digite um código ISO (ex.: en, pt, es) ou selecione na lista.',
+        geminiApiKey: 'Gemini API key',
+        geminiModel: 'Modelo Gemini',
+        advancedSettings: 'Configurações avançadas',
+        temperature: 'Temperatura',
+        topP: 'Top P',
+        topK: 'Top K',
+        maxOutputTokensAuto: 'Max output tokens (0 = auto)',
+        maxOutputTokens: 'Max output tokens',
+        thinkingMode: 'Thinking mode',
+        thinkingBudget: 'Thinking budget (-1 = auto)',
+        additionalPrompt: 'Instruções adicionais de prompt',
+        additionalPromptTranslatePlaceholder:
+          'Opcional: regras extras, tom, terminologia específica...',
+        additionalPromptTltwPlaceholder:
+          'Opcional: regras extras, foco, estilo de escrita...',
+        additionalPromptTranslateHint:
+          'Essas instruções são adicionadas ao prompt do Gemini sem alterar o formato JSON.',
+        additionalPromptTltwHint:
+          'Essas instruções são anexadas ao prompt do TLTW e não alteram a estrutura exigida.',
+        debugPromptSent: 'Debug: prompt enviado',
+        debugGeminiRetry: 'Debug: Gemini retry',
+        googlePublicHint: 'Usa endpoint público sem chave. Evite abusos para não ser limitado.',
+        translationPlaceholder: 'Tradução aparecerá aqui...',
+        loadSrtToViewSegments: 'Carregue um SRT para visualizar os segmentos.',
+        converterLabel: 'Conversão',
+        converterTitle: 'Extrair texto puro (SRT → TXT)',
+        converterDesc: 'Sem tempos, pronto para notas ou scripts.',
+        downloadTxt: 'Baixar TXT',
+        copy: 'Copiar',
+        loadSrtToGenerateTxt: 'Carregue um SRT para gerar o TXT.',
+        tltwLabel: 'TLTW',
+        tltwTitle: 'Resumo rápido para entender o vídeo sem assistir tudo',
+        tltwDesc: 'Gera um TLTW claro com pontos principais, insights e próximos passos.',
+        generateTltw: 'Gerar TLTW',
+        downloadMd: 'Baixar MD',
+        maxSrtChars: 'Max chars do SRT',
+        tltwStructureHint:
+          'O TLTW segue a estrutura Title, Tags, Key Points, Actions e Summary.',
+        editorLabel: 'Editor',
+        editorTitle: 'Segmentos, tempos e texto',
+        editorDesc: 'Inserir/remover reindexa e evita sobreposição.',
+        downloadSubtitle: 'Baixar legenda',
+        apply: 'Aplicar',
+        insertSegment: 'Inserir segmento',
+        above: 'Acima',
+        below: 'Abaixo',
+        remove: 'Remover',
+        start: 'Início',
+        end: 'Fim',
+        text: 'Texto',
+        promptDebugTranslate: 'Prompt Gemini (Tradução)',
+        promptDebugTltw: 'Prompt Gemini (TLTW)',
+      },
+      en: {
+        appEyebrow: 'LeGen Web',
+        appTitle: 'Translate, summarize, and edit subtitles in seconds.',
+        appLead:
+          'Import your SRT and use Google or Gemini translation, generate a TLTW summary in one click, and fine-tune lines in the editor.',
+        importSrt: 'Import SRT',
+        segmentsCount: 'segments',
+        segmentsDetected: 'segments detected.',
+        noFile: 'No file',
+        modes: 'Modes',
+        modeTranslate: 'Translation',
+        modeTranslateDesc: 'Google / Gemini',
+        modeTranslateInfo: 'Combines sentences, translates, and rebuilds subtitles without losing timing.',
+        modeConverter: 'Converter',
+        modeConverterDesc: 'SRT → TXT',
+        modeTltw: 'TLTW',
+        modeTltwDesc: 'Gemini 2.5 Flash',
+        modeEditor: 'Editor',
+        modeEditorDesc: 'Segments and timings',
+        srtInput: 'SRT input',
+        fileLabel: 'File',
+        waitingFile: 'Waiting for file',
+        pasteSrt: 'Paste SRT here...',
+        ready: 'Ready',
+        loadingFile: 'Loading file...',
+        processingSrt: 'Processing SRT...',
+        applyingEdit: 'Applying edit...',
+        translating: 'Translating...',
+        processingGemini: 'Processing Gemini...',
+        copied: 'Copied to clipboard.',
+        editedApplied: 'Edited subtitle applied.',
+        preparingBatches: 'Preparing batches...',
+        processingBatch: 'Processing batch',
+        assemblingSubtitle: 'Building subtitle',
+        loadingCaptions: 'Subtitles loaded',
+        cantReadSrt: 'Could not read SRT.',
+        translationDone: 'Translation completed.',
+        completed: 'Completed',
+        canceled: 'Cancel',
+        canceledState: 'Canceled',
+        previous: 'Previous',
+        next: 'Next',
+        page: 'Page',
+        translationCanceled: 'Translation canceled.',
+        unknownTranslateError: 'Unknown translation error.',
+        generatingTltw: 'Generating TLTW...',
+        preparingPrompt: 'Preparing prompt...',
+        sendingGemini: 'Sending to Gemini...',
+        tltwSuccess: 'TLTW generated successfully.',
+        tltwCanceled: 'TLTW canceled.',
+        tltwError: 'Error generating TLTW.',
+        tltwPhaseError: 'Generation error',
+        result: 'Result',
+        interfaceLanguage: 'Interface language',
+        outputLanguage: 'Output language',
+        language: 'Language',
+        downloadSrt: 'Download SRT',
+        startTranslation: 'Translate',
+        engineLabel: 'Engine',
+        engineGoogle: 'Google Translate (free)',
+        engineGemini: 'Gemini (accurate)',
+        isoHint: 'Type an ISO code (e.g., en, pt, es) or choose from the list.',
+        geminiApiKey: 'Gemini API key',
+        geminiModel: 'Gemini model',
+        advancedSettings: 'Advanced settings',
+        temperature: 'Temperature',
+        topP: 'Top P',
+        topK: 'Top K',
+        maxOutputTokensAuto: 'Max output tokens (0 = auto)',
+        maxOutputTokens: 'Max output tokens',
+        thinkingMode: 'Thinking mode',
+        thinkingBudget: 'Thinking budget (-1 = auto)',
+        additionalPrompt: 'Additional prompt instructions',
+        additionalPromptTranslatePlaceholder:
+          'Optional: extra rules, tone, specific terminology...',
+        additionalPromptTltwPlaceholder:
+          'Optional: extra rules, focus, writing style...',
+        additionalPromptTranslateHint:
+          'These instructions are appended to the Gemini prompt without changing JSON format.',
+        additionalPromptTltwHint:
+          'These instructions are appended to the TLTW prompt and do not change the required structure.',
+        debugPromptSent: 'Debug: prompt sent',
+        debugGeminiRetry: 'Debug: Gemini retry',
+        googlePublicHint: 'Uses a public endpoint without API key. Avoid abuse to prevent limits.',
+        translationPlaceholder: 'Translation will appear here...',
+        loadSrtToViewSegments: 'Load an SRT file to view segments.',
+        converterLabel: 'Converter',
+        converterTitle: 'Extract plain text (SRT → TXT)',
+        converterDesc: 'No timestamps, ready for notes or scripts.',
+        downloadTxt: 'Download TXT',
+        copy: 'Copy',
+        loadSrtToGenerateTxt: 'Load an SRT file to generate TXT.',
+        tltwLabel: 'TLTW',
+        tltwTitle: 'Quick summary to understand the video without watching all of it',
+        tltwDesc: 'Generates a clear TLTW with key points, insights, and next steps.',
+        generateTltw: 'Generate TLTW',
+        downloadMd: 'Download MD',
+        maxSrtChars: 'Max SRT chars',
+        tltwStructureHint:
+          'TLTW follows the structure: Title, Tags, Key Points, Actions and Summary.',
+        editorLabel: 'Editor',
+        editorTitle: 'Segments, timings, and text',
+        editorDesc: 'Insert/remove operations reindex items and prevent overlap.',
+        downloadSubtitle: 'Download subtitle',
+        apply: 'Apply',
+        insertSegment: 'Insert segment',
+        above: 'Above',
+        below: 'Below',
+        remove: 'Remove',
+        start: 'Start',
+        end: 'End',
+        text: 'Text',
+        promptDebugTranslate: 'Gemini Prompt (Translation)',
+        promptDebugTltw: 'Gemini Prompt (TLTW)',
+      },
+      es: {
+        appEyebrow: 'LeGen Web',
+        appTitle: 'Traduce, resume y edita subtítulos en segundos.',
+        appLead:
+          'Importa tu SRT y usa traducción con Google o Gemini, genera un TLTW con un clic y ajusta cada línea en el editor.',
+        importSrt: 'Importar SRT',
+        segmentsCount: 'segmentos',
+        segmentsDetected: 'segmentos detectados.',
+        noFile: 'Ningún archivo',
+        modes: 'Modos',
+        modeTranslate: 'Traducción',
+        modeTranslateDesc: 'Google / Gemini',
+        modeTranslateInfo: 'Combina frases, traduce y recompone subtítulos sin perder el timing.',
+        modeConverter: 'Convertir',
+        modeConverterDesc: 'SRT → TXT',
+        modeTltw: 'TLTW',
+        modeTltwDesc: 'Gemini 2.5 Flash',
+        modeEditor: 'Editor',
+        modeEditorDesc: 'Segmentos y tiempos',
+        srtInput: 'Entrada SRT',
+        fileLabel: 'Archivo',
+        waitingFile: 'Esperando archivo',
+        pasteSrt: 'Pega el SRT aquí...',
+        ready: 'Listo',
+        loadingFile: 'Cargando archivo...',
+        processingSrt: 'Procesando SRT...',
+        applyingEdit: 'Aplicando edición...',
+        translating: 'Traduciendo...',
+        processingGemini: 'Procesando Gemini...',
+        copied: 'Copiado al portapapeles.',
+        editedApplied: 'Subtítulo editado aplicado.',
+        preparingBatches: 'Preparando lotes...',
+        processingBatch: 'Procesando lote',
+        assemblingSubtitle: 'Construyendo subtítulo',
+        loadingCaptions: 'Subtítulos cargados',
+        cantReadSrt: 'No se pudo leer el SRT.',
+        translationDone: 'Traducción completada.',
+        completed: 'Completado',
+        canceled: 'Cancelar',
+        canceledState: 'Cancelado',
+        previous: 'Anterior',
+        next: 'Siguiente',
+        page: 'Página',
+        translationCanceled: 'Traducción cancelada.',
+        unknownTranslateError: 'Error desconocido al traducir.',
+        generatingTltw: 'Generando TLTW...',
+        preparingPrompt: 'Preparando prompt...',
+        sendingGemini: 'Enviando a Gemini...',
+        tltwSuccess: 'TLTW generado con éxito.',
+        tltwCanceled: 'TLTW cancelado.',
+        tltwError: 'Error al generar TLTW.',
+        tltwPhaseError: 'Error al generar',
+        result: 'Resultado',
+        interfaceLanguage: 'Idioma de la interfaz',
+        outputLanguage: 'Idioma de salida',
+        language: 'Idioma',
+        downloadSrt: 'Descargar SRT',
+        startTranslation: 'Traducir',
+        engineLabel: 'Motor',
+        engineGoogle: 'Google Translate (gratis)',
+        engineGemini: 'Gemini (preciso)',
+        isoHint: 'Escribe un código ISO (ej.: en, pt, es) o elige de la lista.',
+        geminiApiKey: 'Gemini API key',
+        geminiModel: 'Modelo Gemini',
+        advancedSettings: 'Configuración avanzada',
+        temperature: 'Temperatura',
+        topP: 'Top P',
+        topK: 'Top K',
+        maxOutputTokensAuto: 'Max output tokens (0 = auto)',
+        maxOutputTokens: 'Max output tokens',
+        thinkingMode: 'Thinking mode',
+        thinkingBudget: 'Thinking budget (-1 = auto)',
+        additionalPrompt: 'Instrucciones adicionales del prompt',
+        additionalPromptTranslatePlaceholder:
+          'Opcional: reglas extra, tono, terminología específica...',
+        additionalPromptTltwPlaceholder:
+          'Opcional: reglas extra, foco, estilo de escritura...',
+        additionalPromptTranslateHint:
+          'Estas instrucciones se agregan al prompt de Gemini sin cambiar el formato JSON.',
+        additionalPromptTltwHint:
+          'Estas instrucciones se agregan al prompt de TLTW y no cambian la estructura requerida.',
+        debugPromptSent: 'Debug: prompt enviado',
+        debugGeminiRetry: 'Debug: Gemini retry',
+        googlePublicHint: 'Usa endpoint público sin API key. Evita abusos para no ser limitado.',
+        translationPlaceholder: 'La traducción aparecerá aquí...',
+        loadSrtToViewSegments: 'Carga un SRT para ver los segmentos.',
+        converterLabel: 'Conversión',
+        converterTitle: 'Extraer texto plano (SRT → TXT)',
+        converterDesc: 'Sin tiempos, listo para notas o guiones.',
+        downloadTxt: 'Descargar TXT',
+        copy: 'Copiar',
+        loadSrtToGenerateTxt: 'Carga un SRT para generar TXT.',
+        tltwLabel: 'TLTW',
+        tltwTitle: 'Resumen rápido para entender el video sin verlo completo',
+        tltwDesc: 'Genera un TLTW claro con puntos clave, insights y próximos pasos.',
+        generateTltw: 'Generar TLTW',
+        downloadMd: 'Descargar MD',
+        maxSrtChars: 'Max chars del SRT',
+        tltwStructureHint:
+          'TLTW sigue la estructura: Title, Tags, Key Points, Actions y Summary.',
+        editorLabel: 'Editor',
+        editorTitle: 'Segmentos, tiempos y texto',
+        editorDesc: 'Insertar/quitar reindexa y evita superposiciones.',
+        downloadSubtitle: 'Descargar subtítulo',
+        apply: 'Aplicar',
+        insertSegment: 'Insertar segmento',
+        above: 'Arriba',
+        below: 'Abajo',
+        remove: 'Eliminar',
+        start: 'Inicio',
+        end: 'Fin',
+        text: 'Texto',
+        promptDebugTranslate: 'Prompt Gemini (Traducción)',
+        promptDebugTltw: 'Prompt Gemini (TLTW)',
+      },
+    }),
+    [],
+  )
+
+  const t = (key: keyof (typeof i18n)['pt']) => i18n[uiLanguage][key] || i18n.en[key]
 
   const readCache = <T,>(key: string): T | null => {
     try {
@@ -288,9 +651,11 @@ function App() {
     const savedTranslate = readCache<TranslateConfig>('legen_translate_config')
     const savedTltw = readCache<TltwConfig>('legen_tltw_config')
     const savedTool = readCache<Tool>('legen_active_tool')
+    const savedUiLanguage = readCache<UiLanguage>('legen_ui_language')
     if (savedTranslate) setTranslateConfig((prev) => ({ ...prev, ...savedTranslate }))
     if (savedTltw) setTltwConfig((prev) => ({ ...prev, ...savedTltw }))
     if (savedTool) setActiveTool(savedTool)
+    if (savedUiLanguage) setUiLanguage(savedUiLanguage)
   }, [])
 
   useEffect(() => {
@@ -305,11 +670,15 @@ function App() {
     writeCache('legen_active_tool', activeTool)
   }, [activeTool])
 
+  useEffect(() => {
+    writeCache('legen_ui_language', uiLanguage)
+  }, [uiLanguage])
+
   const plainText = useMemo(() => (entries.length ? srtToPlainText(entries) : ''), [entries])
 
   const handleSourceChange = async (content: string, name?: string) => {
     setRawInput(content)
-    setSourceName(name || 'Conteudo colado')
+    setSourceName(name || 'SRT')
     setError(null)
     setTranslatedSrt('')
     setTranslatedEntries([])
@@ -326,11 +695,11 @@ function App() {
         try {
           const parsed = parseSrt(content)
           setEntries(parsed)
-          setStatus(`Legendas carregadas (${parsed.length} segmentos).`)
+          setStatus(`${t('loadingCaptions')} (${parsed.length} ${t('segmentsCount')}).`)
         } catch (err) {
           setEntries([])
           setStatus('')
-          setError(err instanceof Error ? err.message : 'Nao foi possivel ler o SRT.')
+          setError(err instanceof Error ? err.message : t('cantReadSrt'))
         } finally {
           setIsParsing(false)
           resolve()
@@ -364,7 +733,7 @@ function App() {
 
   const copyToClipboard = async (content: string) => {
     await navigator.clipboard.writeText(content)
-    setStatus('Copiado para a area de transferencia.')
+    setStatus(t('copied'))
   }
 
   const autosizeTextarea = (el: HTMLTextAreaElement | null) => {
@@ -379,7 +748,7 @@ function App() {
     const name = baseName.startsWith('[edited]') ? baseName : `[edited] ${baseName}`
     setIsApplyingEdits(true)
     handleSourceChange(content, name)
-      .then(() => setStatus('Legenda editada aplicada.'))
+      .then(() => setStatus(t('editedApplied')))
       .finally(() => setIsApplyingEdits(false))
   }
 
@@ -390,8 +759,8 @@ function App() {
     translateAbort.current = new AbortController()
     setIsTranslating(true)
     setTranslateProgress(0)
-    setTranslateStep('Preparando lotes...')
-    setStatus('Traduzindo...')
+    setTranslateStep(t('preparingBatches'))
+    setStatus(t('translating'))
     setError(null)
     setTranslatedSrt('')
     setTranslatedEntries([])
@@ -414,18 +783,18 @@ function App() {
         geminiTopK: translateConfig.geminiTopK,
         geminiMaxOutputTokens: translateConfig.geminiMaxOutputTokens,
         onPrompt: (prompt) => {
-          setPromptDebugTitle('Prompt Gemini (Tradução)')
+          setPromptDebugTitle(t('promptDebugTranslate'))
           setPromptDebug(prompt)
         },
         onDebug: (info) => setGeminiDebug(info),
         signal: translateAbort.current.signal,
         onProgress: (done, total) => {
           setTranslateProgress(done / total)
-          setTranslateStep(`Processando lote ${done}/${total}`)
+          setTranslateStep(`${t('processingBatch')} ${done}/${total}`)
         },
         onPartialSrt: (text, pct) => {
           setTranslateProgress(pct)
-          setTranslateStep(`Montando legenda ${Math.round(pct * 100)}%`)
+          setTranslateStep(`${t('assemblingSubtitle')} ${Math.round(pct * 100)}%`)
 
           try {
             const parsed = parseSrt(text)
@@ -438,16 +807,16 @@ function App() {
       const finalSrt = formatSrt(translatedEntries)
       setTranslatedEntries(translatedEntries)
       setTranslatedSrt(finalSrt)
-      setStatus('Traducao concluida.')
-      setTranslateStep('Concluido')
+      setStatus(t('translationDone'))
+      setTranslateStep(t('completed'))
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
-        setStatus('Tradução cancelada.')
-        setTranslateStep('Cancelado')
+        setStatus(t('translationCanceled'))
+        setTranslateStep(t('canceledState'))
         setError(null)
         setTranslateProgress(0)
       } else {
-        setError(err instanceof Error ? err.message : 'Erro desconhecido ao traduzir.')
+        setError(err instanceof Error ? err.message : t('unknownTranslateError'))
         setStatus('')
       }
     } finally {
@@ -464,16 +833,16 @@ function App() {
     tltwAbort.current?.abort()
     tltwAbort.current = new AbortController()
     setIsSummarizing(true)
-    setStatus('Gerando TLTW...')
+    setStatus(t('generatingTltw'))
     setTltwProgress(0.15)
-    setTltwPhase('Preparando prompt...')
+    setTltwPhase(t('preparingPrompt'))
     setError(null)
     setTltw('')
     setPromptDebug('')
     setPromptDebugTitle('')
 
     try {
-      setTltwPhase('Enviando para Gemini...')
+      setTltwPhase(t('sendingGemini'))
       setTltwProgress(0.35)
 
       const summary = await generateTltwSummary({
@@ -490,26 +859,26 @@ function App() {
         topK: tltwConfig.geminiTopK,
         maxOutputTokensOverride: tltwConfig.geminiMaxOutputTokens,
         onPrompt: (prompt) => {
-          setPromptDebugTitle('Prompt Gemini (TLTW)')
+          setPromptDebugTitle(t('promptDebugTltw'))
           setPromptDebug(prompt)
         },
         signal: tltwAbort.current.signal,
       })
       setTltwProgress(1)
-      setTltwPhase('Concluido')
+      setTltwPhase(t('completed'))
       setTltw(summary)
-      setStatus('TLTW gerado com sucesso.')
+      setStatus(t('tltwSuccess'))
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
-        setStatus('TLTW cancelado.')
+        setStatus(t('tltwCanceled'))
         setError(null)
         setTltwProgress(0)
-        setTltwPhase('Cancelado')
+        setTltwPhase(t('canceledState'))
       } else {
-        setError(err instanceof Error ? err.message : 'Erro ao gerar TLTW.')
+        setError(err instanceof Error ? err.message : t('tltwError'))
         setStatus('')
         setTltwProgress(0)
-        setTltwPhase('Erro ao gerar')
+        setTltwPhase(t('tltwPhaseError'))
       }
     } finally {
       setIsSummarizing(false)
@@ -560,79 +929,92 @@ function App() {
     <div className="app-shell">
       <div className="bg-gradients" aria-hidden />
       <header className="hero">
-        <div>
-          <p className="eyebrow">LeGen no navegador</p>
-          <h1>Workspace modular para legendas.</h1>
-          <p className="lede">
-            Fluxos isolados (traducao, conversao, TLTW, edicao) com configs salvas em cookies.
-            Arquitetura em “blocos” para crescer com novas ferramentas.
-          </p>
-          <div className="hero-actions">
-            <label className="file-button primary">
-              Importar SRT
-              <input type="file" accept=".srt" onChange={(e) => handleFile(e.target.files?.[0])} />
-            </label>
-            <span className="pill">{hasInput ? `${entries.length} segmentos` : 'Nenhum arquivo'}</span>
+        <div className="hero-main">
+          <div className="hero-copy">
+            <p className="eyebrow">{t('appEyebrow')}</p>
+            <h1>{t('appTitle')}</h1>
+            <p className="lede">
+              {t('appLead')}
+            </p>
+            <div className="hero-actions">
+              <label className="file-button primary">
+                {t('importSrt')}
+                <input type="file" accept=".srt" onChange={(e) => handleFile(e.target.files?.[0])} />
+              </label>
+              <span className="pill">{hasInput ? `${entries.length} ${t('segmentsCount')}` : t('noFile')}</span>
+            </div>
           </div>
+          <label className="lang-select compact hero-lang-inline">
+            <span className="muted small">{t('interfaceLanguage')}</span>
+            <select
+              className="text-input"
+              value={uiLanguage}
+              onChange={(e) => setUiLanguage(e.target.value as UiLanguage)}
+            >
+              <option value="pt">🇧🇷 Português</option>
+              <option value="en">🇺🇸 English</option>
+              <option value="es">🇪🇸 Español</option>
+            </select>
+          </label>
         </div>
       </header>
 
       <section className="workspace">
         <aside className="dock">
-          <p className="label">Modos</p>
+          <p className="label">{t('modes')}</p>
           <div className="dock-buttons">
             <button
               className={activeTool === 'translate' ? 'dock-btn active' : 'dock-btn'}
               onClick={() => setActiveTool('translate')}
             >
-              Tradução
-              <span>Google / Gemini</span>
+              {t('modeTranslate')}
+              <span>{t('modeTranslateDesc')}</span>
             </button>
             <button
               className={activeTool === 'converter' ? 'dock-btn active' : 'dock-btn'}
               onClick={() => setActiveTool('converter')}
             >
-              Converter
-              <span>SRT → TXT</span>
+              {t('modeConverter')}
+              <span>{t('modeConverterDesc')}</span>
             </button>
             <button
               className={activeTool === 'tltw' ? 'dock-btn active' : 'dock-btn'}
               onClick={() => setActiveTool('tltw')}
             >
-              TLTW
-              <span>Gemini 2.5 Flash</span>
+              {t('modeTltw')}
+              <span>{t('modeTltwDesc')}</span>
             </button>
             <button
               className={activeTool === 'editor' ? 'dock-btn active' : 'dock-btn'}
               onClick={() => setActiveTool('editor')}
             >
-              Editor
-              <span>Segmentos e tempos</span>
+              {t('modeEditor')}
+              <span>{t('modeEditorDesc')}</span>
             </button>
           </div>
 
           <div className="panel upload compact">
             <div className="panel-top">
               <div>
-                <p className="label">Entrada SRT</p>
+                <p className="label">{t('srtInput')}</p>
                 <h3>{sourceName}</h3>
-                <p className="muted small">{hasInput ? `Arquivo: ${sourceName}` : 'Aguardando arquivo'}</p>
+                <p className="muted small">{hasInput ? `${t('fileLabel')}: ${sourceName}` : t('waitingFile')}</p>
               </div>
             </div>
             <textarea
               className="input-area"
-              placeholder="Cole o SRT aqui..."
+              placeholder={t('pasteSrt')}
               value={rawInput}
               onChange={(e) => handleSourceChange(e.target.value)}
             />
             {error ? <p className="error">{error}</p> : null}
             {!error && hasInput ? (
-              <p className="muted small">{entries.length} segmentos detectados.</p>
+              <p className="muted small">{entries.length} {t('segmentsDetected')}</p>
             ) : null}
             <div className="status-line">
-              <span className="pill subtle">{status || 'Pronto'}</span>
+              <span className="pill subtle">{status || t('ready')}</span>
               {(isLoadingInput || isParsing || isApplyingEdits) && (
-                <span className="pill subtle">{isLoadingInput ? 'Carregando arquivo...' : isParsing ? 'Processando SRT...' : 'Aplicando edição...'}</span>
+                <span className="pill subtle">{isLoadingInput ? t('loadingFile') : isParsing ? t('processingSrt') : t('applyingEdit')}</span>
               )}
               {(isTranslating || isSummarizing) && (
                 <div className="progress-line compact">
@@ -645,8 +1027,8 @@ function App() {
                   </div>
                   <p className="muted small">
                     {isTranslating
-                      ? translateStep || 'Traduzindo...'
-                      : tltwPhase || 'Processando Gemini...'}
+                      ? translateStep || t('translating')
+                      : tltwPhase || t('processingGemini')}
                   </p>
                 </div>
               )}
@@ -660,11 +1042,10 @@ function App() {
               <div className="tool-head">
                 <div className="head-status">
                   <div>
-                    <p className="label">Tradução</p>
-                    <h3>Batching estilo CLI, Google free ou Gemini</h3>
+                    <p className="label">{t('modeTranslate')}</p>
+                    <h3>{t('modeTranslateDesc')}</h3>
                     <p className="muted">
-                      Combina sentenças, traduz e remonta sem perder linha do tempo. Configurações
-                      salvas em cookies.
+                      {t('modeTranslateInfo')}
                     </p>
                   </div>
                 </div>
@@ -674,11 +1055,11 @@ function App() {
                     onClick={runTranslation}
                     disabled={!hasInput || isTranslating}
                   >
-                    {isTranslating ? 'Traduzindo...' : 'Traduzir'}
+                    {isTranslating ? t('translating') : t('startTranslation')}
                   </button>
                   {isTranslating ? (
                     <button className="ghost" onClick={() => translateAbort.current?.abort()}>
-                      Cancelar
+                      {t('canceled')}
                     </button>
                   ) : null}
                   <button
@@ -686,7 +1067,7 @@ function App() {
                     onClick={() => translatedSrt && downloadText(translatedSrt, 'translated.srt')}
                     disabled={!translatedSrt}
                   >
-                    Baixar SRT
+                    {t('downloadSrt')}
                   </button>
                 </div>
               </div>
@@ -696,30 +1077,30 @@ function App() {
                   <div className="progress">
                     <div style={{ width: `${Math.round(translateProgress * 100)}%` }} />
                   </div>
-                  <p className="muted small">{translateStep || 'Traduzindo...'}</p>
+                  <p className="muted small">{translateStep || t('translating')}</p>
                 </div>
               )}
 
               <div className="grid two">
                 <div>
-                  <p className="muted small">Engine</p>
+                  <p className="muted small">{t('engineLabel')}</p>
                   <div className="chips">
                     <button
                       className={translateConfig.engine === 'google' ? 'chip active' : 'chip'}
                       onClick={() => setTranslateConfig({ ...translateConfig, engine: 'google' })}
                     >
-                      Google Translate (gratuito)
+                      {t('engineGoogle')}
                     </button>
                     <button
                       className={translateConfig.engine === 'gemini' ? 'chip active' : 'chip'}
                       onClick={() => setTranslateConfig({ ...translateConfig, engine: 'gemini' })}
                     >
-                      Gemini (preciso)
+                      {t('engineGemini')}
                     </button>
                   </div>
                 </div>
                 <div>
-                  <p className="muted small">Idioma destino</p>
+                  <p className="muted small">{t('outputLanguage')}</p>
                   <input
                     className="text-input"
                     list="google-language-list"
@@ -735,7 +1116,7 @@ function App() {
                       </option>
                     ))}
                   </datalist>
-                  <p className="muted small">Digite um código ISO (ex.: en, pt, es) ou selecione na lista.</p>
+                  <p className="muted small">{t('isoHint')}</p>
                 </div>
               </div>
 
@@ -743,7 +1124,7 @@ function App() {
                 <>
                   <div className="grid two">
                     <div>
-                      <p className="muted small">Gemini API key</p>
+                      <p className="muted small">{t('geminiApiKey')}</p>
                       <input
                         className="text-input"
                         placeholder="AIza..."
@@ -754,7 +1135,7 @@ function App() {
                       />
                     </div>
                     <div>
-                      <p className="muted small">Modelo Gemini</p>
+                      <p className="muted small">{t('geminiModel')}</p>
                       <input
                         className="text-input"
                         value={translateConfig.geminiModel}
@@ -765,10 +1146,10 @@ function App() {
                     </div>
                   </div>
                   <details className="advanced-details">
-                    <summary>Configurações avançadas</summary>
+                    <summary>{t('advancedSettings')}</summary>
                     <div className="grid two">
                       <label>
-                        <span className="muted small">Temperatura</span>
+                        <span className="muted small">{t('temperature')}</span>
                         <input
                           className="text-input"
                           type="number"
@@ -785,7 +1166,7 @@ function App() {
                         />
                       </label>
                       <label>
-                        <span className="muted small">Top P</span>
+                        <span className="muted small">{t('topP')}</span>
                         <input
                           className="text-input"
                           type="number"
@@ -804,7 +1185,7 @@ function App() {
                     </div>
                     <div className="grid two">
                       <label>
-                        <span className="muted small">Top K</span>
+                        <span className="muted small">{t('topK')}</span>
                         <input
                           className="text-input"
                           type="number"
@@ -819,7 +1200,7 @@ function App() {
                         />
                       </label>
                       <label>
-                        <span className="muted small">Max output tokens (0 = auto)</span>
+                        <span className="muted small">{t('maxOutputTokensAuto')}</span>
                         <input
                           className="text-input"
                           type="number"
@@ -846,10 +1227,10 @@ function App() {
                             })
                           }
                         />
-                        <span>Thinking mode</span>
+                        <span>{t('thinkingMode')}</span>
                       </label>
                       <label>
-                        <span className="muted small">Thinking budget (-1 = auto)</span>
+                        <span className="muted small">{t('thinkingBudget')}</span>
                         <input
                           className="text-input"
                           type="number"
@@ -866,11 +1247,11 @@ function App() {
                       </label>
                     </div>
                     <details className="prompt-details">
-                      <summary>Instruções adicionais de prompt</summary>
+                      <summary>{t('additionalPrompt')}</summary>
                       <textarea
                         className="text-input"
                         rows={4}
-                        placeholder="Opcional: regras extras, tom, terminologia específica..."
+                        placeholder={t('additionalPromptTranslatePlaceholder')}
                         value={translateConfig.geminiAdditionalPrompt}
                         onChange={(e) =>
                           setTranslateConfig({
@@ -880,33 +1261,35 @@ function App() {
                         }
                       />
                       <p className="muted small">
-                        Essas instruções são adicionadas ao prompt do Gemini sem alterar o formato JSON.
+                        {t('additionalPromptTranslateHint')}
                       </p>
                     </details>
                   </details>
-                  {promptDebug && promptDebugTitle === 'Prompt Gemini (Tradução)' ? (
+                  {promptDebug && promptDebugTitle === t('promptDebugTranslate') ? (
                     <details className="prompt-details">
-                      <summary>Debug: prompt enviado</summary>
+                      <summary>{t('debugPromptSent')}</summary>
                       <pre className="prompt-debug">{promptDebug}</pre>
                     </details>
                   ) : null}
                   {geminiDebug ? (
                     <details className="prompt-details">
-                      <summary>Debug: Gemini retry</summary>
+                      <summary>{t('debugGeminiRetry')}</summary>
                       <pre className="prompt-debug">{geminiDebug}</pre>
                     </details>
                   ) : null}
                 </>
               ) : (
                 <p className="muted small">
-                  Usa endpoint público sem chave. Evite abusos para não ser limitado.
+                  {t('googlePublicHint')}
                 </p>
               )}
+
+              <p className="label">{t('result')}</p>
 
 
               <div className="pager">
                 <span className="muted small">
-                  Página {translatePage + 1} / {Math.max(1, Math.ceil(Math.max(1, entries.length) / PAGE_SIZE))}
+                  {t('page')} {translatePage + 1} / {Math.max(1, Math.ceil(Math.max(1, entries.length) / PAGE_SIZE))}
                 </span>
                 <div className="pager-actions">
                   <button
@@ -914,7 +1297,7 @@ function App() {
                     onClick={() => setTranslatePage((p) => Math.max(0, p - 1))}
                     disabled={translatePage === 0}
                   >
-                    Anterior
+                    {t('previous')}
                   </button>
                   <button
                     className="ghost"
@@ -925,7 +1308,7 @@ function App() {
                     }
                     disabled={translatePage + 1 >= Math.ceil(entries.length / PAGE_SIZE)}
                   >
-                    Próxima
+                    {t('next')}
                   </button>
                 </div>
               </div>
@@ -956,14 +1339,14 @@ function App() {
                               updateTranslatedSegment(idx, { text: e.target.value })
                               autosizeTextarea(e.target)
                             }}
-                            placeholder={translatedEntries.length ? '' : 'Tradução aparecerá aqui...'}
+                            placeholder={translatedEntries.length ? '' : t('translationPlaceholder')}
                           />
                         </div>
                       </div>
                     )
                   })
                 ) : (
-                  <p className="muted">Carregue um SRT para visualizar os segmentos.</p>
+                  <p className="muted">{t('loadSrtToViewSegments')}</p>
                 )}
               </div>
             </article>
@@ -973,9 +1356,9 @@ function App() {
             <article className="tool">
               <div className="tool-head">
                 <div>
-                  <p className="label">Conversão</p>
-                  <h3>Extrair texto puro (SRT → TXT)</h3>
-                  <p className="muted">Sem tempos, pronto para notas ou scripts.</p>
+                  <p className="label">{t('converterLabel')}</p>
+                  <h3>{t('converterTitle')}</h3>
+                  <p className="muted">{t('converterDesc')}</p>
                 </div>
                 <div className="tool-actions">
                   <button
@@ -983,16 +1366,16 @@ function App() {
                     onClick={() => plainText && downloadText(plainText, 'captions.txt')}
                     disabled={!plainText}
                   >
-                    Baixar TXT
+                    {t('downloadTxt')}
                   </button>
                   <button className="ghost" onClick={() => copyToClipboard(plainText)} disabled={!plainText}>
-                    Copiar
+                    {t('copy')}
                   </button>
                 </div>
               </div>
               <div className="output">
                 {plainText ? <pre>{plainText}</pre> : (
-                  <p className="muted">Carregue um SRT para gerar o TXT.</p>
+                  <p className="muted">{t('loadSrtToGenerateTxt')}</p>
                 )}
               </div>
             </article>
@@ -1003,18 +1386,18 @@ function App() {
               <div className="tool-head">
                 <div className="head-status">
                   <div>
-                    <p className="label">TLTW</p>
-                    <h3>Resumo estruturado (Gemini 2.5 Flash)</h3>
-                    <p className="muted">Configs independentes, persistidas em cookie.</p>
+                    <p className="label">{t('tltwLabel')}</p>
+                    <h3>{t('tltwTitle')}</h3>
+                    <p className="muted">{t('tltwDesc')}</p>
                   </div>
                 </div>
                 <div className="tool-actions">
                   <button className="primary" onClick={runTltw} disabled={!hasInput || isSummarizing}>
-                    {isSummarizing ? 'Gerando...' : 'Gerar TLTW'}
+                    {isSummarizing ? t('generatingTltw') : t('generateTltw')}
                   </button>
                   {isSummarizing ? (
                     <button className="ghost" onClick={() => tltwAbort.current?.abort()}>
-                      Cancelar
+                      {t('canceled')}
                     </button>
                   ) : null}
                   <button
@@ -1022,7 +1405,7 @@ function App() {
                     onClick={() => tltw && downloadText(tltw, 'tltw.md')}
                     disabled={!tltw}
                   >
-                    Baixar MD
+                    {t('downloadMd')}
                   </button>
                 </div>
               </div>
@@ -1032,13 +1415,13 @@ function App() {
                   <div className="progress">
                     <div style={{ width: `${Math.round(tltwProgress * 100)}%` }} />
                   </div>
-                  <p className="muted small">{tltwPhase || 'Processando Gemini...'}</p>
+                  <p className="muted small">{tltwPhase || t('processingGemini')}</p>
                 </div>
               )}
 
               <div className="grid three">
                 <label>
-                  <span className="muted small">Idioma</span>
+                  <span className="muted small">{t('outputLanguage')}</span>
                   <input
                     className="text-input"
                     value={tltwConfig.language}
@@ -1046,7 +1429,7 @@ function App() {
                   />
                 </label>
                 <label>
-                  <span className="muted small">Modelo Gemini</span>
+                  <span className="muted small">{t('geminiModel')}</span>
                   <input
                     className="text-input"
                     value={tltwConfig.geminiModel}
@@ -1054,7 +1437,7 @@ function App() {
                   />
                 </label>
                 <label>
-                  <span className="muted small">Max chars do SRT</span>
+                  <span className="muted small">{t('maxSrtChars')}</span>
                   <input
                     className="text-input"
                     type="number"
@@ -1069,7 +1452,7 @@ function App() {
 
               <div className="grid two">
                 <label>
-                  <span className="muted small">Gemini API key</span>
+                  <span className="muted small">{t('geminiApiKey')}</span>
                   <input
                     className="text-input"
                     placeholder="AIza..."
@@ -1081,10 +1464,10 @@ function App() {
               </div>
 
               <details className="advanced-details">
-                <summary>Configurações avançadas</summary>
+                <summary>{t('advancedSettings')}</summary>
                 <div className="grid two">
                   <label>
-                    <span className="muted small">Temperatura</span>
+                    <span className="muted small">{t('temperature')}</span>
                     <input
                       className="text-input"
                       type="number"
@@ -1101,7 +1484,7 @@ function App() {
                     />
                   </label>
                   <label>
-                    <span className="muted small">Top P</span>
+                    <span className="muted small">{t('topP')}</span>
                     <input
                       className="text-input"
                       type="number"
@@ -1120,7 +1503,7 @@ function App() {
                 </div>
                 <div className="grid two">
                   <label>
-                    <span className="muted small">Top K</span>
+                    <span className="muted small">{t('topK')}</span>
                     <input
                       className="text-input"
                       type="number"
@@ -1135,7 +1518,7 @@ function App() {
                     />
                   </label>
                   <label>
-                    <span className="muted small">Max output tokens</span>
+                    <span className="muted small">{t('maxOutputTokens')}</span>
                     <input
                       className="text-input"
                       type="number"
@@ -1162,10 +1545,10 @@ function App() {
                         })
                       }
                     />
-                    <span>Thinking mode</span>
+                    <span>{t('thinkingMode')}</span>
                   </label>
                   <label>
-                    <span className="muted small">Thinking budget (-1 = auto)</span>
+                    <span className="muted small">{t('thinkingBudget')}</span>
                     <input
                       className="text-input"
                       type="number"
@@ -1182,11 +1565,11 @@ function App() {
                   </label>
                 </div>
                 <details className="prompt-details">
-                  <summary>Instruções adicionais de prompt</summary>
+                  <summary>{t('additionalPrompt')}</summary>
                   <textarea
                     className="text-input"
                     rows={4}
-                    placeholder="Opcional: regras extras, foco, estilo de escrita..."
+                    placeholder={t('additionalPromptTltwPlaceholder')}
                     value={tltwConfig.geminiAdditionalPrompt}
                     onChange={(e) =>
                       setTltwConfig({
@@ -1196,30 +1579,30 @@ function App() {
                     }
                   />
                   <p className="muted small">
-                    Essas instruções são anexadas ao prompt do TLTW e não alteram a estrutura exigida.
+                    {t('additionalPromptTltwHint')}
                   </p>
                 </details>
               </details>
-              {promptDebug && promptDebugTitle === 'Prompt Gemini (TLTW)' ? (
+              {promptDebug && promptDebugTitle === t('promptDebugTltw') ? (
                 <details className="prompt-details">
-                  <summary>Debug: prompt enviado</summary>
+                  <summary>{t('debugPromptSent')}</summary>
                   <pre className="prompt-debug">{promptDebug}</pre>
                 </details>
               ) : null}
 
-              <p className="label">Resultado</p>
+              <p className="label">{t('result')}</p>
               <div className="output">
                 {tltw ? (
                   <>
                     <pre>{tltw}</pre>
                     <div className="small-actions">
-                      <button onClick={() => copyToClipboard(tltw)}>Copiar</button>
-                      <button onClick={() => downloadText(tltw, 'tltw.md')}>Baixar</button>
+                      <button onClick={() => copyToClipboard(tltw)}>{t('copy')}</button>
+                      <button onClick={() => downloadText(tltw, 'tltw.md')}>{t('downloadMd')}</button>
                     </div>
                   </>
                 ) : (
                   <p className="muted">
-                    O TLTW segue a estrutura Title, Tags, Key Points, Actions e Summary.
+                    {t('tltwStructureHint')}
                   </p>
                 )}
               </div>
@@ -1230,24 +1613,22 @@ function App() {
             <article className="tool">
               <div className="tool-head">
                 <div>
-                  <p className="label">Editor</p>
-                  <h3>Segmentos, tempos e texto</h3>
-                  <p className="muted">
-                    Inserir/remover reindexa e evita sobreposição.
-                  </p>
+                  <p className="label">{t('editorLabel')}</p>
+                  <h3>{t('editorTitle')}</h3>
+                  <p className="muted">{t('editorDesc')}</p>
                 </div>
                 <div className="tool-actions">
                   <button className="ghost" onClick={() => downloadText(formatSrt(entries), 'edited.srt')}>
-                    Baixar legenda
+                    {t('downloadSubtitle')}
                   </button>
                   <button className="primary" onClick={applyEditedCaptions}>
-                    Aplicar
+                    {t('apply')}
                   </button>
                 </div>
               </div>
               <div className="pager">
                 <span className="muted small">
-                  Página {editorPage + 1} / {Math.max(1, Math.ceil(Math.max(1, entries.length) / PAGE_SIZE))}
+                  {t('page')} {editorPage + 1} / {Math.max(1, Math.ceil(Math.max(1, entries.length) / PAGE_SIZE))}
                 </span>
                 <div className="pager-actions">
                   <button
@@ -1255,7 +1636,7 @@ function App() {
                     onClick={() => setEditorPage((p) => Math.max(0, p - 1))}
                     disabled={editorPage === 0}
                   >
-                    Anterior
+                    {t('previous')}
                   </button>
                   <button
                     className="ghost"
@@ -1266,7 +1647,7 @@ function App() {
                     }
                     disabled={editorPage + 1 >= Math.ceil(entries.length / PAGE_SIZE)}
                   >
-                    Próxima
+                    {t('next')}
                   </button>
                 </div>
               </div>
@@ -1286,22 +1667,22 @@ function App() {
                             setInsertMenuIndex((prev) => (prev === idx ? null : idx))
                           }
                         >
-                          Inserir Segmento
+                          {t('insertSegment')}
                         </button>
                         {insertMenuIndex === idx ? (
                           <div className="insert-menu">
-                            <button onClick={() => { addSegment(idx); setInsertMenuIndex(null) }}>Abaixo</button>
-                            <button onClick={() => { addSegmentBefore(idx); setInsertMenuIndex(null) }}>Acima</button>
+                            <button onClick={() => { addSegment(idx); setInsertMenuIndex(null) }}>{t('below')}</button>
+                            <button onClick={() => { addSegmentBefore(idx); setInsertMenuIndex(null) }}>{t('above')}</button>
                           </div>
                         ) : null}
                         <button className="small danger" onClick={() => removeSegment(idx)}>
-                          Remover
+                          {t('remove')}
                         </button>
                       </div>
                     </div>
                     <div className="seg-grid">
                       <label>
-                        <span>Início</span>
+                        <span>{t('start')}</span>
                         <input
                           type="text"
                           value={entry.start}
@@ -1309,7 +1690,7 @@ function App() {
                         />
                       </label>
                       <label>
-                        <span>Fim</span>
+                        <span>{t('end')}</span>
                         <input
                           type="text"
                           value={entry.end}
@@ -1317,7 +1698,7 @@ function App() {
                         />
                       </label>
                       <label className="full">
-                        <span>Texto</span>
+                        <span>{t('text')}</span>
                         <textarea
                           value={entry.text}
                           onChange={(e) => {

@@ -24,6 +24,43 @@
   margin-bottom: 28px;
 }
 
+.hero-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 16px;
+}
+
+.hero-copy {
+  min-width: 0;
+}
+
+.lang-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lang-select.compact {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+.lang-select.compact .text-input {
+  min-width: 170px;
+  padding: 8px 10px;
+}
+
+.hero-lang-inline {
+  margin-left: auto;
+}
+
+.hero > div {
+  min-width: 0;
+}
+
 .hero-actions {
   display: flex;
   align-items: center;
@@ -628,8 +665,23 @@ button.ghost {
     grid-template-columns: 1fr;
   }
 
+  .hero-lang-inline {
+    justify-self: end;
+    align-self: start;
+    width: 100%;
+  }
+
+  .hero-lang-inline .text-input {
+    width: 100%;
+  }
+
+    .hero-main {
+      grid-template-columns: 1fr;
+    }
+
   .dock {
-    order: 2;
+      order: -1;
+      justify-self: stretch;
   }
 
   .surface {
