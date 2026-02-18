@@ -1,0 +1,16 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "install-dependencies",
+            "type": "shell",
+            "command": "npm install",
+            "options": {
+                "cwd": "${workspaceFolder}/webapp_legen"
+            },
+            "presentation": {
+                "reveal": "silent"
+            }
+        }
+    ]
+}

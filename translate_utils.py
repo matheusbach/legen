@@ -17,6 +17,8 @@ from gemini_utils import (
     translate_with_gemini,
 )
 
+_printed_gemini_translate_params = False
+
 # all entence endings for japanese and normal people languages
 sentence_endings = ['.', '!', '?', ')', 'よ', 'ね',
                     'の', 'さ', 'ぞ', 'な', 'か', '！', '。', '」', '…']
@@ -25,6 +27,9 @@ sentence_endings = ['.', '!', '?', ')', 'よ', 'ね',
 separator = " ◌ "
 separator_unjoin = separator.replace(' ', '')
 chunk_max_chars = 4999
+hard_separators = ["⟧⟦", "⟬⟭", "⟪⟫"]
+_hard_sep_index = 0
+_hard_sep_lock = asyncio.Lock()
 
 
 def translate_srt_file(
@@ -55,15 +60,26 @@ def translate_srt_file(
         Path(translated_subtitle_path).unlink(missing_ok=True)
         Path(str(translated_subtitle_path) + ".progress").unlink(missing_ok=True)
 
-        subs = translate_with_gemini(
-            GeminiTranslationConfig(
-                api_keys=api_keys,
-                input_file=srt_file_path,
-                output_file=translated_subtitle_path,
-                target_language=target_lang,
-                resume=False
-            )
+        config = GeminiTranslationConfig(
+            api_keys=api_keys,
+            input_file=srt_file_path,
+            output_file=translated_subtitle_path,
+            target_language=target_lang,
+            resume=False,
         )
+
+        global _printed_gemini_translate_params
+        if not _printed_gemini_translate_params:
+            _printed_gemini_translate_params = True
+            print(
+                "Gemini translation params (CLI): "
+                f"batch_size={config.batch_size}, temperature={config.temperature}, "
+                f"top_p={config.top_p}, top_k={config.top_k}, free_quota={config.free_quota}, "
+                f"resume={config.resume}, thinking={config.thinking}, progress_log={config.progress_log}, "
+                f"thoughts_log={config.thoughts_log}, api_keys={len(config.api_keys)}"
+            )
+
+        subs = translate_with_gemini(config)
 
         return subs
 
@@ -84,7 +100,8 @@ def translate_srt_file(
             while True:
                 try:
                     async with semaphore:
-                        result = await asyncio.wait_for(translate_chunk(index, chunk, lang), 120)
+                        expected = count_separators(chunk)
+                        result = await asyncio.wait_for(translate_chunk(index, chunk, lang, expected), 120)
                     translated_chunks[index] = result
                     break
                 except Exception:
@@ -130,26 +147,47 @@ def translate_srt_file(
 # Async chunk translate function
 
 
-async def translate_chunk(index, chunk, target_lang):
-    while True:
+async def translate_chunk(index, chunk, target_lang, expected_separators):
+    max_attempts = 3 if len(strip_separators(chunk)) > 20 else 1
+    translator = deep_translator.google.GoogleTranslator(source='auto', target=target_lang)
+
+    async def run_translate(text):
+        return await asyncio.wait_for(asyncio.get_event_loop().run_in_executor(None, translator.translate, text), 30)
+
+    # Normal attempts
+    for attempt in range(max_attempts):
         try:
-            # Translate the subtitle content of the chunk using Google Translate
-            translator = deep_translator.google.GoogleTranslator(
-                source='auto', target=target_lang)
-            translated_chunk: str = await asyncio.wait_for(asyncio.get_event_loop().run_in_executor(None, translator.translate, chunk), 30)
+            translated_chunk = await run_translate(chunk)
             await asyncio.sleep(0)
 
-            # if nothing is retuned, return the original chunk
-            if translated_chunk is None or len(translated_chunk.replace(separator.strip(), '').split()) == 0:
-                return chunk
+            if not translated_chunk or len(strip_separators(translated_chunk).split()) == 0:
+                continue
 
-            return translated_chunk
+            if has_exact_separators(translated_chunk, expected_separators) and not is_likely_unchanged(translated_chunk, chunk):
+                return translated_chunk
         except Exception as e:
-            # If an error occurred, retry
-            del translator
-            print(
-                f"\r[chunk {index}]: Exception: {e.__doc__} Retrying in 30 seconds...", flush=True)
-            await asyncio.sleep(30)
+            print(f"\r[chunk {index}]: Exception: {e.__doc__} Retrying...", flush=True)
+            await asyncio.sleep(2)
+
+    # Hard separator attempts (3 tries with rotating tokens)
+    start_idx = await reserve_hard_separators(3)
+    for i in range(3):
+        token = hard_separators[(start_idx + i) % len(hard_separators)]
+        token_chunk = chunk.replace(separator, f"{token} ")
+        try:
+            translated_chunk = await run_translate(token_chunk)
+            await asyncio.sleep(0)
+            if not translated_chunk:
+                continue
+            restored = translated_chunk.replace(token, separator)
+            if has_exact_separators(restored, expected_separators) and not is_likely_unchanged(restored, chunk):
+                return restored
+        except Exception:
+            await asyncio.sleep(2)
+
+    # Last resort: translate per line within this chunk only
+    fallback = await translate_chunk_per_line(chunk, target_lang, translator)
+    return fallback
 
 
 def join_sentences(lines, max_chars):
@@ -285,6 +323,63 @@ def unjoin_sentences(original_sentence: str, modified_sentence: str, separator: 
         new_modified_lines.append(new_modified_lines[-1])
 
     return new_modified_lines or original_lines or ' '
+
+
+def count_separators(text: str) -> int:
+    return text.count(separator)
+
+
+def has_exact_separators(text: str, expected: int) -> bool:
+    if expected <= 0:
+        return True
+    return text.count(separator) == expected
+
+
+def strip_separators(text: str) -> str:
+    if not text:
+        return ""
+    return text.replace(separator, " ").replace(separator_unjoin, " ").replace("◌", " ").strip()
+
+
+def is_likely_unchanged(translated: str, original: str) -> bool:
+    clean_t = strip_separators(translated).lower()
+    clean_o = strip_separators(original).lower()
+    if not clean_t or not clean_o:
+        return False
+    if clean_t == clean_o:
+        return True
+    return common_prefix_ratio(clean_t, clean_o) > 0.9
+
+
+def common_prefix_ratio(a: str, b: str) -> float:
+    length = min(len(a), len(b))
+    i = 0
+    while i < length and a[i] == b[i]:
+        i += 1
+    return i / length if length else 0.0
+
+
+async def reserve_hard_separators(count: int) -> int:
+    global _hard_sep_index
+    async with _hard_sep_lock:
+        start = _hard_sep_index
+        _hard_sep_index = (_hard_sep_index + count) % len(hard_separators)
+        return start
+
+
+async def translate_chunk_per_line(chunk: str, target_lang: str, translator) -> str:
+    lines = [line.strip() for line in chunk.split(separator)]
+    output = []
+    for line in lines:
+        if not line:
+            output.append("")
+            continue
+        try:
+            translated = await asyncio.wait_for(asyncio.get_event_loop().run_in_executor(None, translator.translate, line), 30)
+            output.append(translated or line)
+        except Exception:
+            output.append(line)
+    return separator.join(output)
 
 
 def build_cli_parser() -> argparse.ArgumentParser:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import math
 from pathlib import Path
 import sys
@@ -11,6 +11,8 @@ from typing import Callable, Iterable, List, Sequence
 import pysrt
 
 import gemini_srt_translator as gst
+
+_printed_gemini_tltw_params = False
 
 
 @dataclass(frozen=True)
@@ -28,6 +30,9 @@ class GeminiTranslationConfig:
     thinking: bool = True
     progress_log: bool = False
     thoughts_log: bool = False
+    # Force tqdm to treat output as a TTY (helps dynamic bars on Windows CMD/PowerShell).
+    # None = auto (enable on Windows when stderr is not a TTY).
+    force_tty_progress: bool | None = None
 
 
 class MultiKeyGeminiTranslator(gst.GeminiSRTTranslator):
@@ -83,25 +88,54 @@ def translate_with_gemini(config: GeminiTranslationConfig) -> pysrt.SubRipFile:
         "6. Do not merge or split subtitles.\n"
     )
 
-    translator = MultiKeyGeminiTranslator(
-        api_keys=config.api_keys,
-        target_language=config.target_language,
-        input_file=str(config.input_file),
-        output_file=str(config.output_file),
-        batch_size=config.batch_size,
-        temperature=config.temperature,
-        top_p=config.top_p,
-        top_k=config.top_k,
-        free_quota=config.free_quota,
-        resume=config.resume,
-        thinking=config.thinking,
-        progress_log=config.progress_log,
-        thoughts_log=config.thoughts_log,
-        description=additional_instructions,
-    )
+    def _run(cfg: GeminiTranslationConfig) -> None:
+        force_tty = cfg.force_tty_progress
+        if force_tty is None:
+            force_tty = sys.platform == "win32" and not sys.stderr.isatty()
+        restore_tqdm = _force_tqdm_tty(bool(force_tty))
+        translator = MultiKeyGeminiTranslator(
+            api_keys=cfg.api_keys,
+            target_language=cfg.target_language,
+            input_file=str(cfg.input_file),
+            output_file=str(cfg.output_file),
+            batch_size=cfg.batch_size,
+            temperature=cfg.temperature,
+            top_p=cfg.top_p,
+            top_k=cfg.top_k,
+            free_quota=cfg.free_quota,
+            resume=cfg.resume,
+            thinking=cfg.thinking,
+            progress_log=cfg.progress_log,
+            thoughts_log=cfg.thoughts_log,
+            description=additional_instructions,
+        )
+        try:
+            translator.translate()
+        finally:
+            restore_tqdm()
 
-    translator.translate()
+    tried_sizes: list[int] = []
+    batch_sizes = [config.batch_size]
+    if config.batch_size > 1:
+        batch_sizes.extend([max(1, config.batch_size // 2), max(1, config.batch_size // 4), 50])
+    for size in batch_sizes:
+        if size in tried_sizes:
+            continue
+        tried_sizes.append(size)
+        attempt_config = replace(config, batch_size=size, resume=False)
+        try:
+            _run(attempt_config)
+            return pysrt.open(config.output_file, encoding="utf-8")
+        except Exception:
+            # Cleanup to avoid partial progress/resume interference.
+            try:
+                config.output_file.unlink(missing_ok=True)
+                Path(str(config.output_file) + ".progress").unlink(missing_ok=True)
+            except Exception:
+                pass
 
+    # If all attempts failed, re-raise the last failure by running once more.
+    _run(config)
     return pysrt.open(config.output_file, encoding="utf-8")
 
 
@@ -187,6 +221,42 @@ def _strip_ansi(text: str) -> str:
         out.append(ch)
         i += 1
     return "".join(out)
+
+
+def _force_tqdm_tty(force: bool) -> Callable[[], None]:
+    """Optionally patch tqdm to treat output as a TTY for dynamic progress bars."""
+    if not force:
+        return lambda: None
+    try:
+        import tqdm as _tqdm_module
+    except Exception:
+        return lambda: None
+
+    original = _tqdm_module.tqdm
+
+    class _TtyWrapper:
+        def __init__(self, stream):
+            self._stream = stream
+
+        def isatty(self) -> bool:
+            return True
+
+        def __getattr__(self, name):
+            return getattr(self._stream, name)
+
+    def _patched(*args, **kwargs):
+        stream = kwargs.get("file") or sys.stderr
+        kwargs["file"] = _TtyWrapper(stream)
+        kwargs.setdefault("dynamic_ncols", True)
+        kwargs.setdefault("disable", False)
+        return original(*args, **kwargs)
+
+    _tqdm_module.tqdm = _patched
+
+    def _restore() -> None:
+        _tqdm_module.tqdm = original
+
+    return _restore
 
 
 def _single_line_preview(text: str, limit: int) -> str:
@@ -674,6 +744,19 @@ def generate_tltw_summary(
 
     if not config.subtitle_file.exists():
         raise FileNotFoundError(f"Subtitle file not found: {config.subtitle_file}")
+
+    global _printed_gemini_tltw_params
+    if not _printed_gemini_tltw_params:
+        _printed_gemini_tltw_params = True
+        print(
+            "Gemini TLTW params (CLI): "
+            f"model={config.model}, max_output_tokens={config.max_output_tokens}, "
+            f"final_max_output_tokens={config.final_max_output_tokens}, request_timeout={config.request_timeout}, "
+            f"chunk_chars={config.chunk_chars}, truncate_chars={config.truncate_chars}, "
+            f"temperature={config.temperature}, top_p={config.top_p}, top_k={config.top_k}, "
+            f"max_rounds={config.max_rounds}, continuation_tail_chars={config.continuation_tail_chars}, "
+            f"stream_output={config.stream_output}, api_keys={len(config.api_keys)}"
+        )
 
     subtitle_text = _load_srt_as_text(config.subtitle_file, config.truncate_chars)
     duration_seconds = _estimate_srt_duration_seconds(config.subtitle_file)

@@ -1,0 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap');
+
+:root {
+  color-scheme: dark;
+  --bg: #05070b;
+  --panel: #0e131f;
+  --muted: #97a0b6;
+  --text: #e8ecf5;
+  --accent: #ff7a1f;
+  --accent-2: #4de0d9;
+  --stroke: rgba(255, 255, 255, 0.08);
+  --shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+  --radius: 14px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at 20% 20%, rgba(255, 122, 31, 0.08), transparent 35%),
+    radial-gradient(circle at 80% 10%, rgba(77, 224, 217, 0.09), transparent 35%),
+    radial-gradient(circle at 60% 70%, rgba(255, 255, 255, 0.04), transparent 40%),
+    var(--bg);
+  color: var(--text);
+  font-family: 'Space Grotesk', 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    sans-serif;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button {
+  font-family: inherit;
+}
+
+a {
+  color: inherit;
+}
