@@ -208,6 +208,10 @@ button.ghost {
   margin-bottom: 8px;
 }
 
+.srt-toggle {
+  white-space: nowrap;
+}
+
 .file-button {
   display: inline-flex;
   align-items: center;
@@ -400,13 +404,6 @@ button.ghost {
 
 .output {
   margin-top: 12px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--stroke);
-  border-radius: 12px;
-  padding: 12px;
-  min-height: 120px;
-  max-height: 360px;
-  overflow: auto;
 }
 
 .progress-line {
@@ -680,8 +677,12 @@ button.ghost {
     }
 
   .dock {
-      order: -1;
-      justify-self: stretch;
+    order: -1;
+    justify-self: stretch;
+  }
+
+  .dock > .panel.upload.compact {
+    order: -1;
   }
 
   .surface {

@@ -241,6 +241,8 @@ function App() {
   const [editorPage, setEditorPage] = useState(0)
   const [activeTool, setActiveTool] = useState<Tool>('translate')
   const [uiLanguage, setUiLanguage] = useState<UiLanguage>(defaultUiLanguage)
+  const [isMobileLayout, setIsMobileLayout] = useState(false)
+  const [isSrtInputOpen, setIsSrtInputOpen] = useState(true)
 
   const i18n = useMemo(
     () => ({
@@ -266,6 +268,8 @@ function App() {
         srtInput: 'Entrada SRT',
         fileLabel: 'Arquivo',
         waitingFile: 'Aguardando arquivo',
+        showSrtInput: 'Mostrar entrada',
+        hideSrtInput: 'Recolher entrada',
         pasteSrt: 'Cole o SRT aqui...',
         ready: 'Pronto',
         loadingFile: 'Carregando arquivo...',
@@ -381,6 +385,8 @@ function App() {
         srtInput: 'SRT input',
         fileLabel: 'File',
         waitingFile: 'Waiting for file',
+        showSrtInput: 'Show input',
+        hideSrtInput: 'Hide input',
         pasteSrt: 'Paste SRT here...',
         ready: 'Ready',
         loadingFile: 'Loading file...',
@@ -496,6 +502,8 @@ function App() {
         srtInput: 'Entrada SRT',
         fileLabel: 'Archivo',
         waitingFile: 'Esperando archivo',
+        showSrtInput: 'Mostrar entrada',
+        hideSrtInput: 'Ocultar entrada',
         pasteSrt: 'Pega el SRT aquí...',
         ready: 'Listo',
         loadingFile: 'Cargando archivo...',
@@ -673,6 +681,25 @@ function App() {
   useEffect(() => {
     writeCache('legen_ui_language', uiLanguage)
   }, [uiLanguage])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+    const media = window.matchMedia('(max-width: 1050px)')
+    const apply = (matches: boolean) => {
+      setIsMobileLayout(matches)
+      setIsSrtInputOpen(!matches)
+    }
+    apply(media.matches)
+
+    const onChange = (event: MediaQueryListEvent) => apply(event.matches)
+    if (typeof media.addEventListener === 'function') {
+      media.addEventListener('change', onChange)
+      return () => media.removeEventListener('change', onChange)
+    }
+
+    media.addListener(onChange)
+    return () => media.removeListener(onChange)
+  }, [])
 
   const plainText = useMemo(() => (entries.length ? srtToPlainText(entries) : ''), [entries])
 
@@ -1000,39 +1027,51 @@ function App() {
                 <h3>{sourceName}</h3>
                 <p className="muted small">{hasInput ? `${t('fileLabel')}: ${sourceName}` : t('waitingFile')}</p>
               </div>
+              {isMobileLayout ? (
+                <button
+                  className="ghost srt-toggle"
+                  onClick={() => setIsSrtInputOpen((open) => !open)}
+                >
+                  {isSrtInputOpen ? t('hideSrtInput') : t('showSrtInput')}
+                </button>
+              ) : null}
             </div>
-            <textarea
-              className="input-area"
-              placeholder={t('pasteSrt')}
-              value={rawInput}
-              onChange={(e) => handleSourceChange(e.target.value)}
-            />
-            {error ? <p className="error">{error}</p> : null}
-            {!error && hasInput ? (
-              <p className="muted small">{entries.length} {t('segmentsDetected')}</p>
-            ) : null}
-            <div className="status-line">
-              <span className="pill subtle">{status || t('ready')}</span>
-              {(isLoadingInput || isParsing || isApplyingEdits) && (
-                <span className="pill subtle">{isLoadingInput ? t('loadingFile') : isParsing ? t('processingSrt') : t('applyingEdit')}</span>
-              )}
-              {(isTranslating || isSummarizing) && (
-                <div className="progress-line compact">
-                  <div className="progress">
-                    <div
-                      style={{
-                        width: `${Math.round((isTranslating ? translateProgress : tltwProgress) * 100)}%`,
-                      }}
-                    />
-                  </div>
-                  <p className="muted small">
-                    {isTranslating
-                      ? translateStep || t('translating')
-                      : tltwPhase || t('processingGemini')}
-                  </p>
+            {(!isMobileLayout || isSrtInputOpen) ? (
+              <>
+                <textarea
+                  className="input-area"
+                  placeholder={t('pasteSrt')}
+                  value={rawInput}
+                  onChange={(e) => handleSourceChange(e.target.value)}
+                />
+                {error ? <p className="error">{error}</p> : null}
+                {!error && hasInput ? (
+                  <p className="muted small">{entries.length} {t('segmentsDetected')}</p>
+                ) : null}
+                <div className="status-line">
+                  <span className="pill subtle">{status || t('ready')}</span>
+                  {(isLoadingInput || isParsing || isApplyingEdits) && (
+                    <span className="pill subtle">{isLoadingInput ? t('loadingFile') : isParsing ? t('processingSrt') : t('applyingEdit')}</span>
+                  )}
+                  {(isTranslating || isSummarizing) && (
+                    <div className="progress-line compact">
+                      <div className="progress">
+                        <div
+                          style={{
+                            width: `${Math.round((isTranslating ? translateProgress : tltwProgress) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                      <p className="muted small">
+                        {isTranslating
+                          ? translateStep || t('translating')
+                          : tltwPhase || t('processingGemini')}
+                      </p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            ) : null}
           </div>
         </aside>
 
