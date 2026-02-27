@@ -1,28 +1,22 @@
-# Simple workflow for deploying static content to GitHub Pages
+# Builds docs/ + webapp and deploys to GitHub Pages via Actions artifact.
+# Requires: repo Settings → Pages → Source = "GitHub Actions"
 name: Deploy static content to Pages
 
 on:
-  # Runs on pushes targeting the default branch
   push:
     branches: ["main"]
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
   group: "pages"
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
-  # Single deploy job since we're just deploying
   deploy:
     environment:
       name: github-pages
@@ -45,13 +39,12 @@ jobs:
       - name: Copy LeGen Web into docs/web
         run: |
           mkdir -p ./docs/web
-          rsync -a --delete ./webapp_legen/dist/ ./docs/web/
+          cp -r ./webapp_legen/dist/* ./docs/web/
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
           path: './docs'
       - name: Deploy to GitHub Pages
         id: deployment
