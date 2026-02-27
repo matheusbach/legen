@@ -13,6 +13,7 @@ import type { SubtitleEntry } from './lib/srt'
 import { translateCaptions } from './lib/translation'
 import { generateTltwSummary } from './lib/tltw'
 import { useRef } from 'react'
+import CryptoJS from 'crypto-js'
 
 type Engine = 'google' | 'gemini'
 
@@ -243,6 +244,15 @@ function App() {
   const [uiLanguage, setUiLanguage] = useState<UiLanguage>(defaultUiLanguage)
   const [isMobileLayout, setIsMobileLayout] = useState(false)
   const [isSrtInputOpen, setIsSrtInputOpen] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [passwordInput, setPasswordInput] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [authError, setAuthError] = useState('')
+
+  // SHA-256 hash of the correct password.
+  // To change the password, generate a new hash: CryptoJS.SHA256('your_new_password').toString()
+  const EXPECTED_HASH = 'f215ff43b4cf7b87ec15602b499e6f1454d2d9c04566415b89389f25b8d13f4c'
+  const AUTH_PASSWORD_CACHE_KEY = 'legen_auth_password'
 
   const i18n = useMemo(
     () => ({
@@ -362,6 +372,18 @@ function App() {
         text: 'Texto',
         promptDebugTranslate: 'Prompt Gemini (Tradução)',
         promptDebugTltw: 'Prompt Gemini (TLTW)',
+        authTitle: 'Acesso Restrito',
+        authDesc: 'Esta ferramenta é exclusiva para apoiadores do projeto.',
+        authPlaceholder: 'Digite a senha de acesso',
+        authButton: 'Acessar',
+        authError: 'Senha incorreta. Tente novamente.',
+        authShowPassword: 'Mostrar senha',
+        authHidePassword: 'Ocultar senha',
+        authTelegramHint: 'A senha está divulgada na mensagem fixada no grupo de apoiadores do Telegram.',
+        authGetPassword: 'Como obter a senha?',
+        authGetPasswordDesc:
+          'A senha é disponibilizada para apoiadores do projeto no grupo de apoiadores no Telegram.',
+        authGetPasswordCta: 'Quero entrar no grupo de apoiadores',
       },
       en: {
         appEyebrow: 'LeGen Web',
@@ -479,6 +501,19 @@ function App() {
         text: 'Text',
         promptDebugTranslate: 'Gemini Prompt (Translation)',
         promptDebugTltw: 'Gemini Prompt (TLTW)',
+        authTitle: 'Restricted Access',
+        authDesc: 'This tool is exclusive to project supporters.',
+        authPlaceholder: 'Enter access password',
+        authButton: 'Access',
+        authError: 'Incorrect password. Please try again.',
+        authShowPassword: 'Show password',
+        authHidePassword: 'Hide password',
+        authTelegramHint:
+          'The password is shared in the pinned message in the Telegram supporters group.',
+        authGetPassword: 'How can I get the password?',
+        authGetPasswordDesc:
+          'The password is provided to project supporters in the Telegram supporters group.',
+        authGetPasswordCta: 'Join the supporters group',
       },
       es: {
         appEyebrow: 'LeGen Web',
@@ -596,6 +631,19 @@ function App() {
         text: 'Texto',
         promptDebugTranslate: 'Prompt Gemini (Traducción)',
         promptDebugTltw: 'Prompt Gemini (TLTW)',
+        authTitle: 'Acceso Restringido',
+        authDesc: 'Esta herramienta es exclusiva para los seguidores del proyecto.',
+        authPlaceholder: 'Introduce la contraseña de acceso',
+        authButton: 'Acceder',
+        authError: 'Contraseña incorrecta. Inténtalo de nuevo.',
+        authShowPassword: 'Mostrar contraseña',
+        authHidePassword: 'Ocultar contraseña',
+        authTelegramHint:
+          'La contraseña está publicada en el mensaje fijado del grupo de seguidores en Telegram.',
+        authGetPassword: '¿Cómo obtener la contraseña?',
+        authGetPasswordDesc:
+          'La contraseña se comparte con los seguidores del proyecto en el grupo de Telegram de seguidores.',
+        authGetPasswordCta: 'Unirme al grupo de seguidores',
       },
     }),
     [],
@@ -660,11 +708,19 @@ function App() {
     const savedTltw = readCache<TltwConfig>('legen_tltw_config')
     const savedTool = readCache<Tool>('legen_active_tool')
     const savedUiLanguage = readCache<UiLanguage>('legen_ui_language')
+    const savedPassword = readCache<string>(AUTH_PASSWORD_CACHE_KEY)
     if (savedTranslate) setTranslateConfig((prev) => ({ ...prev, ...savedTranslate }))
     if (savedTltw) setTltwConfig((prev) => ({ ...prev, ...savedTltw }))
     if (savedTool) setActiveTool(savedTool)
     if (savedUiLanguage) setUiLanguage(savedUiLanguage)
-  }, [])
+    if (savedPassword) {
+      const savedHash = CryptoJS.SHA256(savedPassword).toString()
+      if (savedHash === EXPECTED_HASH) {
+        setIsAuthenticated(true)
+        setPasswordInput(savedPassword)
+      }
+    }
+  }, [AUTH_PASSWORD_CACHE_KEY, EXPECTED_HASH])
 
   useEffect(() => {
     writeCache('legen_translate_config', translateConfig)
@@ -681,6 +737,12 @@ function App() {
   useEffect(() => {
     writeCache('legen_ui_language', uiLanguage)
   }, [uiLanguage])
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      writeCache('legen_is_authenticated', true)
+    }
+  }, [isAuthenticated])
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
@@ -889,6 +951,9 @@ function App() {
           setPromptDebugTitle(t('promptDebugTltw'))
           setPromptDebug(prompt)
         },
+        onChunk: (chunkText) => {
+          setTltw(chunkText.replace('<!-- END -->', '').trim())
+        },
         signal: tltwAbort.current.signal,
       })
       setTltwProgress(1)
@@ -948,6 +1013,84 @@ function App() {
     const updated = deleteEntry(entries, idx)
     setEntries(updated)
     setRawInput(formatSrt(updated))
+  }
+
+  const handleAuthSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const hash = CryptoJS.SHA256(passwordInput).toString()
+    if (hash === EXPECTED_HASH) {
+      setIsAuthenticated(true)
+      setAuthError('')
+      writeCache(AUTH_PASSWORD_CACHE_KEY, passwordInput)
+    } else {
+      setAuthError(t('authError'))
+    }
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="app-shell auth-shell">
+        <div className="bg-gradients" aria-hidden />
+        <div className="auth-container">
+          <div className="auth-card panel">
+            <p className="eyebrow">{t('appEyebrow')}</p>
+            <h2>{t('authTitle')}</h2>
+            <p className="muted">{t('authDesc')}</p>
+            <div className="auth-support-box">
+              <p className="label">{t('authGetPassword')}</p>
+              <p className="muted small">{t('authGetPasswordDesc')}</p>
+              <a
+                className="auth-support-link"
+                href="https://livepix.gg/legendonate/grupo-dos-apoiadores"
+                target="_blank"
+                rel="noreferrer"
+              >
+                {t('authGetPasswordCta')}
+              </a>
+            </div>
+            
+            <form onSubmit={handleAuthSubmit} className="auth-form">
+              <div className="auth-password-field">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="text-input"
+                  placeholder={t('authPlaceholder')}
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  className="auth-eye-button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? t('authHidePassword') : t('authShowPassword')}
+                  title={showPassword ? t('authHidePassword') : t('authShowPassword')}
+                >
+                  {showPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
+              <p className="muted small auth-telegram-hint">{t('authTelegramHint')}</p>
+              {authError && <p className="error small">{authError}</p>}
+              <button type="submit" className="primary full-width">
+                {t('authButton')}
+              </button>
+            </form>
+
+            <div className="auth-lang">
+              <select
+                className="text-input compact"
+                value={uiLanguage}
+                onChange={(e) => setUiLanguage(e.target.value as UiLanguage)}
+              >
+                <option value="pt">🇧🇷 Português</option>
+                <option value="en">🇺🇸 English</option>
+                <option value="es">🇪🇸 Español</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const hasInput = entries.length > 0

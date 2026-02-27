@@ -80,9 +80,9 @@ class MultiKeyGeminiTranslator(gst.GeminiSRTTranslator):
 def translate_with_gemini(config: GeminiTranslationConfig) -> pysrt.SubRipFile:
     additional_instructions = (
         "CRITICAL INSTRUCTIONS:\n"
-        "1. You MUST return exactly the same number of objects as the input batch.\n"
-        "2. Check the input segments count and ensure your output count matches exactly.\n"
-        "3. Do not skip any index. Every input object must have a corresponding output object.\n"
+        "1. STRICT 1:1 MAPPING: You MUST return exactly the same number of objects as the input batch. If you receive 500 items, you MUST output 500 items.",
+        "2. Do NOT change ordering. Each input object must map to exactly one output object.",
+        "3. Preserve line breaks inside each text. Do NOT merge or split subtitles.",
         "4. If a line is empty in input, keep it empty in output.\n"
         "5. If a line has content, it MUST be translated. Do not return empty strings for non-empty input.\n"
         "6. Do not merge or split subtitles.\n"

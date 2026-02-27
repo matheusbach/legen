@@ -703,3 +703,123 @@ button.ghost {
     flex: 1;
   }
 }
+
+/* Auth Screen */
+.auth-shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.auth-container {
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+  z-index: 1;
+}
+
+.auth-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 32px;
+  text-align: center;
+}
+
+.auth-card h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.auth-support-box {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--stroke);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.auth-support-box .label {
+  margin: 0;
+}
+
+.auth-support-box .muted {
+  margin: 0;
+}
+
+.auth-support-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--stroke);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.auth-support-link:hover {
+  border-color: var(--accent);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.auth-password-field {
+  position: relative;
+}
+
+.auth-password-field .text-input {
+  padding-right: 46px;
+}
+
+.auth-eye-button {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--stroke);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-telegram-hint {
+  margin: -6px 0 0;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.error.small {
+  font-size: 13px;
+  margin: -8px 0 0;
+}
+
+.auth-lang {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--stroke);
+}
+
+.auth-lang select {
+  text-align: center;
+}

@@ -31,6 +31,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: './webapp_legen/package-lock.json'
+      - name: Build LeGen Web
+        working-directory: ./webapp_legen
+        run: |
+          npm ci
+          npm run build
+      - name: Copy LeGen Web into docs/web
+        run: |
+          mkdir -p ./docs/web
+          rsync -a --delete ./webapp_legen/dist/ ./docs/web/
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
