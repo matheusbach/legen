@@ -8,10 +8,10 @@ import {
   parseSrt,
   srtToPlainText,
   updateEntry,
-} from './lib/srt'
-import type { SubtitleEntry } from './lib/srt'
-import { translateCaptions } from './lib/translation'
-import { generateTltwSummary } from './lib/tltw'
+} from './lib/srt.ts'
+import type { SubtitleEntry } from './lib/srt.ts'
+import { translateCaptions } from './lib/translation.ts'
+import { generateTltwSummary } from './lib/tltw.ts'
 import { useRef } from 'react'
 import CryptoJS from 'crypto-js'
 
