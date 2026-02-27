@@ -8,10 +8,10 @@ import {
   parseSrt,
   srtToPlainText,
   updateEntry,
-} from './lib/srt.ts'
-import type { SubtitleEntry } from './lib/srt.ts'
-import { translateCaptions } from './lib/translation.ts'
-import { generateTltwSummary } from './lib/tltw.ts'
+} from './lib/srt'
+import type { SubtitleEntry } from './lib/srt'
+import { translateCaptions } from './lib/translation'
+import { generateTltwSummary } from './lib/tltw'
 import { useRef } from 'react'
 import CryptoJS from 'crypto-js'
 
@@ -871,17 +871,17 @@ function App() {
         geminiTopP: translateConfig.geminiTopP,
         geminiTopK: translateConfig.geminiTopK,
         geminiMaxOutputTokens: translateConfig.geminiMaxOutputTokens,
-        onPrompt: (prompt) => {
+        onPrompt: (prompt: string) => {
           setPromptDebugTitle(t('promptDebugTranslate'))
           setPromptDebug(prompt)
         },
-        onDebug: (info) => setGeminiDebug(info),
+        onDebug: (info: string) => setGeminiDebug(info),
         signal: translateAbort.current.signal,
-        onProgress: (done, total) => {
+        onProgress: (done: number, total: number) => {
           setTranslateProgress(done / total)
           setTranslateStep(`${t('processingBatch')} ${done}/${total}`)
         },
-        onPartialSrt: (text, pct) => {
+        onPartialSrt: (text: string, pct: number) => {
           setTranslateProgress(pct)
           setTranslateStep(`${t('assemblingSubtitle')} ${Math.round(pct * 100)}%`)
 
@@ -947,11 +947,11 @@ function App() {
         topP: tltwConfig.geminiTopP,
         topK: tltwConfig.geminiTopK,
         maxOutputTokensOverride: tltwConfig.geminiMaxOutputTokens,
-        onPrompt: (prompt) => {
+        onPrompt: (prompt: string) => {
           setPromptDebugTitle(t('promptDebugTltw'))
           setPromptDebug(prompt)
         },
-        onChunk: (chunkText) => {
+        onChunk: (chunkText: string) => {
           setTltw(chunkText.replace('<!-- END -->', '').trim())
         },
         signal: tltwAbort.current.signal,

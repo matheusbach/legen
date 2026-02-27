@@ -370,7 +370,10 @@ legen-errors.txt
 **.vob
 **.mts
 **.m2ts
-**.ts
+# **.ts is for MPEG-TS video files, but must NOT match TypeScript .ts files
+*.[Tt][Ss]
+!*.ts
+!*.tsx
 **.yuv
 **.mpg
 **.mpga
