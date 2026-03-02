@@ -19,7 +19,7 @@ export async function generateTltwSummary({
   language,
   apiKey,
   model = 'gemini-2.5-flash',
-  maxChars = 120000,
+  maxChars = 250000,
   additionalPrompt,
   onPrompt,
   onChunk,
@@ -219,7 +219,7 @@ async function sendGeminiRequest({
   maxOutputTokensOverride?: number
   signal?: AbortSignal
 }): Promise<{ text: string; truncated: boolean }> {
-  const endpoint = `https://generativelanguage.googleapis.com/v1/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`
   const controller = new AbortController()
   const timeout = window.setTimeout(() => controller.abort(), requestTimeoutMs)
   try {
@@ -237,7 +237,7 @@ async function sendGeminiRequest({
           ...(thinkingEnabled
             ? {
                 thinkingConfig: {
-                  thinkingBudget: typeof thinkingBudget === 'number' && thinkingBudget > 0 ? thinkingBudget : undefined,
+                  ...(typeof thinkingBudget === 'number' && thinkingBudget > 0 ? { thinkingBudget } : {}),
                 },
               }
             : {}),

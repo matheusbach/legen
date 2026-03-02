@@ -542,7 +542,7 @@ async function requestGemini({
   thinkingBudget?: number
   signal?: AbortSignal
 }): Promise<{ text: string; usage?: GeminiResponse['usageMetadata'] }> {
-  const endpoint = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
   const controller = new AbortController()
   const timeout = window.setTimeout(() => controller.abort(), 40000)
   try {
@@ -551,18 +551,18 @@ async function requestGemini({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        ...(thinkingEnabled
-          ? {
-              thinkingConfig: {
-                ...(typeof thinkingBudget === 'number' ? { thinkingBudget } : {}),
-              },
-            }
-          : {}),
         generationConfig: {
           temperature: typeof temperature === 'number' ? temperature : geminiTemperature,
           top_p: typeof topP === 'number' ? topP : geminiTopP,
           top_k: typeof topK === 'number' ? topK : geminiTopK,
           ...(typeof maxOutputTokens === 'number' ? { maxOutputTokens } : {}),
+          ...(thinkingEnabled
+            ? {
+                thinkingConfig: {
+                  ...(typeof thinkingBudget === 'number' && thinkingBudget > 0 ? { thinkingBudget } : {}),
+                },
+              }
+            : {}),
         },
       }),
       signal: signal ?? controller.signal,

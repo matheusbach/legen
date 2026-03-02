@@ -693,7 +693,7 @@ function App() {
     language: defaultLanguage,
     geminiKey: '',
     geminiModel: 'gemini-2.5-flash',
-    maxChars: 120000,
+    maxChars: 250000,
     geminiAdditionalPrompt: '',
     geminiThinkingEnabled: false,
     geminiThinkingBudget: -1,
@@ -808,6 +808,42 @@ function App() {
     }
   }
 
+  /** Strip any existing [TAG] prefix from a filename */
+  const stripPrefix = (name: string) => name.replace(/^\[.*?\]\s*/g, '')
+
+  /** Get base name (without extension) and extension from sourceName */
+  const splitName = (name: string): [string, string] => {
+    const clean = stripPrefix(name)
+    const dot = clean.lastIndexOf('.')
+    if (dot <= 0) return [clean, '']
+    return [clean.slice(0, dot), clean.slice(dot)]
+  }
+
+  /**
+   * Build a download filename based on context:
+   * - translated: originalname_lang.srt
+   * - tltw:       [TLTW] originalname.md
+   * - edited:     [EDITED] originalname.srt
+   * - converted:  originalname.newExt
+   */
+  const downloadName = (
+    mode: 'translated' | 'tltw' | 'edited' | 'converted',
+    opts?: { lang?: string; ext?: string },
+  ): string => {
+    const raw = sourceName || 'subtitle.srt'
+    const [base] = splitName(raw)
+    switch (mode) {
+      case 'translated':
+        return `${base}_${opts?.lang || 'translated'}.srt`
+      case 'tltw':
+        return `[TLTW] ${base}.md`
+      case 'edited':
+        return `[EDITED] ${base}.srt`
+      case 'converted':
+        return `${base}${opts?.ext || '.txt'}`
+    }
+  }
+
   const downloadText = (content: string, filename: string) => {
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
@@ -833,8 +869,7 @@ function App() {
 
   const applyEditedCaptions = () => {
     const content = formatSrt(entries)
-    const baseName = sourceName || 'edited.srt'
-    const name = baseName.startsWith('[edited]') ? baseName : `[edited] ${baseName}`
+    const name = downloadName('edited')
     setIsApplyingEdits(true)
     handleSourceChange(content, name)
       .then(() => setStatus(t('editedApplied')))
@@ -1246,7 +1281,7 @@ function App() {
                   ) : null}
                   <button
                     className="ghost"
-                    onClick={() => translatedSrt && downloadText(translatedSrt, 'translated.srt')}
+                    onClick={() => translatedSrt && downloadText(translatedSrt, downloadName('translated', { lang: translateConfig.language }))}
                     disabled={!translatedSrt}
                   >
                     {t('downloadSrt')}
@@ -1545,7 +1580,7 @@ function App() {
                 <div className="tool-actions">
                   <button
                     className="ghost"
-                    onClick={() => plainText && downloadText(plainText, 'captions.txt')}
+                    onClick={() => plainText && downloadText(plainText, downloadName('converted', { ext: '.txt' }))}
                     disabled={!plainText}
                   >
                     {t('downloadTxt')}
@@ -1584,7 +1619,7 @@ function App() {
                   ) : null}
                   <button
                     className="ghost"
-                    onClick={() => tltw && downloadText(tltw, 'tltw.md')}
+                    onClick={() => tltw && downloadText(tltw, downloadName('tltw'))}
                     disabled={!tltw}
                   >
                     {t('downloadMd')}
@@ -1779,7 +1814,7 @@ function App() {
                     <pre>{tltw}</pre>
                     <div className="small-actions">
                       <button onClick={() => copyToClipboard(tltw)}>{t('copy')}</button>
-                      <button onClick={() => downloadText(tltw, 'tltw.md')}>{t('downloadMd')}</button>
+                      <button onClick={() => downloadText(tltw, downloadName('tltw'))}>{t('downloadMd')}</button>
                     </div>
                   </>
                 ) : (
@@ -1800,7 +1835,7 @@ function App() {
                   <p className="muted">{t('editorDesc')}</p>
                 </div>
                 <div className="tool-actions">
-                  <button className="ghost" onClick={() => downloadText(formatSrt(entries), 'edited.srt')}>
+                  <button className="ghost" onClick={() => downloadText(formatSrt(entries), downloadName('edited'))}>
                     {t('downloadSubtitle')}
                   </button>
                   <button className="primary" onClick={applyEditedCaptions}>
