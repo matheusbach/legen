@@ -10,7 +10,7 @@ from typing import Callable, Iterable, List, Sequence
 
 import pysrt
 
-import gemini_srt_translator as gst
+from gemini_srt_translator.main import GeminiSRTTranslator
 
 _printed_gemini_tltw_params = False
 
@@ -35,7 +35,7 @@ class GeminiTranslationConfig:
     force_tty_progress: bool | None = None
 
 
-class MultiKeyGeminiTranslator(gst.GeminiSRTTranslator):
+class MultiKeyGeminiTranslator(GeminiSRTTranslator):
     """Gemini translator that rotates across an arbitrary number of API keys."""
 
     def __init__(self, api_keys: Sequence[str], **kwargs) -> None:
