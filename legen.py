@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import time
+import traceback
 import warnings
 import logging
 
@@ -731,7 +732,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                     print(f"{yellow}check legen-errors.txt for details{default}")
                     current_time = time.strftime("%y/%m/%d %H:%M:%S", time.localtime())
 
-                    error_message = f"[{current_time}] {file}: {type(e).__name__}: {str(e)}"
+                    tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
+                    error_message = (
+                        f"[{current_time}] {file}: {type(e).__name__}: {str(e)}\n"
+                        f"--- traceback ---\n{tb}--- end traceback ---\n"
+                    )
                     with open(Path(Path(getframeinfo(currentframe()).filename).resolve().parent, "legen-errors.txt"), "a") as f:
                         f.write(error_message + "\n")
                         f.close()
