@@ -370,6 +370,10 @@ function App() {
         start: 'Início',
         end: 'Fim',
         text: 'Texto',
+        original: 'Original',
+        translated: 'Traduzido',
+        downloadOriginal: 'Baixar original',
+        downloadTranslated: 'Baixar traduzido',
         promptDebugTranslate: 'Prompt Gemini (Tradução)',
         promptDebugTltw: 'Prompt Gemini (TLTW)',
         authTitle: 'Acesso Restrito',
@@ -499,6 +503,10 @@ function App() {
         start: 'Start',
         end: 'End',
         text: 'Text',
+        original: 'Original',
+        translated: 'Translated',
+        downloadOriginal: 'Download original',
+        downloadTranslated: 'Download translated',
         promptDebugTranslate: 'Gemini Prompt (Translation)',
         promptDebugTltw: 'Gemini Prompt (TLTW)',
         authTitle: 'Restricted Access',
@@ -629,6 +637,10 @@ function App() {
         start: 'Inicio',
         end: 'Fin',
         text: 'Texto',
+        original: 'Original',
+        translated: 'Traducido',
+        downloadOriginal: 'Descargar original',
+        downloadTranslated: 'Descargar traducido',
         promptDebugTranslate: 'Prompt Gemini (Traducción)',
         promptDebugTltw: 'Prompt Gemini (TLTW)',
         authTitle: 'Acceso Restringido',
@@ -1018,13 +1030,19 @@ function App() {
     const updated = updateEntry(entries, idx, patch)
     setEntries(updated)
     setRawInput(formatSrt(updated))
+    
+    if (translatedEntries.length > 0 && patch.index !== undefined) {
+      const trUpdated = updateEntry(translatedEntries, idx, { index: patch.index })
+      setTranslatedEntries(trUpdated)
+      setTranslatedSrt(formatSrt(trUpdated))
+    }
   }
 
   const updateTranslatedSegment = (idx: number, patch: Partial<SubtitleEntry>) => {
     const base = entries.map((entry, i) => {
       const existing = translatedEntries[i]
       return existing
-        ? { ...existing, index: entry.index, start: entry.start, end: entry.end }
+        ? { ...existing, index: entry.index }
         : { ...entry, text: '' }
     })
     const updated = base.map((entry, i) => (i === idx ? { ...entry, ...patch } : entry))
@@ -1036,18 +1054,33 @@ function App() {
     const updated = insertEntryAfter(entries, idx)
     setEntries(updated)
     setRawInput(formatSrt(updated))
+    if (translatedEntries.length > 0) {
+      const trUpdated = insertEntryAfter(translatedEntries, idx)
+      setTranslatedEntries(trUpdated)
+      setTranslatedSrt(formatSrt(trUpdated))
+    }
   }
 
   const addSegmentBefore = (idx: number) => {
     const updated = insertEntryBefore(entries, idx)
     setEntries(updated)
     setRawInput(formatSrt(updated))
+    if (translatedEntries.length > 0) {
+      const trUpdated = insertEntryBefore(translatedEntries, idx)
+      setTranslatedEntries(trUpdated)
+      setTranslatedSrt(formatSrt(trUpdated))
+    }
   }
 
   const removeSegment = (idx: number) => {
     const updated = deleteEntry(entries, idx)
     setEntries(updated)
     setRawInput(formatSrt(updated))
+    if (translatedEntries.length > 0) {
+      const trUpdated = deleteEntry(translatedEntries, idx)
+      setTranslatedEntries(trUpdated)
+      setTranslatedSrt(formatSrt(trUpdated))
+    }
   }
 
   const handleAuthSubmit = (e: React.FormEvent) => {
@@ -1836,11 +1869,18 @@ function App() {
                 </div>
                 <div className="tool-actions">
                   <button className="ghost" onClick={() => downloadText(formatSrt(entries), downloadName('edited'))}>
-                    {t('downloadSubtitle')}
+                    {translatedEntries.length > 0 ? t('downloadOriginal') : t('downloadSubtitle')}
                   </button>
-                  <button className="primary" onClick={applyEditedCaptions}>
-                    {t('apply')}
-                  </button>
+                  {translatedEntries.length > 0 && (
+                    <button className="ghost" onClick={() => downloadText(formatSrt(translatedEntries), downloadName('edited', { lang: 'traduzido' }))}>
+                      {t('downloadTranslated')}
+                    </button>
+                  )}
+                  {translatedEntries.length === 0 && (
+                    <button className="primary" onClick={applyEditedCaptions}>
+                      {t('apply')}
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="pager">
@@ -1899,7 +1939,7 @@ function App() {
                     </div>
                     <div className="seg-grid">
                       <label>
-                        <span>{t('start')}</span>
+                        <span>{t('start')} {translatedEntries.length > 0 ? `(${t('original')})` : ''}</span>
                         <input
                           type="text"
                           value={entry.start}
@@ -1907,7 +1947,7 @@ function App() {
                         />
                       </label>
                       <label>
-                        <span>{t('end')}</span>
+                        <span>{t('end')} {translatedEntries.length > 0 ? `(${t('original')})` : ''}</span>
                         <input
                           type="text"
                           value={entry.end}
@@ -1915,7 +1955,7 @@ function App() {
                         />
                       </label>
                       <label className="full">
-                        <span>{t('text')}</span>
+                        <span>{t('text')} {translatedEntries.length > 0 ? `(${t('original')})` : ''}</span>
                         <textarea
                           value={entry.text}
                           onChange={(e) => {
@@ -1925,6 +1965,37 @@ function App() {
                           ref={autosizeTextarea}
                         />
                       </label>
+                      {translatedEntries.length > 0 && (
+                        <>
+                          <label className="pt-0">
+                            <span>{t('start')} ({t('translated')})</span>
+                            <input
+                              type="text"
+                              value={translatedEntries[idx]?.start || ''}
+                              onChange={(e) => updateTranslatedSegment(idx, { start: e.target.value })}
+                            />
+                          </label>
+                          <label className="pt-0">
+                            <span>{t('end')} ({t('translated')})</span>
+                            <input
+                              type="text"
+                              value={translatedEntries[idx]?.end || ''}
+                              onChange={(e) => updateTranslatedSegment(idx, { end: e.target.value })}
+                            />
+                          </label>
+                          <label className="full pt-0">
+                            <span>{t('text')} ({t('translated')})</span>
+                            <textarea
+                              value={translatedEntries[idx]?.text || ''}
+                              onChange={(e) => {
+                                updateTranslatedSegment(idx, { text: e.target.value })
+                                autosizeTextarea(e.target)
+                              }}
+                              ref={autosizeTextarea}
+                            />
+                          </label>
+                        </>
+                      )}
                     </div>
                   </div>
                     )
