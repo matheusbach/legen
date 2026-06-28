@@ -4,14 +4,10 @@ from pathlib import Path
 import whisperx_legen_fork as whisperx
 import whisper
 from whisperx_legen_fork import asr, audio as wx_audio, alignment, utils
-from whisperx_legen_fork.vads.vad import Vad
-# The `whisperx_legen_fork` package re-exports `whisperx` under a different module
-# path, which causes Python to create a SEPARATE `Vad` class object. `asr.py`
-# imports `Vad` from `whisperx.vads`, so its `issubclass(type(vad_model), Vad)`
-# check fails for subclasses of the fork's `Vad`. Import the canonical `Vad`
-# here so `DisabledVad` is recognized by `asr.py`'s isinstance/issubclass checks.
-from whisperx.vads import Vad as _CanonicalVad
-Vad = _CanonicalVad
+# Import Vad from whisperx (canonical package, not the `whisperx_legen_fork` alias)
+# so that `DisabledVad` passes `asr.py`'s issubclass check — the fork alias
+# creates a duplicate Python class object that `asr.py`'s import doesn't recognize.
+from whisperx.vads import Vad
 from whisperx_legen_fork.diarize import Segment as SegmentX
 import whisper_utils
 import subtitle_utils
