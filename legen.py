@@ -11,6 +11,7 @@ import logging
 
 # Filter warnings early
 warnings.filterwarnings("ignore", category=SyntaxWarning, module=r"pyannote\.database.*")
+warnings.filterwarnings("ignore", category=SyntaxWarning, module=r"pydub\.utils")
 warnings.filterwarnings("ignore", category=UserWarning, message="pkg_resources is deprecated as an API")
 warnings.filterwarnings("ignore", category=UserWarning, message="torchaudio._backend.list_audio_backends has been deprecated",)
 logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
