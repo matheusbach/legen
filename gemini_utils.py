@@ -94,6 +94,7 @@ def translate_with_gemini(config: GeminiTranslationConfig) -> pysrt.SubRipFile:
         if force_tty is None:
             force_tty = sys.platform == "win32" and not sys.stderr.isatty()
         restore_tqdm = _force_tqdm_tty(bool(force_tty))
+        restore_progress = _patch_srt_logger_for_colab() if _is_colab_runtime() else lambda: None
         translator = MultiKeyGeminiTranslator(
             api_keys=cfg.api_keys,
             target_language=cfg.target_language,
@@ -114,6 +115,7 @@ def translate_with_gemini(config: GeminiTranslationConfig) -> pysrt.SubRipFile:
         try:
             translator.translate()
         finally:
+            restore_progress()
             restore_tqdm()
 
     tried_sizes: list[int] = []
@@ -225,6 +227,162 @@ def _strip_ansi(text: str) -> str:
     return "".join(out)
 
 
+def _patch_gemini_progress_for_nontty() -> Callable[[], None]:
+    """Compact, single-line progress for ``gemini_srt_translator`` when stdout is not a TTY.
+
+    The package's ``progress_bar`` redraws the bar using ANSI cursor-up / line-clear
+    sequences (``\\033[F`` / ``\\033[K``) that real terminals interpret to overwrite in
+    place. Non-TTY frontends (Colab subprocess capture, piped output) ignore those
+    sequences, so every "update" leaves the old bar visible and a new one is appended
+    below -> the console keeps generating new lines instead of updating dynamically.
+
+    In compact mode we replace the package's ``progress_bar`` with a renderer that
+    emits a single carriage-return-updated line per update (``\\r`` + padded content,
+    no trailing newline), which Colab's output renderer collapses into a single
+    dynamically-updating line. Status messages are printed once on their own finalized
+    lines so warnings/errors still persist without stacking.
+
+    Auto-detects via ``sys.stdout.isatty()``: a real terminal is left untouched, so
+    nothing else breaks.
+    """
+    try:
+        import gemini_srt_translator.logger as _logger
+    except Exception:
+        return lambda: None
+
+    # Already installed (multiple calls in same process) or a real TTY: do nothing.
+    if sys.stdout.isatty() or getattr(_logger, "_legen_compact_progress_installed", False):
+        return lambda: None
+
+    import shutil
+
+    original = _logger.progress_bar
+    _logger._legen_compact_progress_installed = True
+    _logger._legen_compact_last_msg = None
+
+    def _compact(
+        current,
+        total,
+        bar_length=30,
+        prefix="",
+        suffix="",
+        message="",
+        message_color=None,
+        isDone=True,
+        isPrompt=False,
+        isLoading=False,
+        isSending=False,
+        isThinking=False,
+        isTranscribing=False,
+        token_stats=None,
+        prompt_tokens=None,
+        thoughts_tokens=None,
+        output_tokens=None,
+        total_tokens=None,
+        chunk_size=0,
+        **_ignored,
+    ) -> None:
+        # Mirror internal state updates from the original implementation so the rest
+        # of the package (warning_with_progress / info_with_progress / token
+        # accumulators / continuation calls) keeps working unchanged.
+        _logger._last_progress = {
+            "current": current,
+            "total": total,
+            "bar_length": bar_length,
+            "prefix": prefix,
+            "suffix": suffix,
+        }
+        if token_stats is not None:
+            _logger._token_stats = token_stats
+        if chunk_size > _logger._last_chunk_size or isDone:
+            _logger._last_chunk_size = chunk_size
+        if prompt_tokens is not None:
+            _logger._prompt_token_count += prompt_tokens
+        if thoughts_tokens is not None:
+            _logger._thoughts_token_count += thoughts_tokens
+        if output_tokens is not None:
+            _logger._output_token_count += output_tokens
+        if total_tokens is not None:
+            _logger._total_token_count += total_tokens
+
+        if _logger._quiet_mode:
+            return None
+
+        width = max(20, int(shutil.get_terminal_size().columns or 80))
+        last_chunk = _logger._last_chunk_size
+        ratio = (current + last_chunk) / total if total > 0 else 0
+        ratio = max(0.0, min(1.0, ratio))
+        filled = int(bar_length * ratio)
+        bar = "█" * filled + "░" * max(0, bar_length - filled)
+        pct = int(100 * ratio)
+
+        if not isTranscribing:
+            core = f"{prefix} |{bar}| {pct}% ({current + last_chunk}/{total})"
+        else:
+            import datetime as _dt
+
+            secs_c = current + last_chunk
+            secs_t = total
+            cur_str = f"{int(secs_c // 3600):02d}:{int(secs_c % 3600 // 60):02d}:{int(secs_c % 60):02d}"
+            tot_str = f"{int(secs_t // 3600):02d}:{int(secs_t % 3600 // 60):02d}:{int(secs_t % 60):02d}"
+            core = f"{prefix} |{bar}| {pct}% ({cur_str}/{tot_str})"
+
+        tail = ""
+        if suffix:
+            tail = f" {suffix}"
+        if isThinking:
+            tail += f" | Thinking {_logger._loading_bars[_logger._loading_bars_index]}"
+        elif isLoading:
+            tail += f" | Processing {_logger._loading_bars[_logger._loading_bars_index]}"
+        elif isSending and current < total:
+            tail += " | Sending ↑↑↑"
+
+        line = core + tail
+
+        if isPrompt:
+            # Interactive prompts are uncommon in the CLI subprocess flow; fall back to a
+            # plain prompt rather than emitting ANSI control sequences that won't render.
+            sys.stdout.write("\r" + " " * width + "\r")
+            sys.stdout.write(f"{prefix} > ")
+            sys.stdout.flush()
+            try:
+                return input()
+            except EOFError:
+                return None
+
+        if message:
+            msg_str = str(message)
+            # Emit a status message once on its own finalized line (deduped to avoid
+            # spamming when the same warning is passed on every progress tick).
+            if msg_str != _logger._legen_compact_last_msg:
+                _logger._legen_compact_last_msg = msg_str
+                _logger._previous_messages.append({"message": msg_str, "color": message_color})
+                # Clear the live bar line, lock it with the message on its own row.
+                sys.stdout.write("\r" + " " * width + "\r")
+                sys.stdout.write(msg_str[:width].ljust(width) + "\n")
+                sys.stdout.flush()
+            # On top of the just-printed message row, redraw the live bar so it stays visible.
+            sys.stdout.write("\r" + line[:width].ljust(width))
+            sys.stdout.flush()
+            return None
+
+        sys.stdout.write("\r" + line[:width].ljust(width))
+        sys.stdout.flush()
+        return None
+
+    _logger.progress_bar = _compact
+
+    def _restore() -> None:
+        try:
+            _logger.progress_bar = original
+        except Exception:
+            pass
+        _logger._legen_compact_progress_installed = False
+        _logger._legen_compact_last_msg = None
+
+    return _restore
+
+
 def _force_tqdm_tty(force: bool) -> Callable[[], None]:
     """Optionally patch tqdm to treat output as a TTY for dynamic progress bars."""
     if not force:
@@ -257,6 +415,123 @@ def _force_tqdm_tty(force: bool) -> Callable[[], None]:
 
     def _restore() -> None:
         _tqdm_module.tqdm = original
+
+    return _restore
+
+
+def _is_colab_runtime() -> bool:
+    """True when running inside a Google Colab notebook."""
+    try:
+        import google.colab  # type: ignore[import-untyped]  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def _patch_srt_logger_for_colab() -> Callable[[], None]:
+    """Replace the gemini_srt_translator progress bar with a Colab-safe version.
+
+    Google Colab does not handle ``\\033[F`` (cursor-up) escape sequences, so
+    the upstream ``progress_bar`` generates new output lines on every frame
+    instead of rewriting in place.  This monkey-patch swaps it for a
+    ``\\r``-based single-line updater that works in both Colab and real
+    terminals.
+
+    Returns a restore callable that reinstates the original function.
+    """
+    import shutil
+
+    import gemini_srt_translator.logger as _glog
+
+    original = _glog.progress_bar
+
+    # Capture a stable terminal width for line padding (Colab reports 80).
+    _term_width = shutil.get_terminal_size().columns or 120
+    _max_width = max(min(_term_width, 200), 80)
+
+    def _colab_progress(
+        current: int,
+        total: int,
+        bar_length: int = 30,
+        prefix: str = "",
+        suffix: str = "",
+        message: str = "",
+        message_color=None,
+        isDone: bool = True,
+        isPrompt: bool = False,
+        isLoading: bool = False,
+        isSending: bool = False,
+        isThinking: bool = False,
+        isTranscribing: bool = False,
+        token_stats: bool | None = None,
+        prompt_tokens: int | None = None,
+        thoughts_tokens: int | None = None,
+        output_tokens: int | None = None,
+        total_tokens: int | None = None,
+        chunk_size: int = 0,
+    ):
+        # ═══ Maintain module-level state that *other* logger helpers read  ═══
+        _glog._last_progress = {  # type: ignore[attr-defined]
+            "current": current,
+            "total": total,
+            "bar_length": bar_length,
+            "prefix": prefix,
+            "suffix": suffix,
+        }
+        if chunk_size > _glog._last_chunk_size or isDone:  # type: ignore[attr-defined]
+            _glog._last_chunk_size = chunk_size  # type: ignore[attr-defined]
+        if token_stats is not None:
+            _glog._token_stats = token_stats  # type: ignore[attr-defined]
+        if prompt_tokens is not None:
+            _glog._prompt_token_count += prompt_tokens  # type: ignore[attr-defined]
+        if thoughts_tokens is not None:
+            _glog._thoughts_token_count += thoughts_tokens  # type: ignore[attr-defined]
+        if output_tokens is not None:
+            _glog._output_token_count += output_tokens  # type: ignore[attr-defined]
+        if total_tokens is not None:
+            _glog._total_token_count += total_tokens  # type: ignore[attr-defined]
+
+        # Prompt-in-progress → delegate to built-in *input()*.
+        if isPrompt:
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+            return input(str(message))
+
+        # ═══ Build the status line  ═══
+        idx = current + _glog._last_chunk_size  # type: ignore[attr-defined]
+        ratio = idx / total if total > 0 else 0.0
+        filled = int(bar_length * ratio)
+        bar = "█" * filled + "░" * (bar_length - filled)
+        pct = int(100 * ratio)
+
+        if isTranscribing:
+            # Mimic the upstream transcribing format (HH:MM:SS timestamps).
+            import srt as _srt
+            from datetime import timedelta
+
+            cur = _srt.timedelta_to_srt_timestamp(timedelta(seconds=idx))
+            tot = _srt.timedelta_to_srt_timestamp(timedelta(seconds=total))
+            line = f"{prefix} |{bar}| {pct}% ({cur}/{tot})"
+        else:
+            line = f"{prefix} |{bar}| {pct}% ({idx}/{total})"
+
+        if suffix:
+            line += f" {suffix}"
+
+        # ═══ Single-line ``\r``-based overwrite (Colab-safe, no ANSI up) ═══
+        # Pad so the new line is at least as wide as the terminal, preventing
+        # leftover characters from a previous, longer line.
+        sys.stdout.write("\r" + line.ljust(_max_width)[:_max_width])
+
+        if message:
+            sys.stdout.write("\n" + str(message))
+
+        sys.stdout.flush()
+
+    _glog.progress_bar = _colab_progress
+
+    def _restore() -> None:
+        _glog.progress_bar = original
 
     return _restore
 
