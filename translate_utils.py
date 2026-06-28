@@ -39,6 +39,7 @@ def translate_srt_file(
     translate_engine: str = "google",
     gemini_api_keys=None,
     overwrite: bool = False,
+    gemini_model: str = "gemma-4-31b-it",
 ):
     """
     Translate SRT file using the specified engine.
@@ -66,6 +67,7 @@ def translate_srt_file(
             output_file=translated_subtitle_path,
             target_language=target_lang,
             resume=False,
+            model_name=gemini_model,
         )
 
         global _printed_gemini_translate_params
@@ -73,7 +75,7 @@ def translate_srt_file(
             _printed_gemini_translate_params = True
             print(
                 "Gemini translation params (CLI): "
-                f"batch_size={config.batch_size}, temperature={config.temperature}, "
+                f"model_name={config.model_name}, batch_size={config.batch_size}, temperature={config.temperature}, "
                 f"top_p={config.top_p}, top_k={config.top_k}, free_quota={config.free_quota}, "
                 f"resume={config.resume}, thinking={config.thinking}, progress_log={config.progress_log}, "
                 f"thoughts_log={config.thoughts_log}, api_keys={len(config.api_keys)}"
@@ -422,6 +424,12 @@ def build_cli_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--gemini_model",
+        type=str,
+        default="gemma-4-31b-it",
+        help="Gemini model name for translation (default: gemma-4-31b-it).",
+    )
+    parser.add_argument(
         "--overwrite",
         action="store_true",
         help="Overwrite translated files if they already exist.",
@@ -520,6 +528,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             translate_engine=args.translate_engine,
             gemini_api_keys=gemini_api_keys,
             overwrite=getattr(args, "overwrite", False),
+            gemini_model=args.gemini_model,
         )
         print(f"Translated {source} -> {destination}")
         translated += 1

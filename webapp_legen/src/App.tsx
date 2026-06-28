@@ -49,6 +49,17 @@ type Tool = 'translate' | 'converter' | 'tltw' | 'editor'
 type UiLanguage = 'pt' | 'en' | 'es'
 const PAGE_SIZE = 200
 
+const GEMINI_MODEL_OPTIONS: { value: string; label: string }[] = [
+  { value: 'gemma-4-31b-it', label: 'Gemma 4 31B' },
+  { value: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite' },
+  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+  { value: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash' },
+]
+
+const GEMINI_CUSTOM_VALUE = '__custom__'
+const GEMINI_PREDEFINED_VALUES = GEMINI_MODEL_OPTIONS.map((o) => o.value)
+
 const GOOGLE_LANGUAGES: Array<{ code: string; label: string }> = [
   { code: 'af', label: 'Afrikaans' },
   { code: 'sq', label: 'Albanian' },
@@ -322,6 +333,7 @@ function App() {
         isoHint: 'Digite um código ISO (ex.: en, pt, es) ou selecione na lista.',
         geminiApiKey: 'Gemini API key',
         geminiModel: 'Modelo Gemini',
+        geminiModelCustom: 'Customizado…',
         advancedSettings: 'Configurações avançadas',
         temperature: 'Temperatura',
         topP: 'Top P',
@@ -455,6 +467,7 @@ function App() {
         isoHint: 'Type an ISO code (e.g., en, pt, es) or choose from the list.',
         geminiApiKey: 'Gemini API key',
         geminiModel: 'Gemini model',
+        geminiModelCustom: 'Custom…',
         advancedSettings: 'Advanced settings',
         temperature: 'Temperature',
         topP: 'Top P',
@@ -589,6 +602,7 @@ function App() {
         isoHint: 'Escribe un código ISO (ej.: en, pt, es) o elige de la lista.',
         geminiApiKey: 'Gemini API key',
         geminiModel: 'Modelo Gemini',
+        geminiModelCustom: 'Personalizado…',
         advancedSettings: 'Configuración avanzada',
         temperature: 'Temperatura',
         topP: 'Top P',
@@ -691,7 +705,7 @@ function App() {
     engine: 'google',
     language: defaultLanguage,
     geminiKey: '',
-    geminiModel: 'gemini-2.5-flash',
+    geminiModel: 'gemma-4-31b-it',
     geminiAdditionalPrompt: '',
     geminiThinkingEnabled: true,
     geminiThinkingBudget: -1,
@@ -704,7 +718,7 @@ function App() {
   const [tltwConfig, setTltwConfig] = useState<TltwConfig>({
     language: defaultLanguage,
     geminiKey: '',
-    geminiModel: 'gemini-2.5-flash',
+    geminiModel: 'gemma-4-31b-it',
     maxChars: 250000,
     geminiAdditionalPrompt: '',
     geminiThinkingEnabled: false,
@@ -1386,13 +1400,34 @@ function App() {
                     </div>
                     <div>
                       <p className="muted small">{t('geminiModel')}</p>
-                      <input
+                      <select
                         className="text-input"
-                        value={translateConfig.geminiModel}
-                        onChange={(e) =>
-                          setTranslateConfig({ ...translateConfig, geminiModel: e.target.value })
-                        }
-                      />
+                        value={GEMINI_PREDEFINED_VALUES.includes(translateConfig.geminiModel) ? translateConfig.geminiModel : GEMINI_CUSTOM_VALUE}
+                        onChange={(e) => {
+                          const v = e.target.value
+                          if (v === GEMINI_CUSTOM_VALUE) {
+                            setTranslateConfig({ ...translateConfig, geminiModel: '' })
+                          } else {
+                            setTranslateConfig({ ...translateConfig, geminiModel: v })
+                          }
+                        }}
+                      >
+                        {GEMINI_MODEL_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                        <option value={GEMINI_CUSTOM_VALUE}>{t('geminiModelCustom')}</option>
+                      </select>
+                      {!GEMINI_PREDEFINED_VALUES.includes(translateConfig.geminiModel) && (
+                        <input
+                          className="text-input"
+                          style={{ marginTop: 6 }}
+                          placeholder="model-name"
+                          value={translateConfig.geminiModel}
+                          onChange={(e) =>
+                            setTranslateConfig({ ...translateConfig, geminiModel: e.target.value })
+                          }
+                        />
+                      )}
                     </div>
                   </div>
                   <details className="advanced-details">
@@ -1680,11 +1715,34 @@ function App() {
                 </label>
                 <label>
                   <span className="muted small">{t('geminiModel')}</span>
-                  <input
+                  <select
                     className="text-input"
-                    value={tltwConfig.geminiModel}
-                    onChange={(e) => setTltwConfig({ ...tltwConfig, geminiModel: e.target.value })}
-                  />
+                    value={GEMINI_PREDEFINED_VALUES.includes(tltwConfig.geminiModel) ? tltwConfig.geminiModel : GEMINI_CUSTOM_VALUE}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (v === GEMINI_CUSTOM_VALUE) {
+                        setTltwConfig({ ...tltwConfig, geminiModel: '' })
+                      } else {
+                        setTltwConfig({ ...tltwConfig, geminiModel: v })
+                      }
+                    }}
+                  >
+                    {GEMINI_MODEL_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                    <option value={GEMINI_CUSTOM_VALUE}>{t('geminiModelCustom')}</option>
+                  </select>
+                  {!GEMINI_PREDEFINED_VALUES.includes(tltwConfig.geminiModel) && (
+                    <input
+                      className="text-input"
+                      style={{ marginTop: 6 }}
+                      placeholder="model-name"
+                      value={tltwConfig.geminiModel}
+                      onChange={(e) =>
+                        setTltwConfig({ ...tltwConfig, geminiModel: e.target.value })
+                      }
+                    />
+                  )}
                 </label>
                 <label>
                   <span className="muted small">{t('maxSrtChars')}</span>

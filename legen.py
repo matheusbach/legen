@@ -132,6 +132,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Translation engine to use: google (default) or gemini")
     parser.add_argument("--gemini_api_key", action="append", default=[], type=str,
                         help="Gemini API key. Repeat or separate by comma/line break to add multiple keys (required if --translate_engine=gemini)")
+    parser.add_argument("--gemini_model", type=str, default="gemma-4-31b-it",
+                        help="Gemini model name for translation and TLTW (default: gemma-4-31b-it)")
     parser.add_argument("--tltw", action="store_true", default=False,
                         help="Generate a Gemini 'Too Long To Watch' summary from subtitles (requires --gemini_api_key)")
     parser.add_argument("--output_tltw", type=Path, default=None,
@@ -567,7 +569,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                                 args.translate,
                                 translate_engine=args.translate_engine,
                                 gemini_api_keys=args.gemini_api_keys,
-                                overwrite=args.overwrite
+                                overwrite=args.overwrite,
+                                gemini_model=args.gemini_model,
                             )
                             if not args.disable_srt:
                                 translated_srt_temp.save()
@@ -601,6 +604,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                             subtitle_file=summary_source_path,
                                             output_file=summary_output_path,
                                             language=summary_language,
+                                            model=args.gemini_model,
                                         )
                                     )
                             else:
@@ -706,6 +710,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                             subtitle_file=summary_source_path,
                                             output_file=summary_output_path,
                                             language=summary_language,
+                                            model=args.gemini_model,
                                         )
                                     )
                             else:

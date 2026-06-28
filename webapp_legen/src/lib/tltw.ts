@@ -18,7 +18,7 @@ export async function generateTltwSummary({
   entries,
   language,
   apiKey,
-  model = 'gemini-2.5-flash',
+  model = 'gemma-4-31b-it',
   maxChars = 250000,
   additionalPrompt,
   onPrompt,
@@ -242,6 +242,12 @@ async function sendGeminiRequest({
               }
             : {}),
         },
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+        ],
       }),
       signal: signal ?? controller.signal,
     })

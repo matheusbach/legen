@@ -92,6 +92,54 @@ class GeminiUtilsTests(unittest.TestCase):
         self.assertTrue(output_file.exists())
         self.assertEqual(output_file.read_text(encoding="utf-8"), result)
 
+    def test_gemini_translation_config_default_model(self):
+        cfg = gemini_utils.GeminiTranslationConfig(
+            api_keys=["k1"],
+            input_file=Path("/tmp/in.srt"),
+            output_file=Path("/tmp/out.srt"),
+            target_language="pt",
+        )
+        self.assertEqual(cfg.model_name, "gemma-4-31b-it")
+
+    def test_gemini_translation_config_custom_model(self):
+        cfg = gemini_utils.GeminiTranslationConfig(
+            api_keys=["k1"],
+            input_file=Path("/tmp/in.srt"),
+            output_file=Path("/tmp/out.srt"),
+            target_language="pt",
+            model_name="gemini-2.5-flash",
+        )
+        self.assertEqual(cfg.model_name, "gemini-2.5-flash")
+
+    def test_translate_with_gemini_passes_model_name(self):
+        from unittest import mock
+
+        cfg = gemini_utils.GeminiTranslationConfig(
+            api_keys=["k1"],
+            input_file=Path("/tmp/in.srt"),
+            output_file=Path("/tmp/out.srt"),
+            target_language="pt",
+            model_name="gemini-3.1-flash-lite",
+        )
+
+        with mock.patch.object(gemini_utils, "MultiKeyGeminiTranslator") as mock_translator:
+            mock_translator.return_value.translate.return_value = None
+            try:
+                gemini_utils.translate_with_gemini(cfg)
+            except Exception:
+                pass
+            self.assertIn("model_name", mock_translator.call_args.kwargs)
+            self.assertEqual(mock_translator.call_args.kwargs["model_name"], "gemini-3.1-flash-lite")
+
+    def test_gemini_summary_config_default_model(self):
+        cfg = gemini_utils.GeminiSummaryConfig(
+            api_keys=["k1"],
+            subtitle_file=Path("/tmp/in.srt"),
+            output_file=Path("/tmp/out.md"),
+            language="pt",
+        )
+        self.assertEqual(cfg.model, "gemma-4-31b-it")
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

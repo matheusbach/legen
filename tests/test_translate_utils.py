@@ -120,6 +120,38 @@ class TranslateUtilsTests(unittest.TestCase):
                 "gemini",
             ])
 
+    def test_cli_gemini_model_default(self):
+        parser = translate_utils.build_cli_parser()
+        args = parser.parse_args(["-i", "/tmp/x.srt", "--translate", "es"])
+        self.assertEqual(args.gemini_model, "gemma-4-31b-it")
+
+    def test_cli_accepts_gemini_model_flag(self):
+        parser = translate_utils.build_cli_parser()
+        args = parser.parse_args([
+            "-i", "/tmp/x.srt",
+            "--translate", "es",
+            "--gemini_model", "gemini-2.5-flash",
+        ])
+        self.assertEqual(args.gemini_model, "gemini-2.5-flash")
+
+    def test_cli_forwards_gemini_model_to_translate_srt_file(self):
+        tmp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp_dir.cleanup)
+
+        input_file = Path(tmp_dir.name) / "sample.srt"
+        input_file.write_text("1\n00:00:00,000 --> 00:00:01,000\nHello\n", encoding="utf-8")
+
+        with mock.patch.object(translate_utils, "translate_srt_file", autospec=True) as translate_mock:
+            exit_code = translate_utils.main([
+                "-i", str(input_file),
+                "--translate", "es",
+                "--gemini_api_key", "dummy-key",
+                "--gemini_model", "gemini-3.1-flash-lite",
+            ])
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(translate_mock.call_args.kwargs.get("gemini_model"), "gemini-3.1-flash-lite")
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

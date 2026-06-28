@@ -33,6 +33,7 @@ class GeminiTranslationConfig:
     # Force tqdm to treat output as a TTY (helps dynamic bars on Windows CMD/PowerShell).
     # None = auto (enable on Windows when stderr is not a TTY).
     force_tty_progress: bool | None = None
+    model_name: str = "gemma-4-31b-it"
 
 
 class MultiKeyGeminiTranslator(GeminiSRTTranslator):
@@ -108,6 +109,7 @@ def translate_with_gemini(config: GeminiTranslationConfig) -> pysrt.SubRipFile:
             progress_log=cfg.progress_log,
             thoughts_log=cfg.thoughts_log,
             description=additional_instructions,
+            model_name=cfg.model_name,
         )
         try:
             translator.translate()
@@ -171,7 +173,7 @@ class GeminiSummaryConfig:
     subtitle_file: Path
     output_file: Path
     language: str
-    model: str = "gemini-2.5-flash"
+    model: str = "gemma-4-31b-it"
     # TLTW tends to be more useful with longer outputs. If the model truncates,
     # we auto-continue (see _send_tltw_request).
     max_output_tokens: int = 16364
