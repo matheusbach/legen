@@ -4,9 +4,70 @@ from pathlib import Path
 import whisperx_legen_fork as whisperx
 import whisper
 from whisperx_legen_fork import asr, audio as wx_audio, alignment, utils
+from whisperx_legen_fork.vads.vad import Vad
+from whisperx_legen_fork.diarize import Segment as SegmentX
 import whisper_utils
 import subtitle_utils
 from utils import time_task
+
+
+DEFAULT_VAD_OPTIONS = {
+    "chunk_size": 30,
+    "vad_onset": 0.500,
+    "vad_offset": 0.363,
+}
+
+
+class DisabledVad(Vad):
+    """Passthrough VAD: treats the entire audio as speech.
+
+    Emits the whole waveform as fixed `chunk_size`-second speech segments so
+    Whisper transcribes every sample (silence included), effectively disabling
+    voice activity detection.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(kwargs["vad_onset"])
+        self.chunk_size = kwargs["chunk_size"]
+
+    def __call__(self, audio, **kwargs):
+        waveform = audio["waveform"]
+        sample_rate = audio["sample_rate"]
+        n_samples = int(waveform.shape[-1])
+        chunk_samples = int(self.chunk_size * sample_rate)
+        segments = []
+        start = 0
+        while start < n_samples:
+            end = min(start + chunk_samples, n_samples)
+            segments.append(SegmentX(start / sample_rate, end / sample_rate, "UNKNOWN"))
+            start = end
+        if not segments:
+            segments.append(SegmentX(0.0, 0.0, "UNKNOWN"))
+        return segments
+
+    @staticmethod
+    def preprocess_audio(audio):
+        return audio
+
+    @staticmethod
+    def merge_chunks(segments_list, chunk_size, onset=0.5, offset=None):
+        assert chunk_size > 0
+        if len(segments_list) == 0:
+            print("No active speech found in audio")
+            return []
+        return Vad.merge_chunks(segments_list, chunk_size, onset, offset)
+
+
+def build_vad_model(vad_method: str):
+    """Build a VAD model instance for a given vad_method name.
+
+    Returns None to let whisperx pick the built-in engine, or a custom
+    `Vad` subclass (e.g. DisabledVad) that bypasses VAD entirely.
+    """
+    if vad_method in ("none", "disabled", "off"):
+        return DisabledVad(**DEFAULT_VAD_OPTIONS)
+    return None
+
 
 def transcribe_audio(model: asr.WhisperModel, audio_path: Path, srt_path: Path, lang: str = None, device: str = "cpu", batch_size: int = 4):
     audio = wx_audio.load_audio(file=audio_path.as_posix(), sr=model.model.feature_extractor.sampling_rate)

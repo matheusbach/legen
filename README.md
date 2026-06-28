@@ -132,7 +132,7 @@ Full options list are described bellow:
 
 - `-ts:c`, `--transcription_compute_type`: Specifies the quantization for the neural network. Possible values: auto (default), int8, int8_float32, int8_float16, int8_bfloat16, int16, float16, bfloat16, float32.
 
-- `-ts:v`, `--transcription_vad`: Selects the voice-activity detector used by WhisperX. Options: silero (default), pyannote.
+- `-ts:v`, `--transcription_vad`: Selects the voice-activity detector used by WhisperX. Options: silero (default), pyannote, none (disable VAD and transcribe all audio; also accepts `disabled`/`off`).
 
 - `-ts:b`, `--transcription_batch`: Specifies the number of simultaneous segments being transcribed. Higher values will speed up processing. If you have low RAM/VRAM, long duration media files or have buggy subtitles, reduce this value to avoid issues. Only works using transcription_engine whisperx. Default is 4.
 
