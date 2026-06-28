@@ -94,7 +94,12 @@ def translate_with_gemini(config: GeminiTranslationConfig) -> pysrt.SubRipFile:
         if force_tty is None:
             force_tty = sys.platform == "win32" and not sys.stderr.isatty()
         restore_tqdm = _force_tqdm_tty(bool(force_tty))
-        restore_progress = _patch_srt_logger_for_colab() if _is_colab_runtime() else lambda: None
+        # In Colab, `legen` runs as a subprocess via `!legen ...`, where `google.colab`
+        # is NOT importable. The reliable signal there is a non-TTY stdout (piped to the
+        # cell output), so gate on that, keeping `_is_colab_runtime()` as an extra guard
+        # for the rare case where the package is used directly from the notebook kernel.
+        _needs_progress_patch = (not sys.stdout.isatty()) or _is_colab_runtime()
+        restore_progress = _patch_srt_logger_for_colab() if _needs_progress_patch else lambda: None
         translator = MultiKeyGeminiTranslator(
             api_keys=cfg.api_keys,
             target_language=cfg.target_language,
