@@ -99,7 +99,7 @@ class GeminiUtilsTests(unittest.TestCase):
             output_file=Path("/tmp/out.srt"),
             target_language="pt",
         )
-        self.assertEqual(cfg.model_name, "gemma-4-31b-it")
+        self.assertEqual(cfg.model_name, "gemini-3.1-flash-lite")
 
     def test_gemini_translation_config_custom_model(self):
         cfg = gemini_utils.GeminiTranslationConfig(
@@ -138,7 +138,7 @@ class GeminiUtilsTests(unittest.TestCase):
             output_file=Path("/tmp/out.md"),
             language="pt",
         )
-        self.assertEqual(cfg.model, "gemma-4-31b-it")
+        self.assertEqual(cfg.model, "gemini-3.1-flash-lite")
 
 
 if __name__ == "__main__":  # pragma: no cover

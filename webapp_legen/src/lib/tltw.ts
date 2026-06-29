@@ -18,7 +18,7 @@ export async function generateTltwSummary({
   entries,
   language,
   apiKey,
-  model = 'gemma-4-31b-it',
+  model = 'gemini-3.1-flash-lite',
   maxChars = 250000,
   additionalPrompt,
   onPrompt,

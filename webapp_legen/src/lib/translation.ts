@@ -55,7 +55,7 @@ export async function translateCaptions({
   targetLanguage,
   engine,
   geminiApiKey,
-  geminiModel = 'gemma-4-31b-it',
+  geminiModel = 'gemini-3.1-flash-lite',
   geminiAdditionalPrompt,
   geminiTemperature,
   geminiTopP,

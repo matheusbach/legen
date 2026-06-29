@@ -33,7 +33,7 @@ class GeminiTranslationConfig:
     # Force tqdm to treat output as a TTY (helps dynamic bars on Windows CMD/PowerShell).
     # None = auto (enable on Windows when stderr is not a TTY).
     force_tty_progress: bool | None = None
-    model_name: str = "gemma-4-31b-it"
+    model_name: str = "gemini-3.1-flash-lite"
 
 
 class MultiKeyGeminiTranslator(GeminiSRTTranslator):
@@ -180,7 +180,7 @@ class GeminiSummaryConfig:
     subtitle_file: Path
     output_file: Path
     language: str
-    model: str = "gemma-4-31b-it"
+    model: str = "gemini-3.1-flash-lite"
     # TLTW tends to be more useful with longer outputs. If the model truncates,
     # we auto-continue (see _send_tltw_request).
     max_output_tokens: int = 16364

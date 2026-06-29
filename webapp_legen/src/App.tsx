@@ -50,8 +50,8 @@ type UiLanguage = 'pt' | 'en' | 'es'
 const PAGE_SIZE = 200
 
 const GEMINI_MODEL_OPTIONS: { value: string; label: string }[] = [
-  { value: 'gemma-4-31b-it', label: 'Gemma 4 31B' },
   { value: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite' },
+  { value: 'gemma-4-31b-it', label: 'Gemma 4 31B' },
   { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
   { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
   { value: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash' },
@@ -705,7 +705,7 @@ function App() {
     engine: 'google',
     language: defaultLanguage,
     geminiKey: '',
-    geminiModel: 'gemma-4-31b-it',
+    geminiModel: 'gemini-3.1-flash-lite',
     geminiAdditionalPrompt: '',
     geminiThinkingEnabled: true,
     geminiThinkingBudget: -1,
@@ -718,7 +718,7 @@ function App() {
   const [tltwConfig, setTltwConfig] = useState<TltwConfig>({
     language: defaultLanguage,
     geminiKey: '',
-    geminiModel: 'gemma-4-31b-it',
+    geminiModel: 'gemini-3.1-flash-lite',
     maxChars: 250000,
     geminiAdditionalPrompt: '',
     geminiThinkingEnabled: false,

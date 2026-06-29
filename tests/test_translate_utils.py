@@ -123,7 +123,7 @@ class TranslateUtilsTests(unittest.TestCase):
     def test_cli_gemini_model_default(self):
         parser = translate_utils.build_cli_parser()
         args = parser.parse_args(["-i", "/tmp/x.srt", "--translate", "es"])
-        self.assertEqual(args.gemini_model, "gemma-4-31b-it")
+        self.assertEqual(args.gemini_model, "gemini-3.1-flash-lite")
 
     def test_cli_accepts_gemini_model_flag(self):
         parser = translate_utils.build_cli_parser()

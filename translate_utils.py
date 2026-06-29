@@ -39,7 +39,7 @@ def translate_srt_file(
     translate_engine: str = "google",
     gemini_api_keys=None,
     overwrite: bool = False,
-    gemini_model: str = "gemma-4-31b-it",
+    gemini_model: str = "gemini-3.1-flash-lite",
 ):
     """
     Translate SRT file using the specified engine.
@@ -426,8 +426,8 @@ def build_cli_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--gemini_model",
         type=str,
-        default="gemma-4-31b-it",
-        help="Gemini model name for translation (default: gemma-4-31b-it).",
+        default="gemini-3.1-flash-lite",
+        help="Gemini model name for translation (default: gemini-3.1-flash-lite).",
     )
     parser.add_argument(
         "--overwrite",

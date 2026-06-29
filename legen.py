@@ -134,8 +134,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Translation engine to use: google (default) or gemini")
     parser.add_argument("--gemini_api_key", action="append", default=[], type=str,
                         help="Gemini API key. Repeat or separate by comma/line break to add multiple keys (required if --translate_engine=gemini)")
-    parser.add_argument("--gemini_model", type=str, default="gemma-4-31b-it",
-                        help="Gemini model name for translation and TLTW (default: gemma-4-31b-it)")
+    parser.add_argument("--gemini_model", type=str, default="gemini-3.1-flash-lite",
+                        help="Gemini model name for translation and TLTW (default: gemini-3.1-flash-lite)")
     parser.add_argument("--tltw", action="store_true", default=False,
                         help="Generate a Gemini 'Too Long To Watch' summary from subtitles (requires --gemini_api_key)")
     parser.add_argument("--output_tltw", type=Path, default=None,
