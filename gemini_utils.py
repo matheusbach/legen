@@ -631,16 +631,19 @@ def _send_tltw_request(
     stream_output: bool = False,
 ) -> str:
     try:
-        import google.generativeai as genai
+        from google import genai
+        from google.genai import types as _genai_types
     except Exception as exc:  # pragma: no cover - import depends on optional dependency
-        raise RuntimeError("google-generativeai is required for TLTW summaries.") from exc
+        raise RuntimeError("google-genai is required for TLTW summaries.") from exc
 
-    genai.configure(api_key=api_key)
+    client = genai.Client(
+        api_key=api_key,
+        http_options=_genai_types.HttpOptions(timeout=int(request_timeout) * 1000),
+    )
 
     END_MARKER = "<!-- END -->"
     base_prompt = prompt_builder(language)
     require_end_marker = END_MARKER in base_prompt
-    model_client = genai.GenerativeModel(model)
 
     def _finish_reason_is_truncation(resp) -> bool:
         try:
@@ -707,19 +710,20 @@ def _send_tltw_request(
         text = ""
 
         try:
-            gen_kwargs = dict(
-                generation_config={
-                    "temperature": float(temperature),
-                    "top_p": float(top_p),
-                    "top_k": int(top_k),
-                    "max_output_tokens": int(max_output_tokens),
-                },
-                request_options={"timeout": request_timeout},
+            gen_config = _genai_types.GenerateContentConfig(
+                temperature=float(temperature),
+                top_p=float(top_p),
+                top_k=int(top_k),
+                max_output_tokens=int(max_output_tokens),
             )
 
             if stream_output:
                 try:
-                    response_iter = model_client.generate_content(parts, stream=True, **gen_kwargs)
+                    response_iter = client.models.generate_content_stream(
+                        model=model,
+                        contents=parts,
+                        config=gen_config,
+                    )
                     acc = ""
                     emitted_len = 0
                     last_resp = None
@@ -754,11 +758,19 @@ def _send_tltw_request(
                 except Exception:
                     # Some environments/models may not support streaming.
                     use_text_preview = False
-                    response = model_client.generate_content(parts, **gen_kwargs)
+                    response = client.models.generate_content(
+                        model=model,
+                        contents=parts,
+                        config=gen_config,
+                    )
                     text = (getattr(response, "text", "") or "").strip()
             else:
                 use_text_preview = False
-                response = model_client.generate_content(parts, **gen_kwargs)
+                response = client.models.generate_content(
+                    model=model,
+                    contents=parts,
+                    config=gen_config,
+                )
                 text = (getattr(response, "text", "") or "").strip()
         except Exception as exc:  # noqa: BLE001
             if ticker is not None:

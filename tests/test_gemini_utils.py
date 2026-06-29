@@ -140,6 +140,116 @@ class GeminiUtilsTests(unittest.TestCase):
         )
         self.assertEqual(cfg.model, "gemini-3.1-flash-lite")
 
+    def test_send_tltw_request_uses_google_genai_client(self):
+        from unittest import mock
+
+        from google import genai
+
+        fake_response = mock.MagicMock()
+        fake_response.text = "TLTW via new SDK"
+        fake_response.candidates = [mock.MagicMock(finish_reason=None)]
+
+        fake_client = mock.MagicMock()
+        fake_client.models.generate_content.return_value = fake_response
+
+        with mock.patch.object(genai, "Client", return_value=fake_client) as client_mock:
+            result = gemini_utils._send_tltw_request(
+                api_key="k1",
+                subtitle_text="Hello world",
+                language="en",
+                model="gemini-3.1-flash-lite",
+                max_output_tokens=100,
+                request_timeout=500,
+                stream_output=False,
+                show_progress=False,
+                prompt_builder=lambda lang: "Summarize. No final marker.",
+            )
+
+        self.assertEqual(result, "TLTW via new SDK")
+        client_mock.assert_called_once()
+        client_kwargs = client_mock.call_args.kwargs
+        self.assertEqual(client_kwargs.get("api_key"), "k1")
+        fake_client.models.generate_content.assert_called_once()
+        gen_kwargs = fake_client.models.generate_content.call_args.kwargs
+        self.assertEqual(gen_kwargs.get("model"), "gemini-3.1-flash-lite")
+        self.assertIn("contents", gen_kwargs)
+        self.assertIn("config", gen_kwargs)
+
+    def test_send_tltw_request_streams_and_accumulates_chunks(self):
+        from unittest import mock
+
+        from google import genai
+
+        chunk1 = mock.MagicMock()
+        chunk1.text = "Hello "
+        chunk2 = mock.MagicMock()
+        chunk2.text = "world"
+        final = mock.MagicMock()
+        final.text = "Hello world"
+        final.candidates = [mock.MagicMock(finish_reason=None)]
+
+        fake_client = mock.MagicMock()
+        fake_client.models.generate_content_stream.return_value = iter([chunk1, chunk2, final])
+
+        with mock.patch.object(genai, "Client", return_value=fake_client):
+            result = gemini_utils._send_tltw_request(
+                api_key="k1",
+                subtitle_text="Hello world",
+                language="en",
+                model="gemini-3.1-flash-lite",
+                max_output_tokens=100,
+                request_timeout=10,
+                stream_output=True,
+                show_progress=False,
+                prompt_builder=lambda lang: "Summarize. No final marker.",
+            )
+
+        self.assertEqual(result, "Hello world")
+        fake_client.models.generate_content_stream.assert_called_once()
+        fake_client.models.generate_content.assert_not_called()
+
+    def test_send_tltw_request_detects_max_tokens_truncation(self):
+        from unittest import mock
+
+        from google import genai
+        from google.genai import types
+
+        truncated_response = mock.MagicMock()
+        truncated_response.text = "partial output"
+        truncated_response.candidates = [
+            mock.MagicMock(finish_reason=types.FinishReason.MAX_TOKENS)
+        ]
+
+        completed_response = mock.MagicMock()
+        completed_response.text = "partial output continued and finished"
+        completed_response.candidates = [
+            mock.MagicMock(finish_reason=types.FinishReason.STOP)
+        ]
+
+        fake_client = mock.MagicMock()
+        # First call truncates, second (continuation) completes.
+        fake_client.models.generate_content_stream.side_effect = [
+            iter([truncated_response]),
+            iter([completed_response]),
+        ]
+
+        with mock.patch.object(genai, "Client", return_value=fake_client):
+            result = gemini_utils._send_tltw_request(
+                api_key="k1",
+                subtitle_text="Hello world",
+                language="en",
+                model="gemini-3.1-flash-lite",
+                max_output_tokens=50,
+                request_timeout=10,
+                stream_output=True,
+                show_progress=False,
+                max_rounds=3,
+                prompt_builder=lambda lang: "Summarize. No final marker.",
+            )
+
+        self.assertIn("partial output", result)
+        self.assertIn("continued", result)
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
