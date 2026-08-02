@@ -102,6 +102,8 @@ class UpstreamKeywordTests(unittest.TestCase):
         self.assertIn("Alignment:", output.getvalue())
         self.assertEqual(len(align_calls), 2)
         self.assertEqual(load_align_model.call_count, 2)
+        self.assertEqual(align_calls[1]["device"], "cpu")
+        self.assertEqual(load_align_model.call_args_list[1].kwargs["device"], "cpu")
         for kwargs in align_calls:
             self.assertIn("progress_callback", kwargs)
             self.assertNotIn("on_progress", kwargs)
