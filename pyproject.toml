@@ -7,9 +7,7 @@ name = "legen"
 version = "0.20.2"
 description = "Powerfull toolkit that locally transcribes, translates, and masters subtitles for your media"
 readme = { file = "README.md", content-type = "text/markdown" }
-requires-python = ">=3.9,<3.13"
-license = "GPL-3.0-only"
-license-files = ["LICENSE"]
+requires-python = ">=3.10,<3.13"
 authors = [
     { name = "Matheus Bach" }
 ]
@@ -39,7 +37,8 @@ dependencies = [
     "gemini-srt-translator",
     "google-genai",
     "yt-dlp",
-    "whisperx-legen-fork"
+    "whisperx==3.8.6",
+    "pyannote-audio>=4.0"
 ]
 
 [project.optional-dependencies]
@@ -62,6 +61,7 @@ py-modules = [
     "file_utils",
     "gemini_utils",
     "device_utils",
+    "diarization_utils",
     "legen",
     "legen_cli",
     "subtitle_utils",
