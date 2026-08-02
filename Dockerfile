@@ -15,10 +15,12 @@ RUN apt-get update \
 
 COPY requirements.txt ./
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt \
     && if [ "${PYTORCH_INSTALL_CUDA}" = "true" ] && [ -n "${PYTORCH_CUDA_INDEX_URL}" ]; then \
         pip install --no-cache-dir torch==2.8.0+cu128 torchaudio==2.8.0+cu128 torchvision==0.23.0+cu128 --index-url "${PYTORCH_CUDA_INDEX_URL}"; \
-    fi
+    else \
+        pip install --no-cache-dir torch==2.8.0+cpu torchaudio==2.8.0+cpu torchvision==0.23.0+cpu --index-url https://download.pytorch.org/whl/cpu; \
+    fi \
+    && pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
