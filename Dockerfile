@@ -10,7 +10,7 @@ WORKDIR /app
 
 # Install runtime dependencies required by the pipeline and build tooling
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg git \
+    && apt-get install -y --no-install-recommends ffmpeg git libtk8.6 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt ./

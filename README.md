@@ -219,12 +219,12 @@ You can run LeGen inside a container, keeping the host Python environment clean 
 2. Place the media you want to process inside `./data` or mount a different host folder to `/data` when invoking Docker.
 3. Run LeGen through Compose: `docker compose run --rm legen -i /data/my-video.mp4 --translate pt`. All generated downloads and subtitles stay under the mapped `downloads`, `softsubs_m`, and `hardsubs_m` directories.
 
-To use a GPU-enabled Docker setup, run the raw image with Docker's GPU flag: `docker run --rm --gpus all -v "$PWD/data:/data" -v "$PWD/downloads:/app/downloads" -v "$PWD/softsubs_m:/app/softsubs_m" -v "$PWD/hardsubs_m:/app/hardsubs_m" legen:local -i /data/my-video.mp4 --translate pt`. The Compose invocation above remains valid without `--gpus all` (Docker Engine 19.03+ with the NVIDIA Container Toolkit). LeGen will detect the GPU automatically, but you can still override it with `--transcription_device` if needed.
+The Compose service does not request GPU resources and uses the CPU fallback unless GPU support is configured externally. For GPU execution, run the raw image with Docker's GPU flag: `docker run --rm --gpus all -v "$PWD/data:/data" -v "$PWD/downloads:/app/downloads" -v "$PWD/softsubs_m:/app/softsubs_m" -v "$PWD/hardsubs_m:/app/hardsubs_m" legen:local -i /data/my-video.mp4 --translate pt`. LeGen will detect the GPU automatically, but you can still override it with `--transcription_device` if needed.
 
 ### Passing CLI arguments inside Docker
 - Compose  command arguments override the default `--help`. Example: `docker compose run --rm legen -i /data/my-video.mp4 --translate pt --download_remote_subs`.
 - Provide Gemini keys when translating with Gemini: `docker compose run --rm legen --gemini_api_key YOUR_KEY -i /data/file.mp4 --translate_engine gemini --translate en`.
-- Forward environment variables if you prefer: `docker compose run --rm --env GEMINI_API_KEY=YOUR_KEY legen --gemini_api_key "$GEMINI_API_KEY" -i /data/file.mp4`.
+- Forward a host environment variable: run `export GEMINI_API_KEY=YOUR_KEY` first, then `docker compose run --rm --env GEMINI_API_KEY="$GEMINI_API_KEY" legen --gemini_api_key "$GEMINI_API_KEY" -i /data/file.mp4 --translate_engine gemini --translate en`.
 - Run the raw image without Compose: `docker run --rm -it -v "$PWD/data:/data" -v "$PWD/downloads:/app/downloads" legen:local -i /data/input.mp4 --disable_hardsubs`.
 - Keep the container running interactively for multiple executions by starting a shell: `docker compose run --rm --entrypoint /bin/bash legen`.
 - List all CLI options from inside the container: `docker compose run --rm legen --help`.
@@ -233,7 +233,7 @@ To use a GPU-enabled Docker setup, run the raw image with Docker's GPU flag: `do
 
 LeGen automatically selects the best accelerator at runtime (`cuda` > `mps` > `cpu`). When a compatible GPU is available, transcription and alignment transparently run on it; otherwise the pipeline falls back to the CPU. You can still force a specific backend with `--transcription_device`.
 
-With Docker, the image installs the CUDA-enabled PyTorch wheels by default. Use the raw Docker invocation above with `--gpus all` to expose GPUs through the NVIDIA Container Toolkit. If you need a CPU-only image, build with `docker compose build --build-arg PYTORCH_INSTALL_CUDA=false`.
+With Docker, the default image build installs the CUDA-enabled PyTorch wheels, but this does not allocate GPU resources to the Compose service. Use the raw Docker invocation above with `--gpus all` to expose GPUs through the NVIDIA Container Toolkit. If you need a CPU-only image, build with `docker compose build --build-arg PYTORCH_INSTALL_CUDA=false`.
 
 ## Dependencies
 
