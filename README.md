@@ -146,9 +146,9 @@ Full options list are described bellow:
 
 - `-c:a`, `--codec_audio`: Specifies the target audio codec. Default is aac. Examples include aac, libopus, mp3, vorbis.
 
-- `-o:s`, `--output_softsubs`: Specifies the path to the folder or output file for the video files with embedded softsub (embedded in the mp4 container and .srt files). For directory inputs, the default is the sibling `softsubs` folder. For direct-file inputs, the default is the legacy sibling `softsubs_<input filename>` path, unless an existing `legen_srt_<input filename>` compatibility path takes precedence. An explicit `--output_softsubs` value overrides both defaults.
+- `-o:s`, `--output_softsubs`: Specifies the path to the folder or output file for the video files with embedded softsub (embedded in the mp4 container and .srt files). For direct-file inputs, the default is the sibling `softsubs` folder. For directory inputs, the default is the sibling `softsubs_<directory name>` compatibility folder, unless an existing `legen_srt_<directory name>` path takes precedence. An explicit `--output_softsubs` value overrides both defaults.
 
-- `-o:h`, `--output_hardsubs`: Specifies the output folder path for video files with burned-in captions and embedded in the mp4 container. For directory inputs, the default is the sibling `hardsubs` folder. For direct-file inputs, the default is the legacy sibling `hardsubs_<input filename>` path, unless an existing `legen_burned_<input filename>` compatibility path takes precedence. An explicit `--output_hardsubs` value overrides both defaults.
+- `-o:h`, `--output_hardsubs`: Specifies the output folder path for video files with burned-in captions and embedded in the mp4 container. For direct-file inputs, the default is the sibling `hardsubs` folder. For directory inputs, the default is the sibling `hardsubs_<directory name>` compatibility folder, unless an existing `legen_burned_<directory name>` path takes precedence. An explicit `--output_hardsubs` value overrides both defaults.
 
 - `-o:d`, `--output_downloads`: Overrides the folder used to store media downloaded from URL inputs. Default is `./downloads` when `-i` receives a URL.
 
