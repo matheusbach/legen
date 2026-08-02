@@ -1,14 +1,10 @@
 import os
 from pathlib import Path
 
-import whisperx_legen_fork as whisperx
 import whisper
-from whisperx_legen_fork import asr, audio as wx_audio, alignment, utils
-# Import Vad from whisperx (canonical package, not the `whisperx_legen_fork` alias)
-# so that `DisabledVad` passes `asr.py`'s issubclass check — the fork alias
-# creates a duplicate Python class object that `asr.py`'s import doesn't recognize.
+from whisperx import alignment, asr, audio as wx_audio
+from whisperx.diarize import Segment as SegmentX
 from whisperx.vads import Vad
-from whisperx_legen_fork.diarize import Segment as SegmentX
 import whisper_utils
 import subtitle_utils
 from utils import time_task
@@ -72,38 +68,36 @@ def build_vad_model(vad_method: str):
     return None
 
 
+def _make_progress_callback(label: str):
+    last_percent = -1.0
+
+    def progress_callback(value):
+        nonlocal last_percent
+        try:
+            percent = float(value)
+        except (TypeError, ValueError):
+            return
+
+        percent = max(0.0, min(100.0, percent))
+        percent = max(last_percent, percent)
+        last_percent = percent
+        print(f"\r{label}: {percent:5.1f}%", end="", flush=True)
+
+    return progress_callback
+
+
 def transcribe_audio(model: asr.WhisperModel, audio_path: Path, srt_path: Path, lang: str = None, device: str = "cpu", batch_size: int = 4):
     audio = wx_audio.load_audio(file=audio_path.as_posix(), sr=model.model.feature_extractor.sampling_rate)
-        
-    # Define the progress callback function
-    def progress_callback(state, current: int = None, total: int = None):
-        args = state, current, total
-        args = [arg for arg in args if arg is not None]
-
-        if len(args) == 1:
-            state = args[0]
-        if len(args) > 1:
-            total = args[-1]
-            current = args[-2]
-            state = None
-        if len(args) > 2:
-            state = args[-3]
-
-        try:
-            if state is None:
-                state = "WhisperX"  
-            elif type(state) == 'String' or type(state) == int:
-                state = state
-            else:
-                state = state.value
-        except:
-            state = "WhisperX"
-
-        print('\r                                                            \r' + state + ((': ' + str(round(current/total*100)) + '%') if current and total else '') + ((' [' + str(current) + '/' + str(total) + ']') if current and total else ''), end=' ', flush=True)
 
     # Transcribe
     with time_task("Running WhisperX transcription engine...", end='\n'):
-        transcribe = model.transcribe(audio=audio, language=lang, batch_size=batch_size, on_progress=progress_callback)
+        transcribe = model.transcribe(
+            audio=audio,
+            language=lang,
+            batch_size=batch_size,
+            progress_callback=_make_progress_callback("WhisperX transcription"),
+        )
+        print()
 
     # Align if possible
     if lang in alignment.DEFAULT_ALIGN_MODELS_HF or lang in alignment.DEFAULT_ALIGN_MODELS_TORCH:
@@ -118,10 +112,31 @@ def transcribe_audio(model: asr.WhisperModel, audio_path: Path, srt_path: Path, 
         with time_task(message_start="Running alignment...", end='\n'):
             try:
                 model_a, metadata = alignment.load_align_model(language_code=lang, device=alignment_device)
-                transcribe = alignment.align(transcript=transcribe["segments"], model=model_a, align_model_metadata=metadata, audio=audio, device=alignment_device, return_char_alignments=True, on_progress=progress_callback)
+                transcribe = alignment.align(
+                    transcript=transcribe["segments"],
+                    model=model_a,
+                    align_model_metadata=metadata,
+                    audio=audio,
+                    device=alignment_device,
+                    return_char_alignments=True,
+                    progress_callback=_make_progress_callback("Alignment"),
+                )
+                print()
             except Exception:
+                print()
                 model_a, metadata = alignment.load_align_model(language_code=lang, device="cpu")  # force load on cpu due errors on gpu
-                transcribe = alignment.align(transcript=transcribe["segments"], model=model_a, align_model_metadata=metadata, audio=audio, device="cpu", return_char_alignments=True, on_progress=progress_callback)
+                try:
+                    transcribe = alignment.align(
+                        transcript=transcribe["segments"],
+                        model=model_a,
+                        align_model_metadata=metadata,
+                        audio=audio,
+                        device="cpu",
+                        return_char_alignments=True,
+                        progress_callback=_make_progress_callback("Alignment (CPU retry)"),
+                    )
+                finally:
+                    print()
     else:
         print(f"Language {lang} not suported for alignment. Skipping this step")
 

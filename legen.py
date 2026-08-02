@@ -393,7 +393,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     with time_task(message_start=f"\nLoading {args.transcription_engine} model: {wblue}{args.transcription_model}{default} ({transcription_compute_type}) on {wblue}{torch_device}{default}", end="\n"):
         if args.transcription_engine == 'whisperx':
             patch_torch_hub()
-            import whisperx_legen_fork as whisperx
+            import whisperx
             import whisperx_utils
 
             whisper_model = whisperx.load_model(
