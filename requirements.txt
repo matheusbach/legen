@@ -5,10 +5,9 @@ pysrt
 torch
 torchaudio<2.9
 tqdm
-whisper
 vidqa
 whisperx==3.8.6
 pyannote-audio>=4.0
 gemini-srt-translator
-google-generativeai
+google-genai
 yt-dlp

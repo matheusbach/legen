@@ -33,7 +33,6 @@ dependencies = [
     "torch",
     "torchaudio<2.9",
     "tqdm",
-    "whisper",
     "vidqa",
     "gemini-srt-translator",
     "google-genai",
