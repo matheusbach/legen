@@ -146,9 +146,9 @@ Full options list are described bellow:
 
 - `-c:a`, `--codec_audio`: Specifies the target audio codec. Default is aac. Examples include aac, libopus, mp3, vorbis.
 
-- `-o:s`, `--output_softsubs`: Specifies the path to the folder or output file for the video files with embedded softsub (embedded in the mp4 container and .srt files). Default is "softsubs_" followed by the input path.
+- `-o:s`, `--output_softsubs`: Specifies the path to the folder or output file for the video files with embedded softsub (embedded in the mp4 container and .srt files). For directory inputs, the default is the sibling `softsubs` folder. For direct-file inputs, the default is the legacy sibling `softsubs_<input filename>` path, unless an existing `legen_srt_<input filename>` compatibility path takes precedence. An explicit `--output_softsubs` value overrides both defaults.
 
-- `-o:h`, `--output_hardsubs`: Specifies the output folder path for video files with burned-in captions and embedded in the mp4 container. Default is "hardsubs_" followed by the input path.
+- `-o:h`, `--output_hardsubs`: Specifies the output folder path for video files with burned-in captions and embedded in the mp4 container. For directory inputs, the default is the sibling `hardsubs` folder. For direct-file inputs, the default is the legacy sibling `hardsubs_<input filename>` path, unless an existing `legen_burned_<input filename>` compatibility path takes precedence. An explicit `--output_hardsubs` value overrides both defaults.
 
 - `-o:d`, `--output_downloads`: Overrides the folder used to store media downloaded from URL inputs. Default is `./downloads` when `-i` receives a URL.
 
@@ -217,15 +217,15 @@ You can run LeGen inside a container, keeping the host Python environment clean 
 
 1. Build the image with `docker compose build` (or `docker compose pull` once a registry image is available).
 2. Place the media you want to process inside `./data` or mount a different host folder to `/data` when invoking Docker.
-3. Run LeGen through Compose: `docker compose run --rm legen -i /data/my-video.mp4 --translate pt`. All generated downloads and subtitles stay under the mapped `downloads`, `softsubs_m`, and `hardsubs_m` directories. Compose maps `./downloads` to `/app/downloads`, `./softsubs_m` to `/data/softsubs`, and `./hardsubs_m` to `/data/hardsubs`.
+3. Run LeGen through Compose: `docker compose run --rm legen -i /data/my-video.mp4 --translate pt --output_softsubs /data/softsubs --output_hardsubs /data/hardsubs`. The explicit output flags are intentional: they override input-type defaults so file, directory, and URL inputs persist under the mapped `softsubs_m` and `hardsubs_m` directories. Downloads stay under the mapped `downloads` directory. Compose maps `./downloads` to `/app/downloads`, `./softsubs_m` to `/data/softsubs`, and `./hardsubs_m` to `/data/hardsubs`.
 
-The Compose service does not request GPU resources and uses the CPU fallback unless GPU support is configured externally. For GPU execution, run the raw image with Docker's GPU flag and expose video encoding capabilities: `docker run --rm --gpus all -e NVIDIA_DRIVER_CAPABILITIES=compute,video,utility -v "$PWD/data:/data" -v "$PWD/downloads:/app/downloads" -v "$PWD/softsubs_m:/data/softsubs" -v "$PWD/hardsubs_m:/data/hardsubs" legen:local -i /data/my-video.mp4 --translate pt`. LeGen will detect the GPU automatically, but you can still override it with `--transcription_device` if needed.
+The Compose service does not request GPU resources and uses the CPU fallback unless GPU support is configured externally. For GPU execution, run the raw image with Docker's GPU flag and expose video encoding capabilities: `docker run --rm --gpus all -e NVIDIA_DRIVER_CAPABILITIES=compute,video,utility -v "$PWD/data:/data" -v "$PWD/downloads:/app/downloads" -v "$PWD/softsubs_m:/data/softsubs" -v "$PWD/hardsubs_m:/data/hardsubs" legen:local -i /data/my-video.mp4 --translate pt --output_softsubs /data/softsubs --output_hardsubs /data/hardsubs --codec_video h264_nvenc`. The `--codec_video h264_nvenc` flag selects hardware video encoding; Torch transcription can use a GPU independently and does not require NVENC. LeGen will detect the GPU automatically, but you can still override it with `--transcription_device` if needed.
 
 ### Passing CLI arguments inside Docker
-- Compose  command arguments override the default `--help`. Example: `docker compose run --rm legen -i /data/my-video.mp4 --translate pt --download_remote_subs`.
-- Provide Gemini keys when translating with Gemini: `docker compose run --rm legen --gemini_api_key YOUR_KEY -i /data/file.mp4 --translate_engine gemini --translate en`.
-- Forward a host environment variable: run `export GEMINI_API_KEY=YOUR_KEY` first, then `docker compose run --rm --env GEMINI_API_KEY="$GEMINI_API_KEY" legen --gemini_api_key "$GEMINI_API_KEY" -i /data/file.mp4 --translate_engine gemini --translate en`.
-- Run the raw image without Compose: `docker run --rm -it -v "$PWD/data:/data" -v "$PWD/downloads:/app/downloads" -v "$PWD/softsubs_m:/data/softsubs" -v "$PWD/hardsubs_m:/data/hardsubs" legen:local -i /data/input.mp4 --disable_hardsubs`.
+- Compose  command arguments override the default `--help`. Example: `docker compose run --rm legen -i /data/my-video.mp4 --translate pt --download_remote_subs --output_softsubs /data/softsubs --output_hardsubs /data/hardsubs`.
+- Provide Gemini keys when translating with Gemini: `docker compose run --rm legen --gemini_api_key YOUR_KEY -i /data/file.mp4 --translate_engine gemini --translate en --output_softsubs /data/softsubs --output_hardsubs /data/hardsubs`.
+- Forward a host environment variable: run `export GEMINI_API_KEY=YOUR_KEY` first, then `docker compose run --rm --env GEMINI_API_KEY="$GEMINI_API_KEY" legen --gemini_api_key "$GEMINI_API_KEY" -i /data/file.mp4 --translate_engine gemini --translate en --output_softsubs /data/softsubs --output_hardsubs /data/hardsubs`.
+- Run the raw image without Compose: `docker run --rm -it -v "$PWD/data:/data" -v "$PWD/downloads:/app/downloads" -v "$PWD/softsubs_m:/data/softsubs" -v "$PWD/hardsubs_m:/data/hardsubs" legen:local -i /data/input.mp4 --disable_hardsubs --output_softsubs /data/softsubs --output_hardsubs /data/hardsubs`.
 - Keep the container running interactively for multiple executions by starting a shell: `docker compose run --rm --entrypoint /bin/bash legen`.
 - List all CLI options from inside the container: `docker compose run --rm legen --help`.
 
@@ -234,6 +234,8 @@ The Compose service does not request GPU resources and uses the CPU fallback unl
 LeGen automatically selects the best accelerator at runtime (`cuda` > `mps` > `cpu`). When a compatible GPU is available, transcription and alignment transparently run on it; otherwise the pipeline falls back to the CPU. You can still force a specific backend with `--transcription_device`.
 
 With Docker, the default image build installs the CUDA-enabled PyTorch wheels, but this does not allocate GPU resources to the Compose service. Use the raw Docker invocation above with `--gpus all` to expose GPUs and video encoding capabilities through the NVIDIA Container Toolkit. If you need a CPU-only image, build with `docker compose build --build-arg PYTORCH_INSTALL_CUDA=false`.
+
+`PYTORCH_CUDA_INDEX_URL` selects the package index or mirror only; the Dockerfile still pins the packages to the `+cu128` tags. Changing CUDA versions requires changing those pinned package tags as well.
 
 ## Dependencies
 
