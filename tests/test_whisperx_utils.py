@@ -1,4 +1,3 @@
-import importlib
 import io
 import re
 import unittest
@@ -8,10 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 
-try:
-    whisperx_utils = importlib.import_module("whisperx_utils")
-except ModuleNotFoundError:  # pragma: no cover - dependency chain might be missing
-    whisperx_utils = None
+import whisperx_utils
 
 
 class _FakeWhisperModel:
@@ -30,7 +26,6 @@ class _FakeWhisperModel:
         }
 
 
-@unittest.skipIf(whisperx_utils is None, "whisperx_utils dependencies are unavailable")
 class ProgressAdapterTests(unittest.TestCase):
     def test_formats_float_progress_and_never_decreases(self):
         callback = whisperx_utils._make_progress_callback("WhisperX transcription")
@@ -57,49 +52,59 @@ class ProgressAdapterTests(unittest.TestCase):
         self.assertEqual(output.getvalue(), "")
 
 
-@unittest.skipIf(whisperx_utils is None, "whisperx_utils dependencies are unavailable")
 class UpstreamKeywordTests(unittest.TestCase):
     def test_transcription_uses_progress_callback_not_on_progress(self):
         model = _FakeWhisperModel()
+        output = io.StringIO()
 
-        with patch.object(whisperx_utils.wx_audio, "load_audio", return_value=object()), \
-             patch.object(whisperx_utils.subtitle_utils, "format_segments", return_value=[]), \
-             patch.object(whisperx_utils.subtitle_utils, "SaveSegmentsToSrt"):
-            whisperx_utils.transcribe_audio(
-                model,
-                Path("input.wav"),
-                Path("output.srt"),
-                lang="xx",
-            )
+        with redirect_stdout(output):
+            with patch.object(whisperx_utils.wx_audio, "load_audio", return_value=object()), \
+                 patch.object(whisperx_utils.subtitle_utils, "format_segments", return_value=[]), \
+                 patch.object(whisperx_utils.subtitle_utils, "SaveSegmentsToSrt"):
+                whisperx_utils.transcribe_audio(
+                    model,
+                    Path("input.wav"),
+                    Path("output.srt"),
+                    lang="xx",
+                )
 
+        self.assertIn("WhisperX transcription:", output.getvalue())
         self.assertIn("progress_callback", model.kwargs)
         self.assertNotIn("on_progress", model.kwargs)
 
     def test_alignment_uses_progress_callback_not_on_progress(self):
         model = _FakeWhisperModel()
-        align_kwargs = {}
+        align_calls = []
 
         def fake_align(**kwargs):
-            align_kwargs.update(kwargs)
+            align_calls.append(kwargs)
+            if len(align_calls) == 1:
+                raise RuntimeError("force alignment fallback")
             kwargs["progress_callback"](100.0)
             return {"segments": [], "language": "en"}
 
-        with patch.object(whisperx_utils.wx_audio, "load_audio", return_value=object()), \
-             patch.object(whisperx_utils.alignment, "DEFAULT_ALIGN_MODELS_HF", {"en"}), \
-             patch.object(whisperx_utils.alignment, "DEFAULT_ALIGN_MODELS_TORCH", set()), \
-             patch.object(whisperx_utils.alignment, "load_align_model", return_value=(object(), {})), \
-             patch.object(whisperx_utils.alignment, "align", side_effect=fake_align), \
-             patch.object(whisperx_utils.subtitle_utils, "format_segments", return_value=[]), \
-             patch.object(whisperx_utils.subtitle_utils, "SaveSegmentsToSrt"):
-            whisperx_utils.transcribe_audio(
-                model,
-                Path("input.wav"),
-                Path("output.srt"),
-                lang="en",
-            )
+        output = io.StringIO()
+        with redirect_stdout(output):
+            with patch.object(whisperx_utils.wx_audio, "load_audio", return_value=object()), \
+                 patch.object(whisperx_utils.alignment, "DEFAULT_ALIGN_MODELS_HF", {"en"}), \
+                 patch.object(whisperx_utils.alignment, "DEFAULT_ALIGN_MODELS_TORCH", set()), \
+                 patch.object(whisperx_utils.alignment, "load_align_model", return_value=(object(), {})) as load_align_model, \
+                 patch.object(whisperx_utils.alignment, "align", side_effect=fake_align), \
+                 patch.object(whisperx_utils.subtitle_utils, "format_segments", return_value=[]), \
+                 patch.object(whisperx_utils.subtitle_utils, "SaveSegmentsToSrt"):
+                whisperx_utils.transcribe_audio(
+                    model,
+                    Path("input.wav"),
+                    Path("output.srt"),
+                    lang="en",
+                )
 
-        self.assertIn("progress_callback", align_kwargs)
-        self.assertNotIn("on_progress", align_kwargs)
+        self.assertIn("Alignment:", output.getvalue())
+        self.assertEqual(len(align_calls), 2)
+        self.assertEqual(load_align_model.call_count, 2)
+        for kwargs in align_calls:
+            self.assertIn("progress_callback", kwargs)
+            self.assertNotIn("on_progress", kwargs)
 
 
 if __name__ == "__main__":  # pragma: no cover
