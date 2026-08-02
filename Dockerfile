@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 
 ARG PYTORCH_INSTALL_CUDA=true
-ARG PYTORCH_CUDA_INDEX_URL=https://download.pytorch.org/whl/cu121
+ARG PYTORCH_CUDA_INDEX_URL=https://download.pytorch.org/whl/cu128
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
@@ -21,6 +21,11 @@ RUN pip install --no-cache-dir --upgrade pip \
     fi
 
 COPY . .
+
+# Pre-bundle the speaker diarization model (~33 MB) from ModelScope so users of
+# the image can run `legen --diarize` without an internet connection or token.
+# Downloads are skipped if the cache is already valid.
+RUN python -c "from diarization_utils import ensure_diarization_model; ensure_diarization_model()"
 
 ENTRYPOINT ["python", "legen.py"]
 CMD ["--help"]

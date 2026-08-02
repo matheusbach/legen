@@ -66,7 +66,7 @@ Install FFMpeg from [FFMPeg Oficial Site](https://ffmpeg.org/download.html) or f
 
 Install [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 
-Install [Python](https://www.python.org/downloads/) Recomended version: 3.12.x (LeGen currently supports CPython 3.9 up to 3.12). _If using windows, select "Add to PATH" option when installing_
+Install [Python](https://www.python.org/downloads/) Recomended version: 3.12.x (LeGen currently supports Python 3.10-3.12). _If using windows, select "Add to PATH" option when installing_
 
 Clone LeGen using git
 ```sh
@@ -187,6 +187,30 @@ When you pass a HTTP(S) URL to `-i`, LeGen will:
 
 If the value supplied to `-i` is neither a reachable URL nor a valid local file/folder, LeGen will abort with a clear error message so you can correct the input.
 
+### Speaker diarization (`--diarize`)
+
+LeGen can identify the active speaker in each segment and tag subtitle lines with `[SPEAKER_NN]` prefixes (e.g. `[SPEAKER_00] Hello there`). Enable it with `--diarize`.
+
+```sh
+legen -i video.mp4 --translate pt --diarize
+```
+
+Useful flags:
+
+| Flag | Description |
+| --- | --- |
+| `--diarize` | Enable speaker diarization. Adds `[SPEAKER_NN]` prefix to each subtitle line. |
+| `--min_speakers N` | Hint the minimum number of speakers when known. Improves accuracy. |
+| `--max_speakers N` | Hint the maximum number of speakers when known. Improves accuracy. |
+
+With the normal `pyannote-audio` 4.x setup, LeGen uses the `pyannote/speaker-diarization-community-1` pipeline. On first use it downloads the public model files (~33 MB total) from ModelScope into `~/.cache/legen/models/diarization-community-1/`; subsequent runs reuse the cache without internet access. No Hugging Face account or API token is needed. For defensive compatibility only, environments using `pyannote-audio` below 4.0 fall back to the legacy 3.1 model and `~/.cache/legen/models/diarization-3.1/`. The Docker image already bundles the model, so container users never download it at runtime.
+
+Limitations:
+
+- Diarization is far from perfect — overlapped speech and very short turns can be misassigned.
+- When the number of speakers is unknown it is auto-detected, with occasional miscounts. Supply `--min_speakers` / `--max_speakers` whenever you know the count to improve the result.
+- Speaker labels survive translation: LeGen strips `[SPEAKER_NN]` before sending text to the translator and re-adds them afterwards, so they are never dropped or translated.
+
 ## Run with Docker
 
 You can run LeGen inside a container, keeping the host Python environment clean while still persisting downloads and outputs on disk.
@@ -216,13 +240,13 @@ With Docker, the image installs the CUDA-enabled PyTorch wheels by default. Expo
 LeGen requires the following **pip** dependencies to be installed:
 - deep_translator
 - ffmpeg_progress_yield
-- openai_whisper
+- openai-whisper
 - pysrt
 - torch
 - tqdm
-- whisper
 - vidqa
-- whisperx-legen-fork (legen flavored fork from m-bain/whisperx)
+- whisperx==3.8.6 (upstream WhisperX)
+- pyannote-audio>=4.0
 - gemini-srt-translator
 - yt-dlp
 

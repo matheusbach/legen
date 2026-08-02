@@ -4,7 +4,7 @@ services:
       context: .
       args:
         PYTORCH_INSTALL_CUDA: ${PYTORCH_INSTALL_CUDA:-true}
-        PYTORCH_CUDA_INDEX_URL: ${PYTORCH_CUDA_INDEX_URL:-https://download.pytorch.org/whl/cu121}
+        PYTORCH_CUDA_INDEX_URL: ${PYTORCH_CUDA_INDEX_URL:-https://download.pytorch.org/whl/cu128}
     image: legen:local
     volumes:
       - ./data:/data
