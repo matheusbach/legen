@@ -9,6 +9,6 @@ services:
     volumes:
       - ./data:/data
       - ./downloads:/app/downloads
-      - ./softsubs_m:/app/softsubs_m
-      - ./hardsubs_m:/app/hardsubs_m
+      - ./softsubs_m:/data/softsubs
+      - ./hardsubs_m:/data/hardsubs
     command: ["--help"]
