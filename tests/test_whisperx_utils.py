@@ -79,6 +79,7 @@ class UpstreamKeywordTests(unittest.TestCase):
         def fake_align(**kwargs):
             align_calls.append(kwargs)
             if len(align_calls) == 1:
+                kwargs["progress_callback"](50.0)
                 raise RuntimeError("force alignment fallback")
             kwargs["progress_callback"](100.0)
             return {"segments": [], "language": "en"}
@@ -100,6 +101,7 @@ class UpstreamKeywordTests(unittest.TestCase):
                 )
 
         self.assertIn("Alignment:", output.getvalue())
+        self.assertIn("Alignment (CPU retry):", output.getvalue())
         self.assertEqual(len(align_calls), 2)
         self.assertEqual(load_align_model.call_count, 2)
         self.assertEqual(align_calls[1]["device"], "cpu")
