@@ -17,7 +17,7 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
     && if [ "${PYTORCH_INSTALL_CUDA}" = "true" ] && [ -n "${PYTORCH_CUDA_INDEX_URL}" ]; then \
-        pip install --no-cache-dir --upgrade torch --index-url "${PYTORCH_CUDA_INDEX_URL}"; \
+        pip install --no-cache-dir torch==2.8.0+cu128 torchaudio==2.8.0+cu128 torchvision==0.23.0+cu128 --index-url "${PYTORCH_CUDA_INDEX_URL}"; \
     fi
 
 COPY . .

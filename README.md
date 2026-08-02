@@ -219,7 +219,7 @@ You can run LeGen inside a container, keeping the host Python environment clean 
 2. Place the media you want to process inside `./data` or mount a different host folder to `/data` when invoking Docker.
 3. Run LeGen through Compose: `docker compose run --rm legen -i /data/my-video.mp4 --translate pt`. All generated downloads and subtitles stay under the mapped `downloads`, `softsubs_m`, and `hardsubs_m` directories.
 
-To use a GPU-enabled Docker setup, add `--gpus all` to the compose command (Docker Engine 19.03+ with the NVIDIA Container Toolkit). LeGen will detect the GPU automatically, but you can still override it with `--transcription_device` if needed.
+To use a GPU-enabled Docker setup, run the raw image with Docker's GPU flag: `docker run --rm --gpus all -v "$PWD/data:/data" -v "$PWD/downloads:/app/downloads" -v "$PWD/softsubs_m:/app/softsubs_m" -v "$PWD/hardsubs_m:/app/hardsubs_m" legen:local -i /data/my-video.mp4 --translate pt`. The Compose invocation above remains valid without `--gpus all` (Docker Engine 19.03+ with the NVIDIA Container Toolkit). LeGen will detect the GPU automatically, but you can still override it with `--transcription_device` if needed.
 
 ### Passing CLI arguments inside Docker
 - Compose  command arguments override the default `--help`. Example: `docker compose run --rm legen -i /data/my-video.mp4 --translate pt --download_remote_subs`.
@@ -233,21 +233,23 @@ To use a GPU-enabled Docker setup, add `--gpus all` to the compose command (Dock
 
 LeGen automatically selects the best accelerator at runtime (`cuda` > `mps` > `cpu`). When a compatible GPU is available, transcription and alignment transparently run on it; otherwise the pipeline falls back to the CPU. You can still force a specific backend with `--transcription_device`.
 
-With Docker, the image installs the CUDA-enabled PyTorch wheels by default. Expose GPUs to the container using the NVIDIA Container Toolkit (`docker compose run --rm --gpus all legen ...`). If you need a CPU-only image, build with `docker compose build --build-arg PYTORCH_INSTALL_CUDA=false`.
+With Docker, the image installs the CUDA-enabled PyTorch wheels by default. Use the raw Docker invocation above with `--gpus all` to expose GPUs through the NVIDIA Container Toolkit. If you need a CPU-only image, build with `docker compose build --build-arg PYTORCH_INSTALL_CUDA=false`.
 
 ## Dependencies
 
 LeGen requires the following **pip** dependencies to be installed:
-- deep_translator
-- ffmpeg_progress_yield
+- deep-translator
+- ffmpeg-progress-yield
 - openai-whisper
 - pysrt
 - torch
+- torchaudio<2.9
 - tqdm
 - vidqa
 - whisperx==3.8.6 (upstream WhisperX)
 - pyannote-audio>=4.0
 - gemini-srt-translator
+- google-genai
 - yt-dlp
 
 This dependencies can be installed and updated with ```pip install -r requirements.txt --upgrade```
