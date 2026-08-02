@@ -128,6 +128,12 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Voice activity detector to segment audio before transcription when using whisperx. Use 'none' (also 'disabled'/'off') to disable VAD and transcribe all audio. Defaults to silero (CPU friendly).")
     parser.add_argument("-ts:b", "--transcription_batch", type=int, default=4,
                         help="Number of simultaneous segments being transcribed. Higher values will speed up processing. If you have low RAM/VRAM, long duration media files or have buggy subtitles, reduce this value to avoid issues. Only works using transcription_engine whisperx. (default: 4)")
+    parser.add_argument("--diarize", default=False, action="store_true",
+                        help="Enable speaker diarization (adds [SPEAKER_NN] prefix to each subtitle line). Downloads the pyannote/speaker-diarization-community-1 model (~33 MB) from ModelScope on first use; no Hugging Face token is required.")
+    parser.add_argument("--min_speakers", type=int, default=None,
+                        help="Minimum number of speakers for diarization, if known. Improves accuracy when provided.")
+    parser.add_argument("--max_speakers", type=int, default=None,
+                        help="Maximum number of speakers for diarization, if known. Improves accuracy when provided.")
     parser.add_argument("--translate", type=str, default="none",
                         help="Translate subtitles to language code if not the same as origin. (default: don't translate)")
     parser.add_argument("--translate_engine", type=str, default="google",
@@ -147,9 +153,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("-c:a", "--codec_audio", type=str, default="aac", metavar="AUDIO_CODEC",
                         help="Target audio codec. (default: aac). Ex: aac, libopus, mp3, vorbis")
     parser.add_argument("-o:s", "--output_softsubs", default=None, type=Path,
-                        help="Path to the folder or output file for the video files with embedded softsub (embedded in the mp4 container and .srt files). (default: softsubs_ + input_path)")
+                        help="Path to the folder or output file for the video files with embedded softsub (embedded in the mp4 container and .srt files). Direct-file inputs default to sibling softsubs; non-file inputs default to existing legen_srt_<input name> or softsubs_<input name>. Explicit --output_softsubs overrides these defaults.")
     parser.add_argument("-o:h", "--output_hardsubs", default=None, type=Path,
-                        help="Output folder path for video files with burned-in captions and embedded in the mp4 container. (default: hardsubs_ + input_path)")
+                        help="Output folder path for video files with burned-in captions and embedded in the mp4 container. Direct-file inputs default to sibling hardsubs; non-file inputs default to existing legen_burned_<input name> or hardsubs_<input name>. Explicit --output_hardsubs overrides these defaults.")
     parser.add_argument("-o:d", "--output_downloads", default=None, type=Path,
                         help="Destination folder for videos downloaded from URL inputs. (default: ./downloads)")
     parser.add_argument("--overwrite", default=False, action="store_true",
@@ -536,11 +542,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                                 if args.transcription_engine == 'whisperx':
                                     print(f"{wblue}Transcribing{default} with {gray}WhisperX{default}")
                                     whisperx_utils.transcribe_audio(
-                                        whisper_model, audio_extracted.getpath(), transcribed_srt_temp.getpath(), audio_language, device=torch_device, batch_size=args.transcription_batch)
+                                        whisper_model, audio_extracted.getpath(), transcribed_srt_temp.getpath(), audio_language, device=torch_device, batch_size=args.transcription_batch,
+                                        diarize=args.diarize, min_speakers=args.min_speakers, max_speakers=args.max_speakers)
                                 if args.transcription_engine == 'whisper':
                                     print(f"{wblue}Transcribing{default} with {gray}Whisper{default}")
                                     whisper_utils.transcribe_audio(
-                                        model=whisper_model, audio_path=audio_extracted.getpath(), srt_path=transcribed_srt_temp.getpath(), lang=audio_language, disable_fp16=False if transcription_compute_type == "float16" or transcription_compute_type == "fp16" else True)
+                                        model=whisper_model, audio_path=audio_extracted.getpath(), srt_path=transcribed_srt_temp.getpath(), lang=audio_language, disable_fp16=False if transcription_compute_type == "float16" or transcription_compute_type == "fp16" else True,
+                                        diarize=args.diarize, min_speakers=args.min_speakers, max_speakers=args.max_speakers)
 
                                 audio_extracted.destroy()
                                 if not args.disable_srt:
