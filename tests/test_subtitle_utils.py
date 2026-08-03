@@ -70,6 +70,74 @@ class SubtitleUtilsTests(unittest.TestCase):
         adjusted = subtitle_utils.adjust_times([dict(seg) for seg in segments], extra_end_time=1.0)
         self.assertEqual(adjusted[0]["end"], segments[1]["start"])
 
+    def test_format_speaker_prefix_none(self):
+        self.assertEqual(subtitle_utils.format_speaker_prefix(None), "")
+
+    def test_format_speaker_prefix_unknown(self):
+        self.assertEqual(subtitle_utils.format_speaker_prefix("UNKNOWN"), "")
+
+    def test_format_speaker_prefix_empty(self):
+        self.assertEqual(subtitle_utils.format_speaker_prefix(""), "")
+
+    def test_format_speaker_prefix_speaker_00(self):
+        self.assertEqual(subtitle_utils.format_speaker_prefix("SPEAKER_00"), "[SPEAKER_00] ")
+
+    def test_format_speaker_prefix_speaker_07(self):
+        self.assertEqual(subtitle_utils.format_speaker_prefix("SPEAKER_07"), "[SPEAKER_07] ")
+
+    def test_save_srt_with_speaker_prefix(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            srt_path = Path(tmpdir) / "out.srt"
+            segments = [
+                {"start": 0.0, "end": 1.0, "text": "Olá mundo", "speaker": "SPEAKER_00"},
+                {"start": 1.5, "end": 2.5, "text": "Tudo bem?", "speaker": "SPEAKER_01"},
+            ]
+            subtitle_utils.SaveSegmentsToSrt(segments, srt_path)
+            content = srt_path.read_text(encoding="utf-8")
+            self.assertIn("[SPEAKER_00] Olá mundo", content)
+            self.assertIn("[SPEAKER_01] Tudo bem?", content)
+
+    def test_save_srt_without_speaker_has_no_prefix(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            srt_path = Path(tmpdir) / "out.srt"
+            segments = [
+                {"start": 0.0, "end": 1.0, "text": "Olá mundo"},
+            ]
+            subtitle_utils.SaveSegmentsToSrt(segments, srt_path)
+            content = srt_path.read_text(encoding="utf-8")
+            self.assertNotIn("[SPEAKER", content)
+            self.assertIn("Olá mundo", content)
+
+    def test_save_srt_unknown_speaker_has_no_prefix(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            srt_path = Path(tmpdir) / "out.srt"
+            segments = [
+                {"start": 0.0, "end": 1.0, "text": "Olá mundo", "speaker": "UNKNOWN"},
+            ]
+            subtitle_utils.SaveSegmentsToSrt(segments, srt_path)
+            content = srt_path.read_text(encoding="utf-8")
+            self.assertNotIn("[SPEAKER", content)
+
+    @patch("subtitle_utils.string_width", side_effect=lambda text, *_: len(text) * 100)
+    def test_split_segments_preserves_speaker(self, mock_width):
+        segments = [{
+            "text": "Hello brave new world",
+            "start": 0.0,
+            "end": 4.0,
+            "speaker": "SPEAKER_00",
+            "words": [
+                {"word": "Hello", "start": 0.0, "end": 0.5},
+                {"word": "brave", "start": 0.5, "end": 1.0},
+                {"word": "new", "start": 1.0, "end": 1.5},
+                {"word": "world", "start": 1.5, "end": 2.0},
+            ],
+        }]
+
+        result = subtitle_utils.split_segments(segments, max_width_px=200)
+        self.assertGreaterEqual(len(result), 2)
+        for seg in result:
+            self.assertEqual(seg.get("speaker"), "SPEAKER_00")
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

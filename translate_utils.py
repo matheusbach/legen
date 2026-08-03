@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import asyncio
 import os
+import re
+import tempfile
 from pathlib import Path
 from typing import Sequence
 
@@ -18,6 +20,38 @@ from gemini_utils import (
 )
 
 _printed_gemini_translate_params = False
+
+# Matches a leading `[SPEAKER_NN]` speaker prefix in a subtitle line (added by
+# diarization). We strip these before sending text to translation and restore
+# them afterwards so the translator never gets a chance to translate, reorder,
+# or drop the speaker tags.
+_SPEAKER_PREFIX_RE = re.compile(r"^\[SPEAKER_\d+\]\s*", re.MULTILINE)
+
+
+def _strip_speaker_prefixes(subs: pysrt.SubRipFile) -> list[str]:
+    """Remove leading `[SPEAKER_NN] ` from each subtitle line (in place).
+
+    Returns the list of stripped prefixes (one per subtitle, `""` when there
+    was none) so callers can restore them with `_restore_speaker_prefixes`.
+    """
+    prefixes: list[str] = []
+    for sub in subs:
+        text = sub.text
+        match = _SPEAKER_PREFIX_RE.match(text)
+        if match:
+            prefixes.append(match.group(0))
+            sub.text = text[match.end():]
+        else:
+            prefixes.append("")
+    return prefixes
+
+
+def _restore_speaker_prefixes(subs: pysrt.SubRipFile, prefixes: Sequence[str]) -> None:
+    """Prepend the stored `[SPEAKER_NN] ` prefixes back to `subs` (in place)."""
+    for i, sub in enumerate(subs):
+        if i >= len(prefixes) or not prefixes[i]:
+            continue
+        sub.text = prefixes[i] + sub.text.lstrip()
 
 # all entence endings for japanese and normal people languages
 sentence_endings = ['.', '!', '?', ')', 'よ', 'ね',
@@ -49,6 +83,11 @@ def translate_srt_file(
     # Load the original SRT file
     subs = pysrt.open(srt_file_path, encoding='utf-8')
 
+    # Strip any `[SPEAKER_NN]` diarization prefixes before translation and
+    # reattach them after — keeps the speaker tag out of the translator's
+    # input/output and guarantees it survives unchanged.
+    speaker_prefixes = _strip_speaker_prefixes(subs)
+
     # Extract the subtitle content and store it in a list. Also rejoin all lines splited
     sub_content = [' '.join(sub.text.strip().splitlines()) for sub in subs]
 
@@ -61,9 +100,23 @@ def translate_srt_file(
         Path(translated_subtitle_path).unlink(missing_ok=True)
         Path(str(translated_subtitle_path) + ".progress").unlink(missing_ok=True)
 
+        # Gemini translator reads the SRT file directly, so we have to write a
+        # temp stripped copy (speaker prefixes already removed in `subs`).
+        any_prefix = any(prefix for prefix in speaker_prefixes)
+        if any_prefix:
+            tmp_input = tempfile.NamedTemporaryFile(
+                mode="wb", suffix=".srt", delete=False, prefix="legen_stripped_"
+            )
+            tmp_input.close()
+            stripped_input_path = Path(tmp_input.name)
+            subs.save(stripped_input_path, encoding="utf-8")
+            input_file_for_gemini = stripped_input_path
+        else:
+            input_file_for_gemini = srt_file_path
+
         config = GeminiTranslationConfig(
             api_keys=api_keys,
-            input_file=srt_file_path,
+            input_file=input_file_for_gemini,
             output_file=translated_subtitle_path,
             target_language=target_lang,
             resume=False,
@@ -82,6 +135,16 @@ def translate_srt_file(
             )
 
         subs = translate_with_gemini(config)
+
+        # Restore speaker prefixes on the translated output
+        if any_prefix:
+            _restore_speaker_prefixes(subs, speaker_prefixes)
+            os.makedirs(translated_subtitle_path.parent, exist_ok=True)
+            subs.save(translated_subtitle_path, encoding='utf-8')
+            try:
+                stripped_input_path.unlink(missing_ok=True)
+            except OSError:
+                pass
 
         return subs
 
@@ -137,6 +200,9 @@ def translate_srt_file(
     # Combine the original and translated subtitle content
     for i, sub in enumerate(subs):
         sub.text = unjoined_texts[i]
+
+    # Reattach any `[SPEAKER_NN]` prefixes we stripped before translation.
+    _restore_speaker_prefixes(subs, speaker_prefixes)
 
     # Save the translated SRT file
     os.makedirs(translated_subtitle_path.parent, exist_ok=True)

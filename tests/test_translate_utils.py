@@ -5,6 +5,11 @@ from pathlib import Path
 from unittest import mock
 
 try:
+    import pysrt
+except ModuleNotFoundError:  # pragma: no cover
+    pysrt = None
+
+try:
     translate_utils = importlib.import_module("translate_utils")
 except ModuleNotFoundError:  # pragma: no cover - dependency chain might be missing
     translate_utils = None
@@ -151,6 +156,56 @@ class TranslateUtilsTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(translate_mock.call_args.kwargs.get("gemini_model"), "gemini-3.1-flash-lite")
+
+    @unittest.skipIf(pysrt is None, "pysrt unavailable")
+    def test_strip_speaker_prefixes_removes_prefixes_and_returns_list(self):
+        subs = pysrt.SubRipFile()
+        subs.append(pysrt.SubRipItem(index=1, text="[SPEAKER_00] Hello world", start=pysrt.SubRipTime(0), end=pysrt.SubRipTime(1)))
+        subs.append(pysrt.SubRipItem(index=2, text="[SPEAKER_01] Hi there", start=pysrt.SubRipTime(1), end=pysrt.SubRipTime(2)))
+        subs.append(pysrt.SubRipItem(index=3, text="No prefix here", start=pysrt.SubRipTime(2), end=pysrt.SubRipTime(3)))
+
+        prefixes = translate_utils._strip_speaker_prefixes(subs)
+
+        self.assertEqual(prefixes, ["[SPEAKER_00] ", "[SPEAKER_01] ", ""])
+        self.assertEqual(subs[0].text, "Hello world")
+        self.assertEqual(subs[1].text, "Hi there")
+        self.assertEqual(subs[2].text, "No prefix here")
+
+    @unittest.skipIf(pysrt is None, "pysrt unavailable")
+    def test_restore_speaker_prefixes_prepends_prefix(self):
+        subs = pysrt.SubRipFile()
+        subs.append(pysrt.SubRipItem(index=1, text="Olá mundo", start=pysrt.SubRipTime(0), end=pysrt.SubRipTime(1)))
+        subs.append(pysrt.SubRipItem(index=2, text="Tudo bem?", start=pysrt.SubRipTime(1), end=pysrt.SubRipTime(2)))
+        subs.append(pysrt.SubRipItem(index=3, text="Sem prefixo", start=pysrt.SubRipTime(2), end=pysrt.SubRipTime(3)))
+
+        prefixes = ["[SPEAKER_00] ", "[SPEAKER_01] ", ""]
+
+        translate_utils._restore_speaker_prefixes(subs, prefixes)
+
+        self.assertEqual(subs[0].text, "[SPEAKER_00] Olá mundo")
+        self.assertEqual(subs[1].text, "[SPEAKER_01] Tudo bem?")
+        self.assertEqual(subs[2].text, "Sem prefixo")
+
+    @unittest.skipIf(pysrt is None, "pysrt unavailable")
+    def test_strip_and_restore_round_trip_preserves_text(self):
+        original_texts = [
+            "[SPEAKER_00] Hello world",
+            "[SPEAKER_01] Hi there",
+            "No prefix here",
+        ]
+        subs = pysrt.SubRipFile()
+        for i, text in enumerate(original_texts):
+            subs.append(pysrt.SubRipItem(index=i + 1, text=text, start=pysrt.SubRipTime(i), end=pysrt.SubRipTime(i + 1)))
+
+        prefixes = translate_utils._strip_speaker_prefixes(subs)
+        # Simulate translation: each text gets translated (here we just uppercase as stand-in)
+        for sub in subs:
+            sub.text = sub.text.upper()
+        translate_utils._restore_speaker_prefixes(subs, prefixes)
+
+        self.assertEqual(subs[0].text, "[SPEAKER_00] HELLO WORLD")
+        self.assertEqual(subs[1].text, "[SPEAKER_01] HI THERE")
+        self.assertEqual(subs[2].text, "NO PREFIX HERE")
 
 
 if __name__ == "__main__":  # pragma: no cover

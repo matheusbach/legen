@@ -62,6 +62,17 @@ def export_plain_text_from_srt(source, output_path: Path) -> str:
     return plain_text
 
 
+def format_speaker_prefix(speaker) -> str:
+    """Render a speaker label as a `[SPEAKER_NN]` subtitle prefix.
+
+    Returns an empty string when the speaker is missing or unknown so that
+    subtitles without diarization remain unchanged.
+    """
+    if not speaker or speaker == "UNKNOWN":
+        return ""
+    return f"[{speaker}] "
+
+
 def SaveSegmentsToSrt(segments: list, output_path: Path):
     # Create the subtitle file
     subs = pysrt.SubRipFile()
@@ -72,7 +83,8 @@ def SaveSegmentsToSrt(segments: list, output_path: Path):
         end_time = segments[i]["end"]
         duration = end_time - start_time
         timestamp = f"{start_time:.3f} - {end_time:.3f}"
-        text = segments[i]["text"]
+        speaker_prefix = format_speaker_prefix(segments[i].get("speaker"))
+        text = speaker_prefix + segments[i]["text"]
 
         sub = pysrt.SubRipItem(index=sub_idx, start=pysrt.SubRipTime(seconds=start_time),
                                end=pysrt.SubRipTime(seconds=end_time), text=text)
@@ -118,6 +130,7 @@ def split_segments(segments, max_width_px=1440, font_name="Jost", font_size=18):
         words = segment['words']
         current_words = []
         current_width = 0
+        segment_speaker = segment.get('speaker')
 
         for word in words:
             # Calculate the width with a space after the word
@@ -136,7 +149,8 @@ def split_segments(segments, max_width_px=1440, font_name="Jost", font_size=18):
                     'text': ' '.join(word['word'] for word in current_words),
                     'start': next((word['start'] for word in current_words if 'start' in word), segment['start']),
                     'end': next((word['end'] for word in reversed(current_words) if 'end' in word), segment['end']),
-                    'words': current_words.copy()
+                    'words': current_words.copy(),
+                    'speaker': segment_speaker,
                 })
                 current_words = [word]
                 current_width = added_width
@@ -147,7 +161,8 @@ def split_segments(segments, max_width_px=1440, font_name="Jost", font_size=18):
                 'text': ' '.join(word['word'] for word in current_words),
                 'start': next((word['start'] for word in current_words if 'start' in word), segment['start']),
                 'end': next((word['end'] for word in reversed(current_words) if 'end' in word), segment['end']),
-                'words': current_words
+                'words': current_words,
+                'speaker': segment_speaker,
             })
 
     return new_segments

@@ -604,6 +604,7 @@ function buildGeminiPrompt(targetLanguage: string, payload: string, additionalPr
     '5. Do NOT add extra keys, metadata, explanations, or Markdown.',
     '6. Do NOT wrap the response in code fences(no ```json).',
     '7. Return ONLY valid JSON array of objects: [{"id": number, "text": string}, ...].',
+    '8. PRESERVE SPEAKER TAGS: If a line starts with a speaker tag like `[SPEAKER_00]` or `[SPEAKER_01]`, keep the tag verbatim at the start of the translated line. Do NOT translate it, remove it, reorder it, or otherwise modify it. Only translate the text after the tag.',
     ...buildAdditionalPromptBlock(additionalPrompt),
     'Input JSON:',
     payload,
