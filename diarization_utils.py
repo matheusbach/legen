@@ -380,13 +380,11 @@ def _make_diarization_hook(progress_bar):
                 }
                 speaker_count = len(speakers)
             else:
-                # pyannote 4.x emits a SlidingWindowFeature before Annotation conversion.
+                # pyannote 4.x emits a 2-D SlidingWindowFeature before Annotation conversion.
                 try:
-                    shape = getattr(getattr(step_artefact, "data", None), "shape", ())
-                    speaker_count = int(shape[-1]) if len(shape) else 0
-                    if speaker_count < 0:
-                        speaker_count = 0
-                except (IndexError, OverflowError, TypeError, ValueError):
+                    data = np.asarray(getattr(step_artefact, "data", None))
+                    speaker_count = int(data.shape[1]) if data.ndim == 2 else 0
+                except (TypeError, ValueError):
                     speaker_count = 0
             progress_bar.set_postfix_str(f"speakers: {speaker_count}")
             if progress_bar.total and progress_bar.n < progress_bar.total:

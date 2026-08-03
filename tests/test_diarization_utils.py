@@ -6,6 +6,12 @@ from pathlib import Path
 from unittest import mock
 
 try:
+    from pyannote.core import Annotation, Segment, SlidingWindow, SlidingWindowFeature
+except ImportError:  # pragma: no cover - optional test dependency
+    Annotation = Segment = SlidingWindow = SlidingWindowFeature = None
+
+
+try:
     diarization_utils = importlib.import_module("diarization_utils")
 except ModuleNotFoundError:  # pragma: no cover - dependency chain might be missing
     diarization_utils = None
@@ -234,20 +240,45 @@ class DiarizationHookTests(unittest.TestCase):
         bar.set_postfix_str.assert_called_with("candidates: 4")
 
     def test_hook_sets_speakers_postfix_at_discrete_diarization(self):
+        if Annotation is None:
+            self.skipTest("pyannote.core is unavailable")
+
         bar = self._make_bar()
+        bar.n = 10
+        bar.total = 20
         hook = diarization_utils._make_diarization_hook(bar)
 
-        class FakeAnnotation:
-            def itertracks(self, yield_label=True):
-                yield (None, None, "SPEAKER_00")
-                yield (None, None, "SPEAKER_01")
-                yield (None, None, "SPEAKER_02")
-                yield (None, None, "SPEAKER_00")  # duplicate
+        annotation = Annotation()
+        annotation[Segment(0, 1)] = "SPEAKER_00"
+        annotation[Segment(1, 2)] = "SPEAKER_01"
+        annotation[Segment(2, 3)] = "SPEAKER_02"
+        annotation[Segment(3, 4)] = "SPEAKER_00"  # duplicate
 
-        hook("discrete_diarization", FakeAnnotation())
+        hook("discrete_diarization", annotation)
         bar.set_postfix_str.assert_called_with("speakers: 3")
+        self.assertEqual(bar.n, bar.total)
 
     def test_hook_sets_speakers_for_sliding_window_feature(self):
+        import numpy as np
+
+        if SlidingWindowFeature is None:
+            self.skipTest("pyannote.core is unavailable")
+
+        bar = self._make_bar()
+        bar.n = 10
+        bar.total = 20
+        hook = diarization_utils._make_diarization_hook(bar)
+
+        feature = SlidingWindowFeature(
+            np.zeros((100, 3)),
+            SlidingWindow(duration=0.01, step=0.01),
+        )
+
+        hook("discrete_diarization", feature)
+        bar.set_postfix_str.assert_called_with("speakers: 3")
+        self.assertEqual(bar.n, bar.total)
+
+    def test_hook_reports_zero_speakers_for_malformed_discrete_data(self):
         import numpy as np
 
         bar = self._make_bar()
@@ -255,24 +286,26 @@ class DiarizationHookTests(unittest.TestCase):
         bar.total = 20
         hook = diarization_utils._make_diarization_hook(bar)
 
-        class FakeSlidingWindowFeature:
-            data = np.zeros((100, 3))
+        class MalformedArtifact:
+            data = np.zeros(100)
 
-        hook("discrete_diarization", FakeSlidingWindowFeature())
-        bar.set_postfix_str.assert_called_with("speakers: 3")
+        hook("discrete_diarization", MalformedArtifact())
+        bar.set_postfix_str.assert_called_with("speakers: 0")
         self.assertEqual(bar.n, bar.total)
 
     def test_hook_completes_bar_at_discrete_diarization(self):
+        if Annotation is None:
+            self.skipTest("pyannote.core is unavailable")
+
         bar = self._make_bar()
         bar.n = 10
         bar.total = 20
         hook = diarization_utils._make_diarization_hook(bar)
 
-        class FakeAnnotation:
-            def itertracks(self, yield_label=True):
-                yield (None, None, "SPEAKER_00")
+        annotation = Annotation()
+        annotation[Segment(0, 1)] = "SPEAKER_00"
 
-        hook("discrete_diarization", FakeAnnotation())
+        hook("discrete_diarization", annotation)
         self.assertEqual(bar.n, 20)
         bar.refresh.assert_called()
 
