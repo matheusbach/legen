@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "legen"
-version = "0.20.2"
+version = "0.20.3"
 description = "Powerfull toolkit that locally transcribes, translates, and masters subtitles for your media"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10,<3.13"
@@ -36,6 +36,7 @@ dependencies = [
     "vidqa",
     "gemini-srt-translator",
     "google-genai",
+    "numba>=0.65.1,<0.66",
     "yt-dlp",
     "whisperx==3.8.6",
     "pyannote-audio>=4.0"

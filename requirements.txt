@@ -10,4 +10,5 @@ whisperx==3.8.6
 pyannote-audio>=4.0
 gemini-srt-translator
 google-genai
+numba>=0.65.1,<0.66
 yt-dlp

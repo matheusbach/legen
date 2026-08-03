@@ -1111,13 +1111,14 @@ wheels = [
 
 [[package]]
 name = "legen"
-version = "0.20.2"
+version = "0.20.3"
 source = { editable = "." }
 dependencies = [
     { name = "deep-translator" },
     { name = "ffmpeg-progress-yield" },
     { name = "gemini-srt-translator" },
     { name = "google-genai" },
+    { name = "numba" },
     { name = "openai-whisper" },
     { name = "pyannote-audio" },
     { name = "pysrt" },
@@ -1140,6 +1141,7 @@ requires-dist = [
     { name = "ffmpeg-progress-yield" },
     { name = "gemini-srt-translator" },
     { name = "google-genai" },
+    { name = "numba", specifier = ">=0.65.1,<0.66" },
     { name = "openai-whisper" },
     { name = "pyannote-audio", specifier = ">=4.0" },
     { name = "pysrt" },
