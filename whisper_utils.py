@@ -1,10 +1,8 @@
-import os
 from pathlib import Path
 
-import pysrt
 import whisper
 import whisper.transcribe
-from whisperx import alignment, audio
+from whisperx import alignment
 import subtitle_utils
 from utils import time_task
 

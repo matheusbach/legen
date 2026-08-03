@@ -171,7 +171,7 @@ def detect_language(model: asr.WhisperModel, audio_path: Path):
         results = model.model.model.detect_language(encoder_output)
         language_token, language_probability = results[0][0]
         return language_token[2:-2]
-    except:
+    except Exception:
         print("using whisper base model for detection: ", end='')
         whisper_model = whisper.load_model("base", device="cpu", in_memory=True)
         return whisper_utils.detect_language(model=whisper_model, audio_path=audio_path)
