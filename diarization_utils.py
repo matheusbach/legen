@@ -373,11 +373,22 @@ def _make_diarization_hook(progress_bar):
                 candidates = step_artefact.shape[1]
                 progress_bar.set_postfix_str(f"candidates: {candidates}")
         elif step_name == "discrete_diarization" and step_artefact is not None:
-            speakers = {
-                label
-                for _, _, label in step_artefact.itertracks(yield_label=True)
-            }
-            progress_bar.set_postfix_str(f"speakers: {len(speakers)}")
+            if hasattr(step_artefact, "itertracks"):
+                speakers = {
+                    label
+                    for _, _, label in step_artefact.itertracks(yield_label=True)
+                }
+                speaker_count = len(speakers)
+            else:
+                # pyannote 4.x emits a SlidingWindowFeature before Annotation conversion.
+                try:
+                    shape = getattr(getattr(step_artefact, "data", None), "shape", ())
+                    speaker_count = int(shape[-1]) if len(shape) else 0
+                    if speaker_count < 0:
+                        speaker_count = 0
+                except (IndexError, OverflowError, TypeError, ValueError):
+                    speaker_count = 0
+            progress_bar.set_postfix_str(f"speakers: {speaker_count}")
             if progress_bar.total and progress_bar.n < progress_bar.total:
                 progress_bar.n = progress_bar.total
                 progress_bar.refresh()
