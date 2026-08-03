@@ -256,7 +256,7 @@ class DiarizationHookTests(unittest.TestCase):
         hook = diarization_utils._make_diarization_hook(bar)
 
         class FakeSlidingWindowFeature:
-            data = np.zeros((10, 100, 3))
+            data = np.zeros((100, 3))
 
         hook("discrete_diarization", FakeSlidingWindowFeature())
         bar.set_postfix_str.assert_called_with("speakers: 3")
