@@ -350,6 +350,8 @@ def _make_diarization_hook(progress_bar):
 
         if step_name == "segmentation":
             if completed is not None and total is not None:
+                total = max(0, total)
+                completed = max(0, min(completed, total))
                 progress_bar.n = completed
                 progress_bar.total = total
                 progress_bar.set_postfix_str("")
@@ -365,6 +367,8 @@ def _make_diarization_hook(progress_bar):
             progress_bar.set_postfix_str(f"max speakers/frame: {peak}")
         elif step_name == "embeddings":
             if completed is not None and total is not None:
+                total = max(0, total)
+                completed = max(0, min(completed, total))
                 progress_bar.n = completed
                 progress_bar.total = total
                 progress_bar.set_postfix_str("")
@@ -487,10 +491,11 @@ def diarize_audio(
                         max_speakers=max_speakers,
                         hook=hook,
                     )
-                except RuntimeError as exc:
-                    msg = str(exc).lower()
-                    if "out of memory" not in msg and "cuda" not in msg:
-                        raise
+                except (RuntimeError, MemoryError) as exc:
+                    if isinstance(exc, RuntimeError):
+                        msg = str(exc).lower()
+                        if "out of memory" not in msg and "cuda" not in msg:
+                            raise
                     print("  GPU out of memory for diarization; falling back to CPU.", flush=True)
                     pipeline = _load_pipeline(model_path, torch.device("cpu"))
                     diarization = pipeline(

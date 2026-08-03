@@ -213,6 +213,13 @@ class DiarizationHookTests(unittest.TestCase):
         self.assertEqual(bar.total, 20)
         bar.refresh.assert_called()
 
+    def test_hook_clamps_segmentation_progress_to_total(self):
+        bar = self._make_bar()
+        hook = diarization_utils._make_diarization_hook(bar)
+        hook("segmentation", None, completed=25, total=20)
+        self.assertEqual(bar.n, 20)
+        self.assertEqual(bar.total, 20)
+
     def test_hook_sets_chunks_postfix_on_segmentation_done(self):
         import numpy as np
         bar = self._make_bar()
@@ -379,6 +386,43 @@ class DiarizeAudioTests(unittest.TestCase):
             assign_mock.assert_called_once_with(fake_df, result)
             # return value is the assign return value
             self.assertIs(out, assign_mock.return_value)
+
+    def test_diarize_audio_retries_memory_error_on_cpu(self):
+        import numpy as np
+        import torch
+
+        fake_diarization = mock.MagicMock(name="diarization_output")
+        fake_df = mock.MagicMock(name="diarize_df")
+        fake_pipeline = mock.MagicMock(name="cpu_pipeline")
+        fake_pipeline.return_value = fake_diarization
+        result = {"segments": []}
+        assigned_result = {"segments": [{"speaker": "SPEAKER_00"}]}
+        with mock.patch.object(
+            diarization_utils, "ensure_diarization_model", return_value=Path("/fake/model")
+        ), mock.patch.object(
+            diarization_utils, "community1_supported", return_value=True
+        ), mock.patch.object(
+            diarization_utils,
+            "_diarization_to_dataframe",
+            return_value=fake_df,
+        ), mock.patch(
+            "whisperx.audio.load_audio",
+            return_value=np.zeros(16000, dtype="float32"),
+        ), mock.patch(
+            "whisperx.diarize.assign_word_speakers",
+            return_value=assigned_result,
+        ), mock.patch.object(
+            diarization_utils,
+            "_load_pipeline",
+            side_effect=[MemoryError("CUDA out of memory"), fake_pipeline],
+        ) as load_mock:
+            out = diarization_utils.diarize_audio(
+                np.zeros(16000, dtype="float32"), result, device="cuda"
+            )
+
+        self.assertEqual(load_mock.call_count, 2)
+        self.assertEqual(load_mock.call_args_list[1].args[1], torch.device("cpu"))
+        self.assertIs(out, assigned_result)
 
     def test_diarize_audio_passes_hook_to_pipeline(self):
         fake_diarization = mock.MagicMock(name="diarization_output")
