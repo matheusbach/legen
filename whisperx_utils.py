@@ -86,7 +86,7 @@ def _make_progress_callback(label: str):
     return progress_callback
 
 
-def transcribe_audio(model: asr.WhisperModel, audio_path: Path, srt_path: Path, lang: str = None, device: str = "cpu", batch_size: int = 4):
+def transcribe_audio(model: asr.WhisperModel, audio_path: Path, srt_path: Path, lang: str = None, device: str = "cpu", batch_size: int = 4, diarize: bool = False, min_speakers=None, max_speakers=None):
     audio = wx_audio.load_audio(file=audio_path.as_posix(), sr=model.model.feature_extractor.sampling_rate)
 
     # Transcribe
@@ -139,6 +139,17 @@ def transcribe_audio(model: asr.WhisperModel, audio_path: Path, srt_path: Path, 
                     print()
     else:
         print(f"Language {lang} not suported for alignment. Skipping this step")
+
+    # Speaker diarization (optional)
+    if diarize:
+        import diarization_utils
+        diarization_utils.diarize_audio(
+            audio,
+            transcribe,
+            device=device,
+            min_speakers=min_speakers,
+            max_speakers=max_speakers,
+        )
 
     # Format subtitles
     segments = subtitle_utils.format_segments(transcribe['segments'])

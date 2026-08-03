@@ -9,9 +9,10 @@ import subtitle_utils
 from utils import time_task
 
 
-def transcribe_audio(model: whisper.model, audio_path: Path, srt_path: Path, lang: str = None, disable_fp16: bool = False):
+def transcribe_audio(model: whisper.model, audio_path: Path, srt_path: Path, lang: str = None, disable_fp16: bool = False, diarize: bool = False, min_speakers=None, max_speakers=None):
     # Load audio
     audio = whisper.load_audio(file=audio_path.as_posix())
+    diarize_device = "cpu"
     
     # Transcribe
     with time_task():
@@ -21,6 +22,7 @@ def transcribe_audio(model: whisper.model, audio_path: Path, srt_path: Path, lan
     if lang in alignment.DEFAULT_ALIGN_MODELS_HF or lang in alignment.DEFAULT_ALIGN_MODELS_TORCH:
         model_device = str(getattr(model, "device", "cpu"))
         alignment_device = "cuda" if model_device.startswith("cuda") else "cpu"
+        diarize_device = alignment_device
         if alignment_device == "cuda":
             try:
                 import torch
@@ -37,6 +39,17 @@ def transcribe_audio(model: whisper.model, audio_path: Path, srt_path: Path, lan
                 transcribe = alignment.align(transcript=transcribe["segments"], model=model_a, align_model_metadata=metadata, audio=audio, device="cpu", return_char_alignments=True)
     else:
         print(f"Language {lang} not suported for alignment. Skipping this step")
+
+    # Speaker diarization (optional)
+    if diarize:
+        import diarization_utils
+        diarization_utils.diarize_audio(
+            audio,
+            transcribe,
+            device=diarize_device,
+            min_speakers=min_speakers,
+            max_speakers=max_speakers,
+        )
 
     # Format subtitles
     segments = subtitle_utils.format_segments(transcribe['segments'])
