@@ -1,3 +1,4 @@
+import asyncio
 import importlib
 import tempfile
 import unittest
@@ -40,6 +41,128 @@ class TranslateUtilsTests(unittest.TestCase):
         original_chunk = translate_utils.join_sentences(original_lines, max_chars=200)[0]
         rebuilt = translate_utils.unjoin_sentences(original_chunk, None, translate_utils.separator_unjoin)
         self.assertEqual(rebuilt, original_lines or ' ')
+
+    def test_translate_chunk_per_line_ignores_google_error_page(self):
+        google_error = (
+            "Error 500 (Server Error)!!1500.That's an error."
+            "There was an error. Please try again later.That's all we know."
+        )
+        translator = mock.Mock()
+        translator.translate.return_value = google_error
+        chunk = "First subtitle." + translate_utils.separator + "Second subtitle."
+
+        with mock.patch.object(
+            translate_utils.asyncio,
+            "sleep",
+            new=mock.AsyncMock(),
+        ):
+            translated = asyncio.run(
+                translate_utils.translate_chunk_per_line(chunk, "pt", translator)
+            )
+
+        self.assertEqual(translated, chunk)
+        self.assertEqual(translator.translate.call_count, 5)
+
+    def test_adaptive_controller_brakes_and_accelerates(self):
+        async def scenario():
+            controller = translate_utils.AdaptiveRequestController(max_concurrency=7)
+            self.assertEqual(controller.concurrency_limit, 7)
+
+            await controller.record_failure()
+            self.assertEqual(controller.concurrency_limit, 3)
+            await controller.record_failure()
+            self.assertEqual(controller.concurrency_limit, 1)
+
+            for expected in range(2, 8):
+                await controller.record_success()
+                self.assertEqual(controller.concurrency_limit, expected)
+
+            await controller.record_success()
+            self.assertEqual(controller.concurrency_limit, 7)
+
+        asyncio.run(scenario())
+
+    def test_translate_chunk_retries_google_error_then_succeeds(self):
+        google_error = (
+            "Error 500 (Server Error)!!1500.That's an error."
+            "There was an error. Please try again later.That's all we know."
+        )
+        translator = mock.Mock()
+        translator.translate.side_effect = [
+            google_error,
+            google_error,
+            "Primeira legenda ◌ Segunda legenda",
+        ]
+        chunk = "A" + translate_utils.separator + "B"
+
+        async def scenario():
+            with mock.patch.object(
+                translate_utils.deep_translator.google,
+                "GoogleTranslator",
+                return_value=translator,
+            ), mock.patch.object(
+                translate_utils.asyncio,
+                "sleep",
+                new=mock.AsyncMock(),
+            ):
+                return await translate_utils.translate_chunk(1, chunk, "pt", 1)
+
+        result = asyncio.run(scenario())
+
+        self.assertEqual(result, "Primeira legenda ◌ Segunda legenda")
+        self.assertEqual(translator.translate.call_count, 3)
+        self.assertEqual(
+            [call.args[0] for call in translator.translate.call_args_list],
+            [chunk, chunk, chunk],
+        )
+
+    def test_translate_chunk_uses_original_after_five_google_errors(self):
+        google_error = (
+            "Error 500 (Server Error)!!1500.That's an error."
+            "There was an error. Please try again later.That's all we know."
+        )
+        translator = mock.Mock()
+        translator.translate.return_value = google_error
+        chunk = "A" + translate_utils.separator + "B"
+
+        async def scenario():
+            with mock.patch.object(
+                translate_utils.deep_translator.google,
+                "GoogleTranslator",
+                return_value=translator,
+            ), mock.patch.object(
+                translate_utils.asyncio,
+                "sleep",
+                new=mock.AsyncMock(),
+            ):
+                return await translate_utils.translate_chunk(1, chunk, "pt", 1)
+
+        result = asyncio.run(scenario())
+
+        self.assertEqual(result, chunk)
+        self.assertEqual(translator.translate.call_count, 5)
+
+    def test_translate_chunk_retries_exceptions_with_same_budget(self):
+        translator = mock.Mock()
+        translator.translate.side_effect = RuntimeError("temporary failure")
+        chunk = "A" + translate_utils.separator + "B"
+
+        async def scenario():
+            with mock.patch.object(
+                translate_utils.deep_translator.google,
+                "GoogleTranslator",
+                return_value=translator,
+            ), mock.patch.object(
+                translate_utils.asyncio,
+                "sleep",
+                new=mock.AsyncMock(),
+            ):
+                return await translate_utils.translate_chunk(1, chunk, "pt", 1)
+
+        result = asyncio.run(scenario())
+
+        self.assertEqual(result, chunk)
+        self.assertEqual(translator.translate.call_count, 5)
 
     def test_cli_translates_single_file_with_custom_output_dir(self):
         tmp_dir = tempfile.TemporaryDirectory()

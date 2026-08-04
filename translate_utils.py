@@ -64,6 +64,81 @@ chunk_max_chars = 4999
 hard_separators = ["⟧⟦", "⟬⟭", "⟪⟫"]
 _hard_sep_index = 0
 _hard_sep_lock = asyncio.Lock()
+_MAX_TRANSLATION_FAILURES = 5
+_MIN_GOOGLE_CONCURRENCY = 1
+_MAX_GOOGLE_CONCURRENCY = 7
+_RETRY_BACKOFF_BASE_SECONDS = 1
+_RETRY_BACKOFF_MAX_SECONDS = 30
+_GOOGLE_ERROR_RESPONSE_RE = re.compile(
+    r"error\s+\d{3}\s*\(\s*server\s+error\s*\).*"
+    r"please\s+try\s+again\s+later",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+class AdaptiveRequestController:
+    """Limit concurrent requests and adapt the limit to service health."""
+
+    def __init__(self, max_concurrency: int = _MAX_GOOGLE_CONCURRENCY):
+        self._min_concurrency = _MIN_GOOGLE_CONCURRENCY
+        self._max_concurrency = max_concurrency
+        self._concurrency_limit = max_concurrency
+        self._active_requests = 0
+        self._condition = asyncio.Condition()
+
+    @property
+    def concurrency_limit(self) -> int:
+        return self._concurrency_limit
+
+    async def acquire(self) -> None:
+        async with self._condition:
+            await self._condition.wait_for(
+                lambda: self._active_requests < self._concurrency_limit
+            )
+            self._active_requests += 1
+
+    async def release(self) -> None:
+        async with self._condition:
+            self._active_requests -= 1
+            self._condition.notify_all()
+
+    async def record_success(self) -> None:
+        async with self._condition:
+            self._concurrency_limit = min(
+                self._max_concurrency,
+                self._concurrency_limit + 1,
+            )
+            self._condition.notify_all()
+
+    async def record_failure(self) -> None:
+        async with self._condition:
+            self._concurrency_limit = max(
+                self._min_concurrency,
+                self._concurrency_limit // 2,
+            )
+            self._condition.notify_all()
+
+
+class _TranslationRetryBudget:
+    def __init__(self, max_failures: int = _MAX_TRANSLATION_FAILURES):
+        self.max_failures = max_failures
+        self.failures = 0
+
+    @property
+    def exhausted(self) -> bool:
+        return self.failures >= self.max_failures
+
+    def consume_failure(self) -> int:
+        if not self.exhausted:
+            self.failures += 1
+        return self.failures
+
+
+def _retry_delay(failure_number: int) -> int:
+    return min(
+        _RETRY_BACKOFF_BASE_SECONDS * (2 ** (failure_number - 1)),
+        _RETRY_BACKOFF_MAX_SECONDS,
+    )
 
 
 def translate_srt_file(
@@ -154,24 +229,21 @@ def translate_srt_file(
 
     # Empty list to store enumerated translated chunks
     translated_chunks = [None] * len(chunks)
+    request_controller = AdaptiveRequestController()
 
     tasks = []
-    # Limit to 7 concomitant running tasks
-    semaphore = asyncio.Semaphore(7)
 
     # Async chunks translate function
     async def translate_async():
         async def run_translate(index, chunk, lang):
-            while True:
-                try:
-                    async with semaphore:
-                        expected = count_separators(chunk)
-                        result = await asyncio.wait_for(translate_chunk(index, chunk, lang, expected), 120)
-                    translated_chunks[index] = result
-                    break
-                except Exception:
-                    # Restart task
-                    await asyncio.sleep(3)
+            expected = count_separators(chunk)
+            translated_chunks[index] = await translate_chunk(
+                index,
+                chunk,
+                lang,
+                expected,
+                request_controller,
+            )
 
         for index, chunk in enumerate(chunks):
             task = asyncio.create_task(
@@ -215,47 +287,115 @@ def translate_srt_file(
 # Async chunk translate function
 
 
-async def translate_chunk(index, chunk, target_lang, expected_separators):
+async def _translate_with_retry(
+    translator,
+    text: str,
+    request_controller: AdaptiveRequestController,
+    retry_budget: _TranslationRetryBudget,
+    *,
+    chunk_index: int | None = None,
+) -> str | None:
+    """Run one Google request with a shared bounded retry budget."""
+    label = f"[chunk {chunk_index}]" if chunk_index is not None else "[translation]"
+
+    while not retry_budget.exhausted:
+        failure_reason = None
+        result = None
+
+        await request_controller.acquire()
+        try:
+            try:
+                result = await asyncio.wait_for(
+                    asyncio.get_running_loop().run_in_executor(
+                        None, translator.translate, text
+                    ),
+                    30,
+                )
+            except Exception as exc:
+                failure_reason = str(exc).strip() or type(exc).__name__
+                await request_controller.record_failure()
+            else:
+                if isinstance(result, str) and result and not _is_google_error_response(result):
+                    await request_controller.record_success()
+                    return result
+
+                failure_reason = "Google error response" if result else "empty response"
+                await request_controller.record_failure()
+        finally:
+            await request_controller.release()
+
+        failure_number = retry_budget.consume_failure()
+        if retry_budget.exhausted:
+            print(
+                f"\r{label}: {failure_reason} ({failure_number}/{retry_budget.max_failures}); "
+                "preserving original text.",
+                flush=True,
+            )
+            return None
+
+        delay = _retry_delay(failure_number)
+        print(
+            f"\r{label}: {failure_reason} ({failure_number}/{retry_budget.max_failures}); "
+            f"retrying in {delay}s...",
+            flush=True,
+        )
+        await asyncio.sleep(delay)
+
+    return None
+
+
+async def translate_chunk(
+    index,
+    chunk,
+    target_lang,
+    expected_separators,
+    request_controller: AdaptiveRequestController | None = None,
+):
+    request_controller = request_controller or AdaptiveRequestController()
+    retry_budget = _TranslationRetryBudget()
     max_attempts = 3 if len(strip_separators(chunk)) > 20 else 1
     translator = deep_translator.google.GoogleTranslator(source='auto', target=target_lang)
 
     async def run_translate(text):
-        return await asyncio.wait_for(asyncio.get_event_loop().run_in_executor(None, translator.translate, text), 30)
+        return await _translate_with_retry(
+            translator,
+            text,
+            request_controller,
+            retry_budget,
+            chunk_index=index,
+        )
 
     # Normal attempts
-    for attempt in range(max_attempts):
-        try:
-            translated_chunk = await run_translate(chunk)
-            await asyncio.sleep(0)
+    for _ in range(max_attempts):
+        translated_chunk = await run_translate(chunk)
+        if translated_chunk is None:
+            return chunk
 
-            if not translated_chunk or len(strip_separators(translated_chunk).split()) == 0:
-                continue
-
-            if has_exact_separators(translated_chunk, expected_separators) and not is_likely_unchanged(translated_chunk, chunk):
-                return translated_chunk
-        except Exception as e:
-            print(f"\r[chunk {index}]: Exception: {e.__doc__} Retrying...", flush=True)
-            await asyncio.sleep(2)
+        if has_exact_separators(translated_chunk, expected_separators) and not is_likely_unchanged(translated_chunk, chunk):
+            return translated_chunk
 
     # Hard separator attempts (3 tries with rotating tokens)
     start_idx = await reserve_hard_separators(3)
     for i in range(3):
         token = hard_separators[(start_idx + i) % len(hard_separators)]
         token_chunk = chunk.replace(separator, f"{token} ")
-        try:
-            translated_chunk = await run_translate(token_chunk)
-            await asyncio.sleep(0)
-            if not translated_chunk:
-                continue
-            restored = translated_chunk.replace(token, separator)
-            if has_exact_separators(restored, expected_separators) and not is_likely_unchanged(restored, chunk):
-                return restored
-        except Exception:
-            await asyncio.sleep(2)
+        translated_chunk = await run_translate(token_chunk)
+        if translated_chunk is None:
+            return chunk
+
+        restored = translated_chunk.replace(token, separator)
+        if has_exact_separators(restored, expected_separators) and not is_likely_unchanged(restored, chunk):
+            return restored
 
     # Last resort: translate per line within this chunk only
-    fallback = await translate_chunk_per_line(chunk, target_lang, translator)
-    return fallback
+    return await translate_chunk_per_line(
+        chunk,
+        target_lang,
+        translator,
+        request_controller=request_controller,
+        retry_budget=retry_budget,
+        chunk_index=index,
+    )
 
 
 def join_sentences(lines, max_chars):
@@ -409,6 +549,11 @@ def strip_separators(text: str) -> str:
     return text.replace(separator, " ").replace(separator_unjoin, " ").replace("◌", " ").strip()
 
 
+def _is_google_error_response(text: str) -> bool:
+    """Detect Google's HTML error page returned as a translation string."""
+    return bool(text and _GOOGLE_ERROR_RESPONSE_RE.search(text))
+
+
 def is_likely_unchanged(translated: str, original: str) -> bool:
     clean_t = strip_separators(translated).lower()
     clean_o = strip_separators(original).lower()
@@ -435,18 +580,34 @@ async def reserve_hard_separators(count: int) -> int:
         return start
 
 
-async def translate_chunk_per_line(chunk: str, target_lang: str, translator) -> str:
+async def translate_chunk_per_line(
+    chunk: str,
+    target_lang: str,
+    translator,
+    request_controller: AdaptiveRequestController | None = None,
+    retry_budget: _TranslationRetryBudget | None = None,
+    chunk_index: int | None = None,
+) -> str:
+    request_controller = request_controller or AdaptiveRequestController()
+    retry_budget = retry_budget or _TranslationRetryBudget()
     lines = [line.strip() for line in chunk.split(separator)]
     output = []
-    for line in lines:
+    for line_index, line in enumerate(lines):
         if not line:
             output.append("")
             continue
-        try:
-            translated = await asyncio.wait_for(asyncio.get_event_loop().run_in_executor(None, translator.translate, line), 30)
-            output.append(translated or line)
-        except Exception:
-            output.append(line)
+
+        translated = await _translate_with_retry(
+            translator,
+            line,
+            request_controller,
+            retry_budget,
+            chunk_index=chunk_index,
+        )
+        if translated is None:
+            output.extend(lines[line_index:])
+            break
+        output.append(translated)
     return separator.join(output)
 
 
