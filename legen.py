@@ -33,7 +33,7 @@ from utils import audio_extensions, check_other_extensions, split_lang_suffix, t
 if os.environ.get("MPLBACKEND") == "module://matplotlib_inline.backend_inline":
     os.environ.pop("MPLBACKEND")
 
-VERSION = "0.20.3"
+VERSION = "0.20.4"
 version = f"v{VERSION}"
 __version__ = VERSION
 __all__ = [
