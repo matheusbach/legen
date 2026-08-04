@@ -132,7 +132,9 @@ Full options list are described bellow:
 
 - `-ts:c`, `--transcription_compute_type`: Specifies the quantization for the neural network. Possible values: auto (default), int8, int8_float32, int8_float16, int8_bfloat16, int16, float16, bfloat16, float32.
 
-- `-ts:v`, `--transcription_vad`: Selects the voice-activity detector used by WhisperX. Options: silero (default), pyannote, none (disable VAD and transcribe all audio; also accepts `disabled`/`off`).
+- `-ts:v`, `--transcription_vad`: Selects the voice-activity detector used by WhisperX. Options: `auto` (default; uses pyannote when `--diarize` is enabled and silero otherwise), `pyannote`, `silero`, `none`, `disabled`, or `off`. If `silero` is explicitly selected with `--diarize`, LeGen prints a recommendation to use pyannote.
+
+  `none`, `disabled`, and `off` disable only transcription VAD. With `--diarize`, pyannote diarization still runs afterward; WhisperX processes the full waveform in fixed-size chunks in this mode, which may be slower.
 
 - `-ts:b`, `--transcription_batch`: Specifies the number of simultaneous segments being transcribed. Higher values will speed up processing. If you have low RAM/VRAM, long duration media files or have buggy subtitles, reduce this value to avoid issues. Only works using transcription_engine whisperx. Default is 4.
 
@@ -189,7 +191,7 @@ If the value supplied to `-i` is neither a reachable URL nor a valid local file/
 
 ### Speaker diarization (`--diarize`)
 
-LeGen can identify the active speaker in each segment and tag subtitle lines with `[SPEAKER_NN]` prefixes (e.g. `[SPEAKER_00] Hello there`). Enable it with `--diarize`.
+LeGen can identify the active speaker and mark the start of each speaker turn with a `[SPEAKER_NN]` prefix (e.g. `[SPEAKER_00] Hello there`). The prefix is not repeated on consecutive cues from the same speaker. Enable it with `--diarize`.
 
 ```sh
 legen -i video.mp4 --translate pt --diarize
@@ -199,11 +201,18 @@ Useful flags:
 
 | Flag | Description |
 | --- | --- |
-| `--diarize` | Enable speaker diarization. Adds `[SPEAKER_NN]` prefix to each subtitle line. |
+| `--diarize` | Enable speaker diarization. Adds a `[SPEAKER_NN]` prefix at each speaker turn, not on consecutive same-speaker cues. |
 | `--min_speakers N` | Hint the minimum number of speakers when known. Improves accuracy. |
 | `--max_speakers N` | Hint the maximum number of speakers when known. Improves accuracy. |
 
 With the normal `pyannote-audio` 4.x setup, LeGen uses the `pyannote/speaker-diarization-community-1` pipeline. On first use it downloads the public model files (~33 MB total) from ModelScope into `~/.cache/legen/models/diarization-community-1/`; subsequent runs reuse the cache without internet access. No Hugging Face account or API token is needed. For defensive compatibility only, environments using `pyannote-audio` below 4.0 fall back to the legacy 3.1 model and `~/.cache/legen/models/diarization-3.1/`. The Docker image already bundles the model, so container users never download it at runtime.
+
+`[SPEAKER_NN]` identifies the start of a speaker turn and is not repeated on consecutive same-speaker cues. SRT output keeps the label at the start of each turn, while TXT output uses one line per speaker turn, with a newline at each speaker transition:
+
+```text
+[SPEAKER_00] First sentence. Continuation of the same turn.
+[SPEAKER_01] Reply from another speaker.
+```
 
 Limitations:
 
