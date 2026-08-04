@@ -57,6 +57,13 @@ class DisabledVad(Vad):
         return Vad.merge_chunks(segments_list, chunk_size, onset, offset)
 
 
+def resolve_vad_method(vad_method: str, diarize: bool) -> str:
+    vad_method = str(vad_method).lower()
+    if vad_method == "auto":
+        return "pyannote" if diarize else "silero"
+    return vad_method
+
+
 def build_vad_model(vad_method: str):
     """Build a VAD model instance for a given vad_method name.
 

@@ -26,6 +26,21 @@ class _FakeWhisperModel:
         }
 
 
+class VadResolutionTests(unittest.TestCase):
+    def test_auto_uses_pyannote_when_diarization_is_enabled(self):
+        self.assertEqual(whisperx_utils.resolve_vad_method("auto", diarize=True), "pyannote")
+
+    def test_auto_uses_silero_without_diarization(self):
+        self.assertEqual(whisperx_utils.resolve_vad_method("auto", diarize=False), "silero")
+
+    def test_explicit_vad_values_are_preserved(self):
+        for method in ("pyannote", "silero", "none", "disabled", "off"):
+            self.assertEqual(whisperx_utils.resolve_vad_method(method, diarize=True), method)
+
+    def test_resolution_normalizes_case(self):
+        self.assertEqual(whisperx_utils.resolve_vad_method("AUTO", diarize=True), "pyannote")
+
+
 class ProgressAdapterTests(unittest.TestCase):
     def test_formats_float_progress_and_never_decreases(self):
         callback = whisperx_utils._make_progress_callback("WhisperX transcription")
