@@ -129,7 +129,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("-ts:b", "--transcription_batch", type=int, default=4,
                         help="Number of simultaneous segments being transcribed. Higher values will speed up processing. If you have low RAM/VRAM, long duration media files or have buggy subtitles, reduce this value to avoid issues. Only works using transcription_engine whisperx. (default: 4)")
     parser.add_argument("--diarize", default=False, action="store_true",
-                        help="Enable speaker diarization (adds [SPEAKER_NN] prefix to each subtitle line). Downloads the pyannote/speaker-diarization-community-1 model (~33 MB) from ModelScope on first use; no Hugging Face token is required.")
+                        help="Enable speaker diarization (adds [SPEAKER_NN] at the start of each speaker turn). Downloads the pyannote/speaker-diarization-community-1 model (~33 MB) from ModelScope on first use; no Hugging Face token is required.")
     parser.add_argument("--min_speakers", type=int, default=None,
                         help="Minimum number of speakers for diarization, if known. Improves accuracy when provided.")
     parser.add_argument("--max_speakers", type=int, default=None,
