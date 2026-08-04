@@ -124,8 +124,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Device to run the transcription through Whisper. Possible values: auto (default), cpu, cuda")
     parser.add_argument("-ts:c", "--transcription_compute_type", type=str, default="auto",
                         help="Quantization for the neural network. Possible values: auto (default), int8, int8_float32, int8_float16, int8_bfloat16, int16, float16, bfloat16, float32")
-    parser.add_argument("-ts:v", "--transcription_vad", type=str.lower, default="silero", choices=["pyannote", "silero", "none", "disabled", "off"],
-                        help="Voice activity detector to segment audio before transcription when using whisperx. Use 'none' (also 'disabled'/'off') to disable VAD and transcribe all audio. Defaults to silero (CPU friendly).")
+    parser.add_argument("-ts:v", "--transcription_vad", type=str.lower, default="auto", choices=["auto", "pyannote", "silero", "none", "disabled", "off"],
+                        help="Voice activity detector to segment audio before transcription when using whisperx. 'auto' selects pyannote with diarization and silero otherwise. Use 'none' (also 'disabled'/'off') to disable VAD and transcribe all audio.")
     parser.add_argument("-ts:b", "--transcription_batch", type=int, default=4,
                         help="Number of simultaneous segments being transcribed. Higher values will speed up processing. If you have low RAM/VRAM, long duration media files or have buggy subtitles, reduce this value to avoid issues. Only works using transcription_engine whisperx. (default: 4)")
     parser.add_argument("--diarize", default=False, action="store_true",
@@ -181,6 +181,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Also process existing .srt subtitle files found in the input path (translate/TLTW). When a subtitle matches a media filename, it is used instead of transcription.",
     )
     return parser
+
+
+def _warn_if_silero_with_diarization(*, vad_method, diarize, transcription_engine):
+    if diarize and str(transcription_engine).lower() == "whisperx" and str(vad_method).lower() == "silero":
+        print("Warning: diarization is enabled with Silero VAD. Using pyannote VAD is highly recommended for diarization.")
 
 
 def patch_torch_hub():
@@ -402,12 +407,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             import whisperx
             import whisperx_utils
 
+            effective_vad = whisperx_utils.resolve_vad_method(args.transcription_vad, args.diarize)
+            _warn_if_silero_with_diarization(
+                vad_method=args.transcription_vad,
+                diarize=args.diarize,
+                transcription_engine=args.transcription_engine,
+            )
             whisper_model = whisperx.load_model(
                 whisper_arch=args.transcription_model,
                 device=torch_device,
                 compute_type=transcription_compute_type,
-                vad_method=args.transcription_vad,
-                vad_model=whisperx_utils.build_vad_model(args.transcription_vad),
+                vad_method=effective_vad,
+                vad_model=whisperx_utils.build_vad_model(effective_vad),
                 asr_options={"repetition_penalty": 1, "prompt_reset_on_temperature": 0.5, "no_repeat_ngram_size": 2,},
             )
         elif args.transcription_engine == 'whisper':
