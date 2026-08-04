@@ -118,6 +118,101 @@ class SubtitleUtilsTests(unittest.TestCase):
             content = srt_path.read_text(encoding="utf-8")
             self.assertNotIn("[SPEAKER", content)
 
+    def test_save_srt_labels_only_when_speaker_changes(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            srt_path = Path(tmpdir) / "out.srt"
+            segments = [
+                {"start": 0.0, "end": 1.0, "text": "Primeira", "speaker": "SPEAKER_00"},
+                {"start": 1.0, "end": 2.0, "text": "Continuação", "speaker": "SPEAKER_00"},
+                {"start": 2.0, "end": 3.0, "text": "Resposta", "speaker": "SPEAKER_01"},
+                {"start": 3.0, "end": 4.0, "text": "Nova intervenção", "speaker": "SPEAKER_00"},
+            ]
+
+            subtitle_utils.SaveSegmentsToSrt(segments, srt_path)
+            content = srt_path.read_text(encoding="utf-8")
+
+            self.assertEqual(content.count("[SPEAKER_00]"), 2)
+            self.assertEqual(content.count("[SPEAKER_01]"), 1)
+            self.assertIn("[SPEAKER_00] Primeira", content)
+            self.assertIn("Continuação", content)
+            self.assertNotIn("[SPEAKER_00] Continuação", content)
+
+    def test_save_srt_relabels_after_unknown_speaker(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            srt_path = Path(tmpdir) / "out.srt"
+            segments = [
+                {"start": 0.0, "end": 1.0, "text": "Conhecida", "speaker": "SPEAKER_00"},
+                {"start": 1.0, "end": 2.0, "text": "Continuação", "speaker": "SPEAKER_00"},
+                {"start": 2.0, "end": 3.0, "text": "Sem atribuição", "speaker": "UNKNOWN"},
+                {"start": 3.0, "end": 4.0, "text": "Retorno", "speaker": "SPEAKER_00"},
+            ]
+
+            subtitle_utils.SaveSegmentsToSrt(segments, srt_path)
+            content = srt_path.read_text(encoding="utf-8")
+
+            self.assertEqual(content.count("[SPEAKER_00]"), 2)
+            self.assertNotIn("[UNKNOWN]", content)
+            self.assertNotIn("[SPEAKER_00] Continuação", content)
+
+    def test_export_plain_text_from_srt_separates_speaker_turns(self):
+        subs = pysrt.SubRipFile()
+        subs.extend([
+            pysrt.SubRipItem(
+                index=1,
+                text="[SPEAKER_00] Primeira frase.",
+                start=pysrt.SubRipTime(seconds=0),
+                end=pysrt.SubRipTime(seconds=1),
+            ),
+            pysrt.SubRipItem(
+                index=2,
+                text="Continuação do turno.",
+                start=pysrt.SubRipTime(seconds=1),
+                end=pysrt.SubRipTime(seconds=2),
+            ),
+            pysrt.SubRipItem(
+                index=3,
+                text="[SPEAKER_01] Resposta.",
+                start=pysrt.SubRipTime(seconds=2),
+                end=pysrt.SubRipTime(seconds=3),
+            ),
+        ])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / "out.txt"
+            text = subtitle_utils.export_plain_text_from_srt(subs, output_path)
+
+            expected = (
+                "[SPEAKER_00] Primeira frase. Continuação do turno.\n"
+                "[SPEAKER_01] Resposta."
+            )
+            self.assertEqual(text, expected)
+            self.assertEqual(output_path.read_text(encoding="utf-8"), expected)
+
+    def test_export_plain_text_from_srt_collapses_legacy_repeated_prefixes(self):
+        subs = pysrt.SubRipFile()
+        subs.extend([
+            pysrt.SubRipItem(
+                index=1,
+                text="[SPEAKER_00] Uma.",
+                start=pysrt.SubRipTime(seconds=0),
+                end=pysrt.SubRipTime(seconds=1),
+            ),
+            pysrt.SubRipItem(
+                index=2,
+                text="[SPEAKER_00] Duas.",
+                start=pysrt.SubRipTime(seconds=1),
+                end=pysrt.SubRipTime(seconds=2),
+            ),
+        ])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            text = subtitle_utils.export_plain_text_from_srt(
+                subs,
+                Path(tmpdir) / "out.txt",
+            )
+
+            self.assertEqual(text, "[SPEAKER_00] Uma. Duas.")
+
     @patch("subtitle_utils.string_width", side_effect=lambda text, *_: len(text) * 100)
     def test_split_segments_preserves_speaker(self, mock_width):
         segments = [{

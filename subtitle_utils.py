@@ -37,13 +37,39 @@ def _ensure_string_width_font(font_name: str, font_size: int) -> tk_font.Font:
     return font
 
 
+_SPEAKER_PREFIX_RE = re.compile(r"^\[(SPEAKER_\d+)\]\s*")
+
+
 def _collect_plain_text(subtitles: pysrt.SubRipFile) -> str:
-    texts = []
+    parts = []
+    current_speaker = None
+
     for item in subtitles:
         normalized = " ".join(item.text.strip().split())
-        if normalized:
-            texts.append(normalized)
-    return " ".join(texts).strip()
+        if not normalized:
+            continue
+
+        match = _SPEAKER_PREFIX_RE.match(normalized)
+        speaker = match.group(1) if match else None
+        if match:
+            normalized = normalized[match.end():].strip()
+            if not normalized:
+                continue
+
+        if not parts:
+            if match:
+                parts.append(f"[{speaker}] {normalized}")
+            else:
+                parts.append(normalized)
+        elif match and speaker != current_speaker:
+            parts.append(f"\n[{speaker}] {normalized}")
+        else:
+            parts.append(f" {normalized}")
+
+        if match:
+            current_speaker = speaker
+
+    return "".join(parts).strip()
 
 
 def export_plain_text_from_srt(source, output_path: Path) -> str:
@@ -77,19 +103,24 @@ def SaveSegmentsToSrt(segments: list, output_path: Path):
     # Create the subtitle file
     subs = pysrt.SubRipFile()
     sub_idx = 1
+    previous_speaker = None
 
     for i in range(len(segments)):
         start_time = segments[i]["start"]
         end_time = segments[i]["end"]
-        duration = end_time - start_time
-        timestamp = f"{start_time:.3f} - {end_time:.3f}"
-        speaker_prefix = format_speaker_prefix(segments[i].get("speaker"))
+        speaker = segments[i].get("speaker")
+        speaker_prefix = (
+            format_speaker_prefix(speaker)
+            if speaker != previous_speaker
+            else ""
+        )
         text = speaker_prefix + segments[i]["text"]
 
         sub = pysrt.SubRipItem(index=sub_idx, start=pysrt.SubRipTime(seconds=start_time),
                                end=pysrt.SubRipTime(seconds=end_time), text=text)
         subs.append(sub)
         sub_idx += 1
+        previous_speaker = speaker
 
     # make dir and save .srt
     os.makedirs(output_path.parent, exist_ok=True)
