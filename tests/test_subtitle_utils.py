@@ -213,6 +213,55 @@ class SubtitleUtilsTests(unittest.TestCase):
 
             self.assertEqual(text, "[SPEAKER_00] Uma. Duas.")
 
+    def test_export_plain_text_from_srt_preserves_label_after_unlabeled_cue(self):
+        subs = pysrt.SubRipFile()
+        subs.extend([
+            pysrt.SubRipItem(index=1, text="[SPEAKER_00] A"),
+            pysrt.SubRipItem(index=2, text="B"),
+            pysrt.SubRipItem(index=3, text="[SPEAKER_00] D"),
+        ])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            text = subtitle_utils.export_plain_text_from_srt(
+                subs,
+                Path(tmpdir) / "out.txt",
+            )
+
+            self.assertEqual(text, "[SPEAKER_00] A B\n[SPEAKER_00] D")
+
+    def test_export_plain_text_from_srt_applies_prefix_only_to_next_cue(self):
+        subs = pysrt.SubRipFile()
+        subs.extend([
+            pysrt.SubRipItem(index=1, text="[SPEAKER_01] Previous"),
+            pysrt.SubRipItem(index=2, text="[SPEAKER_00]"),
+            pysrt.SubRipItem(index=3, text="A"),
+        ])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            text = subtitle_utils.export_plain_text_from_srt(
+                subs,
+                Path(tmpdir) / "out.txt",
+            )
+
+            self.assertEqual(text, "[SPEAKER_01] Previous\n[SPEAKER_00] A")
+
+    def test_export_plain_text_from_srt_discards_pending_prefix_after_explicit_cue(self):
+        subs = pysrt.SubRipFile()
+        subs.extend([
+            pysrt.SubRipItem(index=1, text="[SPEAKER_01] Previous"),
+            pysrt.SubRipItem(index=2, text="[SPEAKER_00]"),
+            pysrt.SubRipItem(index=3, text="[SPEAKER_02] Replacement"),
+            pysrt.SubRipItem(index=4, text="Tail"),
+        ])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            text = subtitle_utils.export_plain_text_from_srt(
+                subs,
+                Path(tmpdir) / "out.txt",
+            )
+
+            self.assertEqual(text, "[SPEAKER_01] Previous\n[SPEAKER_02] Replacement Tail")
+
     @patch("subtitle_utils.string_width", side_effect=lambda text, *_: len(text) * 100)
     def test_split_segments_preserves_speaker(self, mock_width):
         segments = [{

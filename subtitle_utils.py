@@ -43,6 +43,8 @@ _SPEAKER_PREFIX_RE = re.compile(r"^\[(SPEAKER_\d+)\]\s*")
 def _collect_plain_text(subtitles: pysrt.SubRipFile) -> str:
     parts = []
     current_speaker = None
+    unlabeled_since_label = False
+    pending_speaker = None
 
     for item in subtitles:
         normalized = " ".join(item.text.strip().split())
@@ -54,26 +56,33 @@ def _collect_plain_text(subtitles: pysrt.SubRipFile) -> str:
         if match:
             normalized = normalized[match.end():].strip()
             if not normalized:
+                pending_speaker = speaker
                 continue
+            pending_speaker = None
 
-        if not parts:
-            if match:
+        pending_label = pending_speaker is not None and not match
+        if pending_label:
+            speaker = pending_speaker
+            pending_speaker = None
+
+        if match or pending_label:
+            if not parts:
                 parts.append(f"[{speaker}] {normalized}")
+            elif pending_label or speaker != current_speaker or unlabeled_since_label:
+                parts.append(f"\n[{speaker}] {normalized}")
             else:
-                parts.append(normalized)
-        elif match and speaker != current_speaker:
-            parts.append(f"\n[{speaker}] {normalized}")
+                parts.append(f" {normalized}")
+            current_speaker = speaker
+            unlabeled_since_label = False
         else:
             parts.append(f" {normalized}")
-
-        if match:
-            current_speaker = speaker
+            unlabeled_since_label = True
 
     return "".join(parts).strip()
 
 
 def export_plain_text_from_srt(source, output_path: Path) -> str:
-    """Save subtitles as a single-line TXT without timestamps or line breaks."""
+    """Save subtitles as turn-aware TXT without timestamps."""
     if isinstance(source, pysrt.SubRipFile):
         subtitles = source
     else:
