@@ -468,6 +468,12 @@ def diarize_audio(
     with warnings.catch_warnings():
         warnings.filterwarnings(
             "ignore",
+            category=UserWarning,
+            module=r"pyannote\.audio\.utils\.reproducibility",
+            message=r"TensorFloat-32 \(TF32\) has been disabled.*",
+        )
+        warnings.filterwarnings(
+            "ignore",
             message=r"std\(\): degrees of freedom is <= 0",
             category=UserWarning,
         )
